@@ -1,0 +1,10 @@
+name = "ml-opt-bounds-formalization"
+version = "0.1.0"
+defaultTargets = ["ml-opt-bounds-formalization"]
+
+[[lean_lib]]
+name = "MlOptBoundsFormalization"
+
+[[lean_exe]]
+name = "ml-opt-bounds-formalization"
+root = "Main"
