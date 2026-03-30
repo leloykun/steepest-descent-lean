@@ -1,3 +1,4 @@
 /.lake
 *.pdf
 *NOTES.md
+__pycache__/
