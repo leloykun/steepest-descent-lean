@@ -1383,11 +1383,27 @@ theorem theoremSL1_1_iterationScaling
       ∃ cLower cUpper T0,
         0 < cLower ∧ 0 < cUpper ∧ 0 < T0 ∧
         ∀ T ≥ T0,
-          cLower * (Real.log T / (S.lambda * T)) ≤ etaStepStar T ∧
-          etaStepStar T ≤ cUpper * (Real.log T / (S.lambda * T)) := by
+          cLower * (Real.log T / T) ≤ etaStepStar T ∧
+          etaStepStar T ≤ cUpper * (Real.log T / T) := by
   intro etaStepStar hMin
-  exact ⟨S.fixedStepClosedFormFamily_eq hβ0 hβ1 hGap hMin,
-    S.fixedStepIterationScalingBounds hβ0 hβ1 hGap hMin⟩
+  refine ⟨S.fixedStepClosedFormFamily_eq hβ0 hβ1 hGap hMin, ?_⟩
+  rcases S.fixedStepIterationScalingBounds hβ0 hβ1 hGap hMin with
+    ⟨cLowerOld, cUpperOld, T0, hcLowerOld, hcUpperOld, hT0, hBounds⟩
+  refine ⟨cLowerOld / S.lambda, cUpperOld / S.lambda, T0,
+    div_pos hcLowerOld S.lambda_pos, div_pos hcUpperOld S.lambda_pos, hT0, ?_⟩
+  intro T hT
+  have hTpos : 0 < T := lt_of_lt_of_le hT0 hT
+  rcases hBounds T hT with ⟨hLowerOld, hUpperOld⟩
+  constructor
+  · calc
+      (cLowerOld / S.lambda) * (Real.log T / T)
+          = cLowerOld * (Real.log T / (S.lambda * T)) := by
+              field_simp [S.lambda_pos.ne', hTpos.ne']
+      _ ≤ etaStepStar T := hLowerOld
+  · calc
+      etaStepStar T ≤ cUpperOld * (Real.log T / (S.lambda * T)) := hUpperOld
+      _ = (cUpperOld / S.lambda) * (Real.log T / T) := by
+            field_simp [S.lambda_pos.ne', hTpos.ne']
 
 theorem theoremSL1_2_tokenBudgetScaling
     (S : StochasticSteepestDescentGeometryContext Ω V)
@@ -1410,14 +1426,42 @@ theorem theoremSL1_2_tokenBudgetScaling
           cBatchLower * Real.rpow (N / Real.log N) (2 / 3 : ℝ) ≤ batchSizeStar N ∧
           batchSizeStar N ≤ cBatchUpper * Real.rpow (N / Real.log N) (2 / 3 : ℝ) ∧
         cEtaLower * (Real.rpow (Real.log N) (1 / 3 : ℝ)
-            / (S.lambda * Real.rpow N (1 / 3 : ℝ)))
+            / Real.rpow N (1 / 3 : ℝ))
           ≤ etaTokenStar N (batchSizeStar N) ∧
         etaTokenStar N (batchSizeStar N) ≤
           cEtaUpper * (Real.rpow (Real.log N) (1 / 3 : ℝ)
-            / (S.lambda * Real.rpow N (1 / 3 : ℝ))) := by
+            / Real.rpow N (1 / 3 : ℝ)) := by
   intro etaTokenStar hMin
-  exact ⟨S.fixedTokenClosedFormFamily_eq hβ0 hβ1 hGap hMin,
-    S.fixedMomentumTokenBudgetScalingBounds hβ0 hβ1 hGap hNoise hBatchMin hMin⟩
+  refine ⟨S.fixedTokenClosedFormFamily_eq hβ0 hβ1 hGap hMin, ?_⟩
+  rcases S.fixedMomentumTokenBudgetScalingBounds hβ0 hβ1 hGap hNoise hBatchMin hMin with
+    ⟨cBatchLower, cBatchUpper, cEtaLowerOld, cEtaUpperOld, N0,
+      hcBatchLower, hcBatchUpper, hcEtaLowerOld, hcEtaUpperOld, hN0, hBounds⟩
+  refine ⟨cBatchLower, cBatchUpper, cEtaLowerOld / S.lambda, cEtaUpperOld / S.lambda, N0,
+    hcBatchLower, hcBatchUpper, div_pos hcEtaLowerOld S.lambda_pos,
+    div_pos hcEtaUpperOld S.lambda_pos, hN0, ?_⟩
+  intro N hN
+  have hNpos : 0 < N := lt_of_lt_of_le hN0 hN
+  have hRpowNPos : 0 < Real.rpow N (1 / 3 : ℝ) := Real.rpow_pos_of_pos hNpos _
+  rcases hBounds N hN with ⟨hBatchLower, hBatchUpper, hEtaLowerOld, hEtaUpperOld⟩
+  constructor
+  · exact hBatchLower
+  constructor
+  · exact hBatchUpper
+  constructor
+  · calc
+      (cEtaLowerOld / S.lambda)
+            * (Real.rpow (Real.log N) (1 / 3 : ℝ) / Real.rpow N (1 / 3 : ℝ))
+          = cEtaLowerOld * (Real.rpow (Real.log N) (1 / 3 : ℝ)
+              / (S.lambda * Real.rpow N (1 / 3 : ℝ))) := by
+                field_simp [S.lambda_pos.ne', hRpowNPos.ne']
+      _ ≤ etaTokenStar N (batchSizeStar N) := hEtaLowerOld
+  · calc
+      etaTokenStar N (batchSizeStar N) ≤
+          cEtaUpperOld * (Real.rpow (Real.log N) (1 / 3 : ℝ)
+            / (S.lambda * Real.rpow N (1 / 3 : ℝ))) := hEtaUpperOld
+      _ = (cEtaUpperOld / S.lambda)
+            * (Real.rpow (Real.log N) (1 / 3 : ℝ) / Real.rpow N (1 / 3 : ℝ)) := by
+              field_simp [S.lambda_pos.ne', hRpowNPos.ne']
 
 /- Summary theorem packaging the SL1 fixed-step and token-budget asymptotics. -/
 set_option maxHeartbeats 400000 in
@@ -1437,17 +1481,17 @@ theorem theoremSL1_FixedMomentumLargeHorizonProxy
       0 < cStepLower ∧ 0 < cStepUpper ∧ 0 < T0 ∧
       0 < cBatchLower ∧ 0 < cBatchUpper ∧ 0 < cEtaLower ∧ 0 < cEtaUpper ∧ 0 < N0 ∧
       (∀ T ≥ T0,
-        cStepLower * (Real.log T / (S.lambda * T)) ≤ etaStepStar T ∧
-        etaStepStar T ≤ cStepUpper * (Real.log T / (S.lambda * T))) ∧
+        cStepLower * (Real.log T / T) ≤ etaStepStar T ∧
+        etaStepStar T ≤ cStepUpper * (Real.log T / T)) ∧
       (∀ N ≥ N0,
         cBatchLower * Real.rpow (N / Real.log N) (2 / 3 : ℝ) ≤ batchSizeStar N ∧
         batchSizeStar N ≤ cBatchUpper * Real.rpow (N / Real.log N) (2 / 3 : ℝ) ∧
         cEtaLower * (Real.rpow (Real.log N) (1 / 3 : ℝ)
-            / (S.lambda * Real.rpow N (1 / 3 : ℝ)))
+            / Real.rpow N (1 / 3 : ℝ))
           ≤ etaTokenStar N (batchSizeStar N) ∧
         etaTokenStar N (batchSizeStar N) ≤
           cEtaUpper * (Real.rpow (Real.log N) (1 / 3 : ℝ)
-            / (S.lambda * Real.rpow N (1 / 3 : ℝ)))) := by
+            / Real.rpow N (1 / 3 : ℝ))) := by
   rcases S.theoremSL1_1_iterationScaling (batchSize := batchSize) hβ0 hβ1 hGap
       (etaStepStar := etaStepStar) hStepMin with
     ⟨_, ⟨cStepLower, cStepUpper, T0, hcStepLower, hcStepUpper, hT0, hStep⟩⟩

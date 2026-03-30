@@ -2,6 +2,8 @@
 
 This folder contains the large-horizon scaling-law layer derived from Theorem 14.
 
+Exact optimizer-identification formulas still display `λ`, but the public asymptotic bounds absorb it into the comparison constants because `λ` is treated as fixed.
+
 ## Overview
 
 - `TheoremSL1.lean` covers the fixed-momentum regime: hold `β` fixed, optimize the learning rate, and then study how the token-budget optimizer scales with `batchSize` and `N`.
@@ -12,9 +14,9 @@ This folder contains the large-horizon scaling-law layer derived from Theorem 14
 
 The public SL1 theorems say that when momentum is fixed (`β` fixed with `0 ≤ β < 1`):
 
-- In the fixed-step view, the optimal learning rate decays like `log T / (λ T)`.
+- In the fixed-step view, the optimal learning rate decays like `log T / T`.
 - In the token-budget view, an interior small-branch optimal batch-size schedule grows like `(N / log N)^(2/3)`.
-- The associated optimal learning-rate schedule scales like `(log N)^(1/3) / (λ N^(1/3))`.
+- The associated optimal learning-rate schedule scales like `(log N)^(1/3) / N^(1/3)`.
 
 In other words, fixed momentum does not change the basic cube-root token-budget law: the optimizer trades off exponential bias decay against the minibatch noise floor, and this balance produces the familiar `(N / log N)^(2/3)` batch-growth law.
 
@@ -26,7 +28,7 @@ The public SL2 theorems say that when batch size is fixed:
 - The asymptotically relevant tuning law is
   `1 - β ≍ batchSize * ((log N) / N)^(2/3)`.
 - Under that tuning, the optimal learning rate scales like
-  `batchSize * log N / (λ N)`.
+  `batchSize * log N / N`.
 
 Equivalently, if `N = batchSize * T`, the step-based form is the same statement rewritten in terms of total steps `T`: the momentum gap `1 - β` closes as the horizon grows, and the learning rate decays at the corresponding logarithmic-over-linear scale.
 

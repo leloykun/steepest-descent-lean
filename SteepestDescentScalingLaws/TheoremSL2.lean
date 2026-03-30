@@ -854,11 +854,29 @@ theorem theoremSL2_2_tokenBudgetScaling
           ≤ 1 - betaStar N ∧
         1 - betaStar N
           ≤ cBetaUpper * (batchSize * Real.rpow (Real.log N / N) (2 / 3 : ℝ)) ∧
-        cEtaLower * (batchSize * Real.log N / (S.lambda * N))
+        cEtaLower * (batchSize * Real.log N / N)
           ≤ etaStar N ∧
         etaStar N
-          ≤ cEtaUpper * (batchSize * Real.log N / (S.lambda * N)) := by
-  exact S.fixedBatchLeadingTokenBudgetScalingBounds hGap hBatch hNoise hMomentum hEtaMin
+          ≤ cEtaUpper * (batchSize * Real.log N / N) := by
+  rcases S.fixedBatchLeadingTokenBudgetScalingBounds hGap hBatch hNoise hMomentum hEtaMin with
+    ⟨cBetaLower, cBetaUpper, cEtaLowerOld, cEtaUpperOld, N0,
+      hcBetaLower, hcBetaUpper, hcEtaLowerOld, hcEtaUpperOld, hN0, hBounds⟩
+  refine ⟨cBetaLower, cBetaUpper, cEtaLowerOld / S.lambda, cEtaUpperOld / S.lambda, N0,
+    hcBetaLower, hcBetaUpper, div_pos hcEtaLowerOld S.lambda_pos,
+    div_pos hcEtaUpperOld S.lambda_pos, hN0, ?_⟩
+  intro N hN
+  have hNpos : 0 < N := lt_of_lt_of_le hN0 hN
+  rcases hBounds N hN with ⟨hGapLower, hGapUpper, hEtaLowerOld, hEtaUpperOld⟩
+  refine ⟨hGapLower, hGapUpper, ?_, ?_⟩
+  · calc
+      (cEtaLowerOld / S.lambda) * (batchSize * Real.log N / N)
+          = cEtaLowerOld * (batchSize * Real.log N / (S.lambda * N)) := by
+              field_simp [S.lambda_pos.ne', hNpos.ne']
+      _ ≤ etaStar N := hEtaLowerOld
+  · calc
+      etaStar N ≤ cEtaUpperOld * (batchSize * Real.log N / (S.lambda * N)) := hEtaUpperOld
+      _ = (cEtaUpperOld / S.lambda) * (batchSize * Real.log N / N) := by
+            field_simp [S.lambda_pos.ne', hNpos.ne']
 
 theorem theoremSL2_FixedBatchLargeHorizonProxy
     (S : StochasticSteepestDescentGeometryContext Ω V)
@@ -878,10 +896,10 @@ theorem theoremSL2_FixedBatchLargeHorizonProxy
           ≤ 1 - betaStar N ∧
         1 - betaStar N
           ≤ cBetaUpper * (batchSize * Real.rpow (Real.log N / N) (2 / 3 : ℝ)) ∧
-        cEtaLower * (batchSize * Real.log N / (S.lambda * N))
+        cEtaLower * (batchSize * Real.log N / N)
           ≤ etaStar N ∧
         etaStar N
-          ≤ cEtaUpper * (batchSize * Real.log N / (S.lambda * N))) ∧
+          ≤ cEtaUpper * (batchSize * Real.log N / N)) ∧
       (∀ T ≥ T0,
         cBetaLower
             * (batchSize * Real.rpow (Real.log (batchSize * T) / (batchSize * T)) (2 / 3 : ℝ))
@@ -889,10 +907,10 @@ theorem theoremSL2_FixedBatchLargeHorizonProxy
         1 - betaStar (batchSize * T)
           ≤ cBetaUpper
               * (batchSize * Real.rpow (Real.log (batchSize * T) / (batchSize * T)) (2 / 3 : ℝ)) ∧
-        cEtaLower * (Real.log (batchSize * T) / (S.lambda * T))
+        cEtaLower * (Real.log (batchSize * T) / T)
           ≤ etaStar (batchSize * T) ∧
         etaStar (batchSize * T)
-          ≤ cEtaUpper * (Real.log (batchSize * T) / (S.lambda * T))) := by
+          ≤ cEtaUpper * (Real.log (batchSize * T) / T)) := by
   rcases S.theoremSL2_2_tokenBudgetScaling hGap hBatch hNoise hMomentum hEtaMin with
     ⟨cBetaLower, cBetaUpper, cEtaLower, cEtaUpper, N0,
       hcBetaLower, hcBetaUpper, hcEtaLower, hcEtaUpper, hN0, hNBound⟩
