@@ -1,0 +1,12 @@
+-- This module serves as the root of the `SteepestDescent` library.
+-- Import modules here that should be built as part of the library.
+import SteepestDescentOptimizationBounds.Assumptions
+import SteepestDescentOptimizationBounds.DescentLemma
+import SteepestDescentOptimizationBounds.MinibatchNoise
+import SteepestDescentOptimizationBounds.WeightAndUpdateBounds
+import SteepestDescentOptimizationBounds.MomentumBounds
+import SteepestDescentOptimizationBounds.NesterovMomentumBounds
+import SteepestDescentOptimizationBounds.Theorem14
+import SteepestDescentScalingLaws.TheoremSL1
+import SteepestDescentScalingLaws.TheoremSL2
+import SteepestDescentOptimizationBounds.ExpectedSuboptimalityConvergence

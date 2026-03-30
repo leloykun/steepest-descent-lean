@@ -1,11 +1,11 @@
 import Mathlib
-import MlOptBoundsFormalization.DescentLemma
-import MlOptBoundsFormalization.WeightAndUpdateBounds
-import MlOptBoundsFormalization.NesterovMomentumBounds
+import SteepestDescentOptimizationBounds.DescentLemma
+import SteepestDescentOptimizationBounds.WeightAndUpdateBounds
+import SteepestDescentOptimizationBounds.NesterovMomentumBounds
 
 open scoped BigOperators
 
-namespace MlOptBoundsFormalization
+namespace SteepestDescentOptimizationBounds
 
 open MeasureTheory
 
@@ -440,4 +440,4 @@ end StochasticSteepestDescentGeometryContext
 
 end
 
-end MlOptBoundsFormalization
+end SteepestDescentOptimizationBounds

@@ -1,10 +1,10 @@
 import Mathlib
-import MlOptBoundsFormalization.MinibatchNoise
-import MlOptBoundsFormalization.WeightAndUpdateBounds
+import SteepestDescentOptimizationBounds.MinibatchNoise
+import SteepestDescentOptimizationBounds.WeightAndUpdateBounds
 
 open scoped BigOperators
 
-namespace MlOptBoundsFormalization
+namespace SteepestDescentOptimizationBounds
 
 open MeasureTheory
 open ProbabilityTheory
@@ -803,7 +803,7 @@ theorem grad_increment_bound
   have hGradInc :
       ∀ t,
         ‖S.grad (t + 1) - S.grad t‖ ≤ S.L * (2 * S.eta) :=
-    MlOptBoundsFormalization.grad_increment_bound_of_local_smoothness_and_update_bound
+    SteepestDescentOptimizationBounds.grad_increment_bound_of_local_smoothness_and_update_bound
       S.assumption3_fLocalSmoothness.local_lipschitz
       (fun _ => rfl)
       hRadius
@@ -1001,4 +1001,4 @@ end Corollary10
 
 end
 
-end MlOptBoundsFormalization
+end SteepestDescentOptimizationBounds

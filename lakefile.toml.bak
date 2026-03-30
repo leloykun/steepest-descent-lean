@@ -1,10 +1,12 @@
-name = "ml-opt-bounds-formalization"
+name = "steepest-descent-lean"
 version = "0.1.0"
-defaultTargets = ["ml-opt-bounds-formalization"]
+defaultTargets = ["SteepestDescent"]
 
 [[lean_lib]]
-name = "MlOptBoundsFormalization"
+name = "SteepestDescentOptimizationBounds"
 
-[[lean_exe]]
-name = "ml-opt-bounds-formalization"
-root = "Main"
+[[lean_lib]]
+name = "SteepestDescentScalingLaws"
+
+[[lean_lib]]
+name = "SteepestDescent"

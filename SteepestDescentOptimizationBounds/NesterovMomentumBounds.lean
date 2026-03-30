@@ -1,8 +1,8 @@
-import MlOptBoundsFormalization.MomentumBounds
+import SteepestDescentOptimizationBounds.MomentumBounds
 
 open scoped BigOperators
 
-namespace MlOptBoundsFormalization
+namespace SteepestDescentOptimizationBounds
 
 noncomputable section
 
@@ -268,4 +268,4 @@ end Corollary11
 
 end
 
-end MlOptBoundsFormalization
+end SteepestDescentOptimizationBounds

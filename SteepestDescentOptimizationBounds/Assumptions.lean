@@ -1,6 +1,6 @@
 import Mathlib
 
-namespace MlOptBoundsFormalization
+namespace SteepestDescentOptimizationBounds
 
 noncomputable section
 
@@ -1015,4 +1015,4 @@ end StochasticSteepestDescentGeometryContext
 
 end
 
-end MlOptBoundsFormalization
+end SteepestDescentOptimizationBounds

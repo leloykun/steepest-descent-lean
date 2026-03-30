@@ -1,7 +1,7 @@
 import Mathlib
-import MlOptBoundsFormalization.Assumptions
+import SteepestDescentOptimizationBounds.Assumptions
 
-namespace MlOptBoundsFormalization
+namespace SteepestDescentOptimizationBounds
 
 noncomputable section
 
@@ -460,4 +460,4 @@ end DualPairBridge
 
 end
 
-end MlOptBoundsFormalization
+end SteepestDescentOptimizationBounds

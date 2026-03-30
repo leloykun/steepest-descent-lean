@@ -1,10 +1,10 @@
 import Mathlib
-import MlOptBoundsFormalization.Assumptions
-import MlOptBoundsFormalization.DescentLemma
+import SteepestDescentOptimizationBounds.Assumptions
+import SteepestDescentOptimizationBounds.DescentLemma
 
 open scoped BigOperators
 
-namespace MlOptBoundsFormalization
+namespace SteepestDescentOptimizationBounds
 
 noncomputable section
 
@@ -1191,4 +1191,4 @@ end StochasticSteepestDescentGeometryContext
 
 end
 
-end MlOptBoundsFormalization
+end SteepestDescentOptimizationBounds
