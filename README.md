@@ -16,7 +16,8 @@ Deriving steepest descent convergence bounds and hyperparameter scaling laws fro
 
 Let $\eta > 0$ be the learning rate, weight decay parameter $\lambda > 0$ (such that $\lambda\eta \leq 1$), Nesterov momentum parameter $\beta \in [0, 1)$, and initial momentum $M_0 = 0$. Then, under Assumptions 1 to 4 and Assumption 12 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), the bounded-weight conditions $\| W_0 \| \leq \frac{1}{\lambda}$ and $\| W_* \| \leq \frac{1}{\lambda}$, and arbitrary norm pair $(\| \cdot \|, \| \cdot \|^{\dagger})$, we have,
 
-$$\begin{align}
+\[
+\begin{align}
     \mathbb{E}\left[ f(W_T) - f(W_*) \right]
         &\leq (1 - \lambda\eta)^T \Delta_0 \nonumber \\
         &\quad+ \frac{2}{\lambda} \left(\sqrt{\frac{1 - \beta}{1 + \beta}} \beta + (1 - \beta)\right) \frac{\sqrt{D} \sigma}{\sqrt{b}} \nonumber \\
@@ -24,30 +25,37 @@ $$\begin{align}
             \frac{4 L}{\lambda} \left(1 + \frac{\beta^2}{1 - \beta} \right)
             + \frac{2 \beta}{1 - \beta} G_0
         \right] \eta
-\end{align}$$
-where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \| \nabla f(W_0) \|^{\dagger}$.
+\end{align}
+\]
+where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \| \nabla f(W_0) \|^{\dagger}$
 
 ## Hyperparameter Scaling Laws
 
 **Theorem 1 (Fixed momentum, large horizon proxy)** Fix $\beta \in [0, 1)$ and consider the Expected Suboptimality in [Theorem 14 of Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/).
 
 1. (Iteration scaling.) For fixed large number of training steps $T$ and fixed batch size $b$, the Expected Suboptimality proxy is minimized by,
-$$\begin{equation}
+\[
+\begin{equation}
     \eta_T^{*}(b) \propto \frac{\log T}{T},
-\end{equation}$$
+\end{equation}
+\]
 Thus at fixed $T$ (ignoring token costs), the optimal learning rate is batch-independent.
 
 1. (Token-budget scaling.) For fixed token budget $N$, the minimizer of the Expected Suboptimality proxy $(\eta_T^{*}, b_T^{*})$ satisfies,
-$$\begin{align}
+\[
+\begin{align}
     b_T^{*} &\propto \left( \frac{N}{\log N} \right)^{2/3} \\
     \eta_T^{*} &\propto \left( \frac{\log N}{N} \right)^{1/3}
-\end{align}$$
+\end{align}
+\]
 
 **Theorem 2 (Fixed batch size, large horizon proxy)** At fixed batch size $b$, the minimizer of the Expected Suboptimality proxy $(\eta_T^{*}, \beta_T^{*})$ satisfies,
-$$\begin{align}
+\[
+\begin{align}
     1 - \beta_T^{*} &\propto b \left( \frac{\log N}{N} \right)^{2/3} \\
     \eta_T^{*} &\propto b \frac{\log N}{N}
-\end{align}$$
+\end{align}
+\]
 
 ## Discussion
 
