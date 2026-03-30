@@ -34,28 +34,24 @@ where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \| \nabla f(W_0) \|^{\dagger}$
 **Theorem 1 (Fixed momentum, large horizon proxy)** Fix $\beta \in [0, 1)$ and consider the Expected Suboptimality in [Theorem 14 of Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/).
 
 1. (Iteration scaling.) For fixed large number of training steps $T$ and fixed batch size $b$, the Expected Suboptimality proxy is minimized by,
-\[
-\begin{equation}
-    \eta_T^{*}(b) \propto \frac{\log T}{T},
-\end{equation}
-\]
+$$\eta_T^{*}(b) \propto \frac{\log T}{T},$$
 Thus at fixed $T$ (ignoring token costs), the optimal learning rate is batch-independent.
 
 1. (Token-budget scaling.) For fixed token budget $N$, the minimizer of the Expected Suboptimality proxy $(\eta_T^{*}, b_T^{*})$ satisfies,
-\[
-\begin{align}
+$$
+\begin{aligned}
     b_T^{*} &\propto \left( \frac{N}{\log N} \right)^{2/3} \\
     \eta_T^{*} &\propto \left( \frac{\log N}{N} \right)^{1/3}
-\end{align}
-\]
+\end{aligned}
+$$
 
 **Theorem 2 (Fixed batch size, large horizon proxy)** At fixed batch size $b$, the minimizer of the Expected Suboptimality proxy $(\eta_T^{*}, \beta_T^{*})$ satisfies,
-\[
-\begin{align}
+$$
+\begin{aligned}
     1 - \beta_T^{*} &\propto b \left( \frac{\log N}{N} \right)^{2/3} \\
     \eta_T^{*} &\propto b \frac{\log N}{N}
-\end{align}
-\]
+\end{aligned}
+$$
 
 ## Discussion
 
