@@ -32,24 +32,24 @@ where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^{\dagger}$.
 
 ## Hyperparameter Scaling Laws
 
-**Theorem 1 (Fixed momentum, large horizon proxy).** Fix $\beta \in [0, 1)$ and consider the Expected Suboptimality in [Theorem 14 of *Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms*](https://leloykun.github.io/ponder/steepest-descent-crit-bz/).
+**Theorem 1 (Fixed momentum, large horizon proxy).** Fix $\beta \in [0, 1)$ and consider the Expected Suboptimality bound above.
 
-1. **Iteration scaling.** For fixed large number of training steps $T$ and fixed batch size $b$, the Expected Suboptimality proxy is minimized by
+**(1) Iteration scaling.** For fixed large number of training steps $T$ and fixed batch size $b$, the Expected Suboptimality proxy is minimized by
 
-   $$
-   \eta_T^*(b) \propto \frac{\log T}{T}.
-   $$
+$$
+\eta_T^*(b) \propto \frac{\log T}{T}.
+$$
 
-   Thus at fixed $T$ (ignoring token costs), the optimal learning rate is batch-independent.
+Thus at fixed $T$ (ignoring token costs), the optimal learning rate is batch-independent.
 
-2. **Token-budget scaling.** For fixed token budget $N$, the minimizer of the Expected Suboptimality proxy $(\eta_T^*, b_T^*)$ satisfies
+**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Expected Suboptimality proxy $(\eta_T^*, b_T^*)$ satisfies
 
-   $$
-   \begin{aligned}
-   b_T^* &\propto \left(\frac{N}{\log N}\right)^{2/3}, \\
-   \eta_T^* &\propto \left(\frac{\log N}{N}\right)^{1/3}.
-   \end{aligned}
-   $$
+$$
+\begin{aligned}
+b_T^* &\propto \left(\frac{N}{\log N}\right)^{2/3}, \\
+\eta_T^* &\propto \left(\frac{\log N}{N}\right)^{1/3}.
+\end{aligned}
+$$
 
 **Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Expected Suboptimality proxy $(\eta_T^*, \beta_T^*)$ satisfies
 
@@ -66,7 +66,7 @@ $$
 
    The two most important things to consider are (1) the norm to do steepest descent with, and (2) the metric to track.
 
-   Regarding the norm, what this means in practice is that we have to choose optimizers, layers, and parameterizations on our model such that, when composed with the loss function, we get an $L$-Lipschitz objective function $f = \ell \circ \operatorname{model}$. For a single-layer linear model, we can already construct well-known optimizers such as SignSGD (AdamW without accumulation) and Muon (Shampoo without accumulation) from the dualizer of the chosen norm (elementwise max norm and spectral norm for the two examples, respectively) ([Bernstein and Newhouse, 2024](https://arxiv.org/abs/2409.20325)). Multilayer models require more careful design on how to compose the layers and the layerwise norms, but the core idea is the same: we can derive the appropriate optimizer and parameterization from the chosen norm ([Large et al., 2024](https://arxiv.org/abs/2405.14813)).
+   Regarding the norm, what this means in practice is that we have to choose optimizers, layers, and parameterizations on our model such that, when composed with the loss function, we get an $L$-Lipschitz objective function $f = \ell \circ \text{model}$. For a single-layer linear model, we can already construct well-known optimizers such as SignSGD (AdamW without accumulation) and Muon (Shampoo without accumulation) from the dualizer of the chosen norm (elementwise max norm and spectral norm for the two examples, respectively) ([Bernstein and Newhouse, 2024](https://arxiv.org/abs/2409.20325)). Multilayer models require more careful design on how to compose the layers and the layerwise norms, but the core idea is the same: we can derive the appropriate optimizer and parameterization from the chosen norm ([Large et al., 2024](https://arxiv.org/abs/2405.14813)).
 
    Regarding the metric, we currently use Expected Suboptimality bounds to derive our convergence bounds and scaling laws. We could instead use Expected Gradient Stationarity as in [Kovalev, 2025](https://arxiv.org/abs/2503.12645), [Shulgin et al., 2026](https://arxiv.org/abs/2603.15958), and [Islamov et al., 2026](https://arxiv.org/abs/2603.21191). But these are *expected* bounds at time $T$. Last-iterate bounds may be more relevant in practice, but they are more difficult to derive and may not be amenable to purely analytical scaling-law derivations. So for now, we stick to Expected Suboptimality bounds.
 
