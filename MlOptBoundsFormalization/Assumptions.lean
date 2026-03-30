@@ -444,7 +444,6 @@ structure Assumption4_LocalSmoothProxyPotential
     ∀ x,
       HasFDerivAt potential
         (pairing.toLinear (mirrorMap x)) x
-  potential_continuous : Continuous potential
   mirrorMap_continuous : Continuous mirrorMap
   mirrorMap_local_lipschitz :
     LocalLipschitzOnClosedBallUnderNormPair mirrorMap noiseRadius D
@@ -474,6 +473,13 @@ lemma D_pos
 lemma D_nonneg
     (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) : 0 ≤ P.D :=
   P.mirrorMap_local_lipschitz.nonneg
+
+lemma potential_continuous
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
+    Continuous P.potential := by
+  refine continuous_iff_continuousAt.mpr ?_
+  intro x
+  exact (P.potential_fderiv_eq x).continuousAt
 
 lemma potential_nonneg_of_mem_noiseRadius
     (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) (x : VDual)
@@ -565,12 +571,13 @@ structure StochasticSteepestDescentGeometryContext
       momentum (t + 1) =
         beta • momentum t + (1 - beta) • fGrad (W (t + 1))
   -- Update rule
-  aStar_exists :
-    ∀ t, ∃ A, IsLMO (beta • momentum t + (1 - beta) • fGrad (W t)) A
+  aStar : ℕ → V
+  aStar_spec :
+    ∀ t, IsLMO (beta • momentum t + (1 - beta) • fGrad (W t)) (aStar t)
   update_eq :
     ∀ t,
       W (t + 1) = ((1 - lambda * eta) • W t)
-        + eta • Classical.choose (aStar_exists t)
+        + eta • aStar t
 
   -- Sampling/oracle data.
   Ξ : Type*
@@ -841,20 +848,6 @@ lemma sample_norm_le_noiseRadius_ae
     StochasticSteepestDescentGeometryContext.sampleDraw,
     StochasticSteepestDescentGeometryContext.noiseRadius] using
     S.oracle_sample_norm_le_noiseRadius_ae t i
-
-/-- The update direction chosen by the linear minimization oracle. -/
-def aStar (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : V :=
-  Classical.choose (S.aStar_exists t)
-
-lemma aStar_spec
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    IsLMO (S.beta • S.momentum t + (1 - S.beta) • S.fGrad (S.W t)) (S.aStar t) :=
-  Classical.choose_spec (S.aStar_exists t)
-
-lemma update_eq_aStar
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    S.W (t + 1) = ((1 - S.lambda * S.eta) • S.W t) + S.eta • S.aStar t := by
-  simpa [StochasticSteepestDescentGeometryContext.aStar] using S.update_eq t
 
 /-- The center of the radius-`η` feasible ball used by the update. -/
 def stepCenter (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : V :=

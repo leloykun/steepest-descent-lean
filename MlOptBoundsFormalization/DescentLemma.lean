@@ -295,12 +295,11 @@ theorem taylor_bound_of_LSmoothUnderPair
     (P : ContinuousDualPairingContext V VDual)
     {f : V → ℝ} {grad : V → VDual} {L : ℝ}
     (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : GlobalLipschitzUnderNormPair grad L)
-    (hL_nonneg : 0 ≤ L) :
+    (hLipschitz : GlobalLipschitzUnderNormPair grad L) :
     ∀ x y,
       |f y - (f x + P.toLinear (grad x) (y - x))| ≤
         (L / 2) * ‖y - x‖ ^ 2 := by
-  have _ : 0 ≤ L := hL_nonneg
+  have _ : 0 ≤ L := hLipschitz.nonneg
   refine
     taylor_bound_of_lipschitz_fderiv
       (f := f) (f' := fun x => P.toLinear (grad x)) hf ?_
@@ -320,11 +319,9 @@ theorem taylor_bound_of_LSmoothOnConvexSetUnderPair
     (hs : Convex ℝ s)
     (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
     (hLipschitz : ∀ x ∈ s, ∀ y ∈ s, ‖grad y - grad x‖ ≤ L * ‖y - x‖)
-    (hL_nonneg : 0 ≤ L)
     {x y : V} (hx : x ∈ s) (hy : y ∈ s) :
     |f y - (f x + P.toLinear (grad x) (y - x))| ≤
       (L / 2) * ‖y - x‖ ^ 2 := by
-  have _ : 0 ≤ L := hL_nonneg
   refine
     taylor_bound_of_lipschitz_fderiv_on_convex
       (f := f) (f' := fun x => P.toLinear (grad x))
@@ -344,7 +341,6 @@ theorem taylor_bound_of_LSmoothOnClosedBallUnderPair
     {f : V → ℝ} {grad : V → VDual} {L R : ℝ}
     (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
     (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
-    (hL_nonneg : 0 ≤ L)
     {x y : V} (hx : ‖x‖ ≤ R) (hy : ‖y‖ ≤ R) :
     |f y - (f x + P.toLinear (grad x) (y - x))| ≤
       (L / 2) * ‖y - x‖ ^ 2 := by
@@ -355,7 +351,6 @@ theorem taylor_bound_of_LSmoothOnClosedBallUnderPair
       (convex_closedBall (0 : V) R)
       hf
       ?_
-      hL_nonneg
       ?_
       ?_
   · intro x _ y _
@@ -371,12 +366,11 @@ theorem taylor_upper_of_LSmoothUnderPair
     (P : ContinuousDualPairingContext V VDual)
     {f : V → ℝ} {grad : V → VDual} {L : ℝ}
     (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : GlobalLipschitzUnderNormPair grad L)
-    (hL_nonneg : 0 ≤ L) :
+    (hLipschitz : GlobalLipschitzUnderNormPair grad L) :
     ∀ x y,
       f y ≤ f x + P.toLinear (grad x) (y - x) + (L / 2) * ‖y - x‖ ^ 2 := by
   intro x y
-  have h := taylor_bound_of_LSmoothUnderPair P hf hLipschitz hL_nonneg x y
+  have h := taylor_bound_of_LSmoothUnderPair P hf hLipschitz x y
   have hUpper := (abs_le.mp h).2
   linarith
 
@@ -385,12 +379,11 @@ theorem taylor_compare_of_LSmoothUnderPair
     (P : ContinuousDualPairingContext V VDual)
     {f : V → ℝ} {grad : V → VDual} {L : ℝ}
     (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : GlobalLipschitzUnderNormPair grad L)
-    (hL_nonneg : 0 ≤ L) :
+    (hLipschitz : GlobalLipschitzUnderNormPair grad L) :
     ∀ x y,
       f x + P.toLinear (grad x) (y - x) ≤ f y + (L / 2) * ‖y - x‖ ^ 2 := by
   intro x y
-  have h := taylor_bound_of_LSmoothUnderPair P hf hLipschitz hL_nonneg x y
+  have h := taylor_bound_of_LSmoothUnderPair P hf hLipschitz x y
   have hLower := (abs_le.mp h).1
   linarith
 
@@ -403,7 +396,7 @@ theorem step_upper_of_LSmoothUnderPair
     {f : V → ℝ} {grad : V → VDual} {L α : ℝ}
     (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
     (hLipschitz : GlobalLipschitzUnderNormPair grad L)
-    (hL_nonneg : 0 ≤ L) (hα_nonneg : 0 ≤ α) :
+    (hα_nonneg : 0 ≤ α) :
     ∀ x ξ,
       f (x + α • ξ) ≤
         f x + α * P.toLinear (grad x) ξ + (L / 2) * α ^ 2 * ‖ξ‖ ^ 2 := by
@@ -416,7 +409,6 @@ theorem step_upper_of_LSmoothUnderPair
       (L := L)
       hf
       hLipschitz
-      hL_nonneg
       x
       (x + α • ξ)
   have hStep : x + α • ξ - x = α • ξ := by
@@ -432,7 +424,7 @@ theorem step_upper_of_LSmoothOnClosedBallUnderPair
     {f : V → ℝ} {grad : V → VDual} {L R α : ℝ}
     (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
     (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
-    (hL_nonneg : 0 ≤ L) (hα_nonneg : 0 ≤ α)
+    (hα_nonneg : 0 ≤ α)
     {x ξ : V} (hx : ‖x‖ ≤ R) (hNext : ‖x + α • ξ‖ ≤ R) :
     f (x + α • ξ) ≤
       f x + α * P.toLinear (grad x) ξ + (L / 2) * α ^ 2 * ‖ξ‖ ^ 2 := by
@@ -445,7 +437,6 @@ theorem step_upper_of_LSmoothOnClosedBallUnderPair
       (R := R)
       hf
       hLipschitz
-      hL_nonneg
       hx
       hNext
   have hStep : x + α • ξ - x = α • ξ := by

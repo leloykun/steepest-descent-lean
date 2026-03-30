@@ -130,24 +130,6 @@ variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-omit [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-  [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)] in
-private lemma weightedPartialSum_stronglyMeasurable_global
-    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ}
-    (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (k : ℕ) :
-    StronglyMeasurable (fun ω => weightedPartialSum α ξ (k + 1) ω) := by
-  induction k with
-  | zero =>
-      simpa [weightedPartialSum] using (sample_stronglyMeasurable 0).const_smul (α 0)
-  | succ k hk =>
-      have hCurr :
-          StronglyMeasurable (fun ω => α (k + 1) • ξ (k + 1) ω) := by
-        simpa using (sample_stronglyMeasurable (k + 1)).const_smul (α (k + 1))
-      convert hk.add hCurr using 1
-      ext ω
-      simp [weightedPartialSum, Finset.sum_range_succ, add_left_comm, add_comm]
-
 private def flatTimeIndex
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) : ℕ :=
   m / S.batchSize + 1
@@ -471,7 +453,7 @@ private theorem momentumNoiseProcess_eq_flatPartialSum
         _ = S.flatPartialSum (t + 1) ((t + 1) * S.batchSize) ω := by
                 rw [hSplit, hFirst, hLast]
 
-theorem momentumNoiseProcess_mean_zero
+private theorem momentumNoiseProcess_mean_zero
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t, ∫ ω, S.momentumNoiseProcess t ω ∂S.μ = 0 := by
   intro t
@@ -716,7 +698,7 @@ lemma shiftedGeometricPrefix_succ (q : ℝ) (t : ℕ) :
 If each gradient increment is bounded by a constant `c`, then the drift term
 obeys the geometric bound used in Proposition 6 / Corollary 10.
 -/
-theorem norm_driftComponent_le
+private theorem norm_driftComponent_le
     (S : StochasticSteepestDescentGeometryContext Ω V)
     {c : ℝ} (hcNonneg : 0 ≤ c)
     (hInc : ∀ t, ‖S.grad (t + 1) - S.grad t‖ ≤ c) :

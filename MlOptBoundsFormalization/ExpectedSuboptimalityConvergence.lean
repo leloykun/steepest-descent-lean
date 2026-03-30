@@ -192,16 +192,26 @@ private theorem one_sub_lambda_eta_pow_le_exp_neg_mul
       field_simp [hTPos.ne']
     simpa [hDiv, mul_assoc, mul_left_comm, mul_comm] using hRaw
 
+private theorem theorem14InitialGap_nonneg
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    0 ≤ S.theorem14InitialGap := by
+  dsimp [StochasticSteepestDescentGeometryContext.theorem14InitialGap,
+    StochasticSteepestDescentGeometryContext.suboptimality]
+  linarith [S.wStar_optimal (S.W 0)]
+
 private theorem contraction_term_le_quarter_epsilon_of_schedule
     (S : StochasticSteepestDescentGeometryContext Ω V)
     {ε : ℝ} {T : ℕ}
     (hε : 0 < ε)
-    (hGap : ε < S.theorem14InitialGap)
     (hT :
       Real.log (4 * S.theorem14InitialGap / ε) / (S.lambda * S.eta) ≤ (T : ℝ)) :
     (1 - S.lambda * S.eta) ^ T * S.theorem14InitialGap ≤ ε / 4 := by
+  by_cases hGapZero : S.theorem14InitialGap = 0
+  · simp [hGapZero]
+    positivity
+  have hGapNonneg : 0 ≤ S.theorem14InitialGap := S.theorem14InitialGap_nonneg
   have hGapPos : 0 < S.theorem14InitialGap := by
-    linarith
+    exact lt_of_le_of_ne hGapNonneg (by simpa [eq_comm] using hGapZero)
   have hRatioPos : 0 < 4 * S.theorem14InitialGap / ε := by
     positivity
   have hLogLe : Real.log (4 * S.theorem14InitialGap / ε) ≤ (T : ℝ) * (S.lambda * S.eta) := by
@@ -267,11 +277,16 @@ private theorem initial_grad_term_le_quarter_epsilon_of_schedule
     (S : StochasticSteepestDescentGeometryContext Ω V)
     {ε : ℝ}
     (hη :
-      S.eta ≤ (1 - S.beta) * ε / (8 * S.initialGradNorm))
-    (hG : 0 < S.initialGradNorm) :
+      S.eta ≤ (1 - S.beta) * ε / (8 * S.initialGradNorm)) :
     (2 * S.eta / (1 - S.beta)) * S.initialGradNorm ≤ ε / 4 := by
+  by_cases hG : S.initialGradNorm = 0
+  · have hEtaNonpos : S.eta ≤ 0 := by simpa [hG] using hη
+    linarith [S.eta_pos, hEtaNonpos]
   have hCoeffNonneg : 0 ≤ (2 * S.initialGradNorm) / (1 - S.beta) := by
-    exact div_nonneg (by positivity) S.one_sub_beta_pos.le
+    have hNormNonneg : 0 ≤ S.initialGradNorm := by
+      unfold StochasticSteepestDescentGeometryContext.initialGradNorm
+      exact norm_nonneg _
+    exact div_nonneg (by nlinarith) S.one_sub_beta_pos.le
   have hMul := mul_le_mul_of_nonneg_left hη hCoeffNonneg
   calc
     (2 * S.eta / (1 - S.beta)) * S.initialGradNorm
@@ -280,7 +295,7 @@ private theorem initial_grad_term_le_quarter_epsilon_of_schedule
     _ ≤ ((2 * S.initialGradNorm) / (1 - S.beta))
           * ((1 - S.beta) * ε / (8 * S.initialGradNorm)) := hMul
     _ = ε / 4 := by
-          field_simp [S.one_sub_beta_ne_zero, hG.ne']
+          field_simp [S.one_sub_beta_ne_zero, hG]
           ring
 
 private theorem theta_noise_term_le_quarter_epsilon_of_schedule
@@ -401,7 +416,6 @@ most `ε / 4`, then the total suboptimality is at most `ε`.
 theorem expected_suboptimality_le_epsilon_of_termwise_budget
     (S : StochasticSteepestDescentGeometryContext Ω V)
     (ε : ℝ) (T : ℕ)
-    (hε : 0 < ε)
     (hContraction :
       (1 - S.lambda * S.eta) ^ T * S.theorem14InitialGap ≤ ε / 4)
     (hDrift :
@@ -412,8 +426,18 @@ theorem expected_suboptimality_le_epsilon_of_termwise_budget
       (2 * Real.sqrt 2 / S.lambda) * Real.sqrt (1 - S.beta) * Real.sqrt S.D * S.sigma
         / Real.sqrt S.batchSizeℝ ≤ ε / 4) :
     S.suboptimality T ≤ ε := by
-  have hQuarterNonneg : 0 ≤ ε / 4 := by
-    positivity
+  have hNoiseNonneg :
+      0 ≤ (2 * Real.sqrt 2 / S.lambda) * Real.sqrt (1 - S.beta) * Real.sqrt S.D * S.sigma
+        / Real.sqrt S.batchSizeℝ := by
+    exact div_nonneg
+      (mul_nonneg
+        (mul_nonneg
+          (mul_nonneg (div_nonneg (mul_nonneg (by norm_num) (Real.sqrt_nonneg _)) S.lambda_pos.le)
+            (Real.sqrt_nonneg _))
+          (Real.sqrt_nonneg _))
+        S.sigma_nonneg)
+      (Real.sqrt_nonneg _)
+  have hQuarterNonneg : 0 ≤ ε / 4 := le_trans hNoiseNonneg hNoise
   have hBound := S.expected_suboptimality_bound_theta_form T
   linarith
 
@@ -425,8 +449,6 @@ theorem expected_suboptimality_le_epsilon_of_schedule
     (S : StochasticSteepestDescentGeometryContext Ω V)
     (ε : ℝ) (T : ℕ)
     (hε : 0 < ε)
-    (hGap : ε < S.theorem14InitialGap)
-    (hG : 0 < S.initialGradNorm)
     (hTheta :
       1 - S.beta ≤ S.lambda ^ 2 * S.batchSizeℝ * ε ^ 2 / (128 * S.D * S.sigma ^ 2))
     (hEtaDrift :
@@ -436,10 +458,10 @@ theorem expected_suboptimality_le_epsilon_of_schedule
     (hT :
       Real.log (4 * S.theorem14InitialGap / ε) / (S.lambda * S.eta) ≤ (T : ℝ)) :
     S.suboptimality T ≤ ε := by
-  apply S.expected_suboptimality_le_epsilon_of_termwise_budget ε T hε
-  · exact contraction_term_le_quarter_epsilon_of_schedule S hε hGap hT
+  apply S.expected_suboptimality_le_epsilon_of_termwise_budget ε T
+  · exact contraction_term_le_quarter_epsilon_of_schedule S hε hT
   · exact drift_term_le_quarter_epsilon_of_schedule S hEtaDrift
-  · exact initial_grad_term_le_quarter_epsilon_of_schedule S hEtaGrad hG
+  · exact initial_grad_term_le_quarter_epsilon_of_schedule S hEtaGrad
   · exact theta_noise_term_le_quarter_epsilon_of_schedule S hε hTheta
 
 /--
@@ -451,8 +473,6 @@ theorem expected_suboptimality_le_epsilon_of_min_schedule
     (S : StochasticSteepestDescentGeometryContext Ω V)
     (ε : ℝ) (T : ℕ)
     (hε : 0 < ε)
-    (hGap : ε < S.theorem14InitialGap)
-    (hG : 0 < S.initialGradNorm)
     (hTheta :
       1 - S.beta ≤
         min 1 (S.lambda ^ 2 * S.batchSizeℝ * ε ^ 2 / (128 * S.D * S.sigma ^ 2)))
@@ -464,7 +484,7 @@ theorem expected_suboptimality_le_epsilon_of_min_schedule
     (hT :
       Real.log (4 * S.theorem14InitialGap / ε) / (S.lambda * S.eta) ≤ (T : ℝ)) :
     S.suboptimality T ≤ ε := by
-  apply S.expected_suboptimality_le_epsilon_of_schedule ε T hε hGap hG
+  apply S.expected_suboptimality_le_epsilon_of_schedule ε T hε
   · exact le_trans hTheta (min_le_right _ _)
   · exact le_trans hEta (min_le_left _ _)
   · exact le_trans hEta (min_le_right _ _)

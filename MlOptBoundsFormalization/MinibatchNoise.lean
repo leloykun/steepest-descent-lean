@@ -218,7 +218,6 @@ private theorem weighted_smooth_step
       (α := α k)
       B.potential_fderiv_eq
       B.mirrorMap_local_lipschitz
-      B.D_nonneg
       (coeff_nonneg k hk)
       hx
       hNext

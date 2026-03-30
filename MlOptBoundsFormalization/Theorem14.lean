@@ -46,16 +46,16 @@ def gradientLinear
   (S.grad t).toLinearMap
 
 /-- Unpacks the decomposition `∇f(W_t) = C_t + error_t` on a concrete vector. -/
-lemma grad_split_apply
+private lemma grad_split_apply
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (v : V) :
     S.gradientLinear t v = (S.C t) v + S.nesterovError t v := by
   have h := congrArg (fun f : StrongDual ℝ V => f v) (S.nesterovError_split t)
   simpa [gradientLinear] using h
 
 /-- Controls an `L/2 * n^2` term whenever `n ≤ 2η`. -/
-lemma quadratic_two_eta_bound
+private lemma quadratic_two_eta_bound
     (L η n : ℝ)
-    (hL : 0 ≤ L) (hη : 0 ≤ η) (hn : 0 ≤ n) (h : n ≤ 2 * η) :
+    (hL : 0 ≤ L) (hn : 0 ≤ n) (h : n ≤ 2 * η) :
     (L / 2) * n ^ 2 ≤ 2 * L * η ^ 2 := by
   have hSquare : n ^ 2 ≤ (2 * η) ^ 2 := by
     nlinarith
@@ -69,7 +69,7 @@ lemma quadratic_two_eta_bound
 Concrete one-step descent theorem proved directly from the descent-lemma Taylor
 bound plus Proposition 9 / Lemma 13 geometry.
 -/
-theorem one_step_descent_bound
+private theorem one_step_descent_bound
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,
       S.f (S.W (t + 1)) ≤
@@ -92,7 +92,6 @@ theorem one_step_descent_bound
       (R := 1 / S.lambda)
       S.fderiv_eq
       S.assumption3_fLocalSmoothness.local_lipschitz
-      S.assumption3_fLocalSmoothness.nonneg
       hWeight
       hInterpWeight
   have hTaylorNext :=
@@ -104,7 +103,6 @@ theorem one_step_descent_bound
       (R := 1 / S.lambda)
       S.fderiv_eq
       S.assumption3_fLocalSmoothness.local_lipschitz
-      S.assumption3_fLocalSmoothness.nonneg
       hWeight
       hNextWeight
   have hGradDecomp :
@@ -139,7 +137,7 @@ theorem one_step_descent_bound
     have hQuad :=
       quadratic_two_eta_bound
         S.L S.eta ‖S.interpolatedPoint t - S.W t‖
-        S.assumption3_fLocalSmoothness.nonneg S.eta_pos.le h0 <| by
+        S.assumption3_fLocalSmoothness.nonneg h0 <| by
           simpa [norm_sub_rev] using hWeightXBound
     have hCompLeftRaw := (abs_le.mp hTaylorInterp).1
     have hLinearInterp :
@@ -165,7 +163,7 @@ theorem one_step_descent_bound
     have hQuad :=
       quadratic_two_eta_bound
         S.L S.eta ‖S.W (t + 1) - S.W t‖
-        S.assumption3_fLocalSmoothness.nonneg S.eta_pos.le h0 hUpdateBound
+        S.assumption3_fLocalSmoothness.nonneg h0 hUpdateBound
     have hStepRightRaw := (abs_le.mp hTaylorNext).2
     have hLinearNext :
         S.gradientLinear t (S.W (t + 1) - S.W t) =
@@ -245,7 +243,7 @@ variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual
 Combines the one-step descent inequality with Assumption 12 to obtain the scalar
 suboptimality recurrence used in Theorem 14.
 -/
-theorem suboptimality_recurrence_step
+private theorem suboptimality_recurrence_step
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,
       S.suboptimality (t + 1) ≤
@@ -269,7 +267,7 @@ theorem suboptimality_recurrence_step
 Theorem 14 in explicit-constants form, assuming the pointwise Corollary-11
 bound.
 -/
-theorem theorem14_expected_suboptimality_bound_of_corollary11
+private theorem theorem14_expected_suboptimality_bound_of_corollary11
     (S : StochasticSteepestDescentGeometryContext Ω V)
     (hCor11 :
       ∀ t,
@@ -383,7 +381,7 @@ theorem theorem14_expected_suboptimality_bound_of_corollary11
             ring
 
 /-- Existential-constants form of Theorem 14, assuming Corollary 11. -/
-theorem theorem14_exists_constants_of_corollary11
+private theorem theorem14_exists_constants_of_corollary11
     (S : StochasticSteepestDescentGeometryContext Ω V)
     (hCor11 :
       ∀ t,
@@ -437,26 +435,6 @@ theorem theorem14_exists_constants
     S
     (Corollary11PointwiseNesterovErrorBound S)
 
-/-- Public theorem-facing alias for the direct Theorem-14 bound. -/
-theorem expected_suboptimality
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ T,
-      S.suboptimality T ≤
-        (1 - S.lambda * S.eta) ^ T * S.theorem14InitialGap
-          + S.theorem14MinibatchCoefficient / Real.sqrt S.batchSizeℝ
-          + S.theorem14ResidualFloor :=
-  S.theorem14_expected_suboptimality_bound
-
-/-- Public existential-constants alias for the direct Theorem-14 bound. -/
-theorem exists_constants
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∃ X Y Z : ℝ,
-      X = S.theorem14InitialGap ∧
-      Y = S.theorem14MinibatchCoefficient ∧
-      Z = S.theorem14ResidualFloor ∧
-      ∀ T,
-        S.suboptimality T ≤ (1 - S.lambda * S.eta) ^ T * X + Y / Real.sqrt S.batchSizeℝ + Z :=
-  S.theorem14_exists_constants
 
 end StochasticSteepestDescentGeometryContext
 

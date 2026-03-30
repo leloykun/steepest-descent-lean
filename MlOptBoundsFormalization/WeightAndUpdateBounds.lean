@@ -31,7 +31,7 @@ lemma aStar_optimal
 lemma step_sub_center
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     S.W (t + 1) - S.stepCenter t = S.eta • S.aStar t := by
-  rw [S.update_eq_aStar t, StochasticSteepestDescentGeometryContext.stepCenter]
+  rw [S.update_eq t, StochasticSteepestDescentGeometryContext.stepCenter]
   abel_nf
 
 /-- Rewrites the displacement from `W_t` to the step center as a scaled copy of `W_t`. -/
@@ -100,7 +100,7 @@ lemma step_optimal
   calc
     (S.C t) (S.W (t + 1))
       = (S.C t) (S.stepCenter t) + S.eta * (S.C t) (S.aStar t) := by
-          rw [S.update_eq_aStar t, StochasticSteepestDescentGeometryContext.stepCenter,
+          rw [S.update_eq t, StochasticSteepestDescentGeometryContext.stepCenter,
             ContinuousLinearMap.map_add, ContinuousLinearMap.map_smul, ContinuousLinearMap.map_smul]
           simp [smul_eq_mul]
     _ ≤ (S.C t) (S.stepCenter t) + S.eta * (S.C t) A := by

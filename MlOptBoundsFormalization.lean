@@ -8,4 +8,5 @@ import MlOptBoundsFormalization.WeightAndUpdateBounds
 import MlOptBoundsFormalization.MomentumBounds
 import MlOptBoundsFormalization.NesterovMomentumBounds
 import MlOptBoundsFormalization.Theorem14
+import MlOptBoundsFormalization.ScalingLaws
 import MlOptBoundsFormalization.ExpectedSuboptimalityConvergence
