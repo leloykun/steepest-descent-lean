@@ -90,7 +90,7 @@ This also gives a Lean-friendly best-iterate corollary: there exists some $t < T
 
 ### Hyperparameter scaling laws derivable from Frank-Wolfe expected gap bounds
 
-**Frank-Wolfe Theorem 1 (Fixed momentum, large horizon proxy).** Fix $\beta \in [0, 1)$ and consider the Frank-Wolfe expected-gap proxy above.
+**Theorem 1 (Fixed momentum, large horizon proxy).** Fix $\beta \in [0, 1)$ and consider the Frank-Wolfe expected-gap proxy above.
 
 **(1) Iteration scaling.** For fixed large number of training steps $T$ and fixed batch size $b$, the proxy is minimized by
 
@@ -107,7 +107,7 @@ b_T^* &\propto N^{1/2}, \\
 \end{aligned}
 $$
 
-**Frank-Wolfe Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta\_T^{\*}, \beta\_T^{\*})$ satisfies
+**Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta\_T^{\*}, \beta\_T^{\*})$ satisfies
 
 $$
 \begin{aligned}
@@ -161,7 +161,9 @@ the star-convexity assumption. It uses the Frank-Wolfe KL assumption instead.
 ### Hyperparameter scaling laws derivable from Frank-Wolfe expected suboptimality bounds
 
 The resulting large-horizon exponents match the star-convex expected-suboptimality
-family:
+family, but they are derived here from the Frank-Wolfe KL assumption.
+
+**Theorem 1 (Fixed momentum, large horizon proxy).**
 
 **(1) Iteration scaling.** For fixed large number of training steps $T$ and fixed batch size $b$, the Expected Suboptimality is minimized by,
 
@@ -175,6 +177,15 @@ $$
 \begin{aligned}
 b_T^* &\propto \left(\frac{N}{\log N}\right)^{2/3}, \\
 \eta_T^* &\propto \left(\frac{\log N}{N}\right)^{1/3}.
+\end{aligned}
+$$
+
+**Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Expected Suboptimality proxy $(\eta\_T^{\*}, \beta\_T^{\*})$ satisfies
+
+$$
+\begin{aligned}
+1 - \beta_T^* &\propto b \left(\frac{\log N}{N}\right)^{2/3}, \\
+\eta_T^* &\propto b \frac{\log N}{N}.
 \end{aligned}
 $$
 
