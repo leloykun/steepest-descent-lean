@@ -42,7 +42,7 @@ $$
 
 Thus at fixed $T$ (ignoring token costs), the optimal learning rate is batch-independent.
 
-**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Expected Suboptimality proxy $(\eta_T^*, b_T^*)$ satisfies
+**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Expected Suboptimality proxy $(\eta\_T^{\*}, b\_T^{\*})$ satisfies
 
 $$
 \begin{aligned}
@@ -51,7 +51,7 @@ b_T^* &\propto \left(\frac{N}{\log N}\right)^{2/3}, \\
 \end{aligned}
 $$
 
-**Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Expected Suboptimality proxy $(\eta_T^*, \beta_T^*)$ satisfies
+**Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Expected Suboptimality proxy $(\eta\_T^{\*}, \beta\_T^{\*})$ satisfies
 
 $$
 \begin{aligned}
@@ -98,7 +98,7 @@ $$
 \eta_T^*(b) \propto T^{-1/2}.
 $$
 
-**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta_T^*, b_T^*)$ satisfies
+**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta\_T^{\*}, b\_T^{\*})$ satisfies
 
 $$
 \begin{aligned}
@@ -107,7 +107,7 @@ b_T^* &\propto N^{1/2}, \\
 \end{aligned}
 $$
 
-**Frank-Wolfe Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta_T^*, \beta_T^*)$ satisfies
+**Frank-Wolfe Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta\_T^{\*}, \beta\_T^{\*})$ satisfies
 
 $$
 \begin{aligned}
@@ -129,13 +129,16 @@ These Frank-Wolfe expected-gap results are formalized in [FrankWolfe.lean](./Ste
 ## Frank-Wolfe expected suboptimality bounds
 
 Assume now the Frank-Wolfe KL condition along the iterates:
-\[
+
+$$
 \mathcal{G}(W_t) \ge \mu_{\mathrm{FW}} \bigl(f(W_t) - f(W_*)\bigr)
 \qquad \text{for all } t,
-\]
+$$
+
 with $\mu_{\mathrm{FW}} > 0$, together with $\mu_{\mathrm{FW}} \lambda \eta \le 1$.
 Then, under Assumptions 1 to 4 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), we have the expected-suboptimality bound,
-\[
+
+$$
 \begin{aligned}
 \mathbb{E}[f(W_T) - f(W_*)]
     &\leq (1 - \mu_{\mathrm{FW}}\lambda\eta)^T \Delta_0 \\
@@ -148,7 +151,8 @@ Then, under Assumptions 1 to 4 in [Ponder: Critical Batch Size for Steepest Desc
         \left(1 + \frac{2\beta^2}{1 - \beta}\right)
     \right]\eta,
 \end{aligned}
-\]
+$$
+
 where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^\dagger$.
 
 Unlike the star-convex expected-suboptimality layer, this result does not use
@@ -165,7 +169,7 @@ $$
 \eta_T^*(b) \propto \frac{\log T}{T}.
 $$
 
-**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Expected Suboptimality $(\eta_T^*, b_T^*)$ satisfies,
+**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Expected Suboptimality $(\eta\_T^{\*}, b\_T^{\*})$ satisfies,
 
 $$
 \begin{aligned}
