@@ -130,6 +130,38 @@ variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
+/-! ------------------------------------------------------------------------
+Public Definitions
+------------------------------------------------------------------------ -/
+
+/-- The momentum error `E_t = ∇f(W_t) - M_t`. -/
+def momentumError (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    StrongDual ℝ V :=
+  S.grad t - S.momentum t
+
+/-- The norm of the momentum error. -/
+def momentumErrorNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
+  ‖S.momentumError t‖
+
+/-! ------------------------------------------------------------------------
+Private Definitions
+------------------------------------------------------------------------ -/
+
+private def driftComponent (S : StochasticSteepestDescentGeometryContext Ω V) : ℕ → StrongDual ℝ V
+  | 0 => S.grad 0
+  | t + 1 => S.beta • S.driftComponent t + S.beta • (S.grad (t + 1) - S.grad t)
+
+private def noiseComponent (S : StochasticSteepestDescentGeometryContext Ω V) : ℕ → StrongDual ℝ V
+  | 0 => 0
+  | t + 1 => S.beta • S.noiseComponent t + (1 - S.beta) • S.minibatchNoise (t + 1)
+
+private def noiseComponentNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
+  ‖S.noiseComponent t‖
+
+/-! ------------------------------------------------------------------------
+Private Lemmas and Theorems
+------------------------------------------------------------------------ -/
+
 private def flatTimeIndex
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) : ℕ :=
   m / S.batchSize + 1
@@ -627,7 +659,7 @@ theorem expectedNoise_bound
             ring
 
 /-- At time `0`, the momentum error is exactly the initial gradient. -/
-lemma momentumError_zero (S : StochasticSteepestDescentGeometryContext Ω V) :
+private lemma momentumError_zero (S : StochasticSteepestDescentGeometryContext Ω V) :
     S.momentumError 0 = S.grad 0 := by
   simp [StochasticSteepestDescentGeometryContext.momentumError,
     StochasticSteepestDescentGeometryContext.grad, S.momentum_zero]
@@ -637,7 +669,7 @@ One-step momentum-error recursion:
 
 `E_{t+1} = β E_t + β(∇f(W_{t+1}) - ∇f(W_t)) + (1 - β) ξ_{S_{t+1}}`.
 -/
-lemma momentumError_succ (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+private lemma momentumError_succ (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     S.momentumError (t + 1) =
       S.beta • S.momentumError t
         + S.beta • (S.grad (t + 1) - S.grad t)
@@ -661,7 +693,7 @@ lemma momentumError_succ (S : StochasticSteepestDescentGeometryContext Ω V) (t 
             simp [StochasticSteepestDescentGeometryContext.momentumError]
 
 /-- The true momentum error splits as drift plus noise. -/
-theorem momentumError_eq_drift_add_noise
+private theorem momentumError_eq_drift_add_noise
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t, S.momentumError t = S.driftComponent t + S.noiseComponent t
   | 0 => by
@@ -676,7 +708,7 @@ theorem momentumError_eq_drift_add_noise
         add_assoc, add_left_comm, add_comm]
 
 /-- Norm version of `E_t = E_t^drift + E_t^noise`. -/
-theorem norm_momentumError_le_drift_add_noise
+private theorem norm_momentumError_le_drift_add_noise
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     ‖S.momentumError t‖ ≤ ‖S.driftComponent t‖ + ‖S.noiseComponent t‖ := by
   rw [S.momentumError_eq_drift_add_noise t]
@@ -735,7 +767,7 @@ private theorem norm_driftComponent_le
               ring
 
 /-- The deterministic recursive noise component vanishes identically. -/
-theorem noiseComponent_eq_zero
+private theorem noiseComponent_eq_zero
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t, S.noiseComponent t = 0
   | 0 => by
@@ -745,7 +777,7 @@ theorem noiseComponent_eq_zero
         noiseComponent_eq_zero S t, S.minibatchNoise_eq_zero (t + 1)]
 
 /-- Direct geometry-level comparison between the deterministic noise term and the Proposition-6 expectation. -/
-theorem noiseComponentNorm_le_expectedNoise
+private theorem noiseComponentNorm_le_expectedNoise
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t, S.noiseComponentNorm t ≤ S.expectedNoise t := by
   intro t
@@ -883,7 +915,7 @@ private theorem average_momentumError_bound_of_pointwise
 Bounds the drift part of the momentum error once the update size is uniformly
 bounded by a fixed step radius.
 -/
-theorem momentum_drift_bound_from_step_bound
+private theorem momentum_drift_bound_from_step_bound
     {beta L stepBound initialGradNorm : ℝ}
     (hBetaNonneg : 0 ≤ beta) (hBetaLt : beta < 1)
     (hLNonneg : 0 ≤ L) (hStepNonneg : 0 ≤ stepBound)
@@ -947,6 +979,10 @@ private theorem momentumErrorNorm_le_unrolled
           + S.L * (2 * S.eta) * shiftedGeometricPrefix S.beta t
           + S.expectedNoise t := by
             linarith [hDrift t]
+
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
 
 /-- Pointwise momentum-error bound on the canonical momentum-error sequence. -/
 theorem Corollary10PointwiseMomentumErrorBound

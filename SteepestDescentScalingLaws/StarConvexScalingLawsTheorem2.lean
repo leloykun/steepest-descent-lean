@@ -4,7 +4,7 @@ namespace SteepestDescentOptimizationBounds
 
 noncomputable section
 
-namespace StochasticSteepestDescentGeometryContext
+namespace StochasticStarConvexGeometryContext
 
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
@@ -22,25 +22,25 @@ Public Definitions
 
 /-- The leading fixed-batch drift constant as `β → 1`. -/
 def fixedBatchLeadDriftConst
-    (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
+    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
   4 * S.L / S.lambda + 2 * S.initialGradNorm
 
 /-- The leading fixed-batch noise constant as `β → 1`. -/
 def fixedBatchLeadNoiseConst
-    (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
+    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
   (Real.sqrt 2 / S.lambda) * Real.sqrt S.D * S.sigma
 
 /-- The leading fixed-batch large-horizon proxy near `β → 1`. -/
 def fixedBatchLeadingProxy
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (η N β batchSize : ℝ) : ℝ :=
-  S.theorem14InitialGap * Real.exp (-(S.lambda * η * N / batchSize))
+  S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(S.lambda * η * N / batchSize))
     + S.fixedBatchLeadNoiseConst * Real.sqrt ((1 - β) / batchSize)
     + (S.fixedBatchLeadDriftConst / (1 - β)) * η
 
 /-- `η` minimizes the leading fixed-batch proxy over positive learning rates. -/
 def IsFixedBatchLeadingProxyEtaMinimizer
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (η N β batchSize : ℝ) : Prop :=
   0 < η ∧
     ∀ η' > 0, S.fixedBatchLeadingProxy η N β batchSize
@@ -48,7 +48,7 @@ def IsFixedBatchLeadingProxyEtaMinimizer
 
 /-- `etaStar` selects eventual eta minimizers for the leading fixed-batch proxy. -/
 def IsFixedBatchLeadingProxyEtaMinimizerFamily
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (batchSize : ℝ) (betaStar etaStar : ℝ → ℝ) : Prop :=
   ∃ N0, 0 < N0 ∧
     ∀ N ≥ N0,
@@ -57,17 +57,17 @@ def IsFixedBatchLeadingProxyEtaMinimizerFamily
 
 /-- The reduced leading fixed-batch proxy after minimizing out `η` on the interior branch. -/
 def fixedBatchReducedLeadingProxy
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (N β batchSize : ℝ) : ℝ :=
   (S.fixedBatchLeadDriftConst * batchSize / (S.lambda * N * (1 - β)))
       * (1 + Real.log
-          (S.theorem14InitialGap * S.lambda * N * (1 - β)
+          (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β)
             / (S.fixedBatchLeadDriftConst * batchSize)))
     + S.fixedBatchLeadNoiseConst * Real.sqrt ((1 - β) / batchSize)
 
 /-- `β` minimizes the leading fixed-batch reduced proxy over the interior branch. -/
 def IsFixedBatchReducedLeadingProxyMomentumMinimizer
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (N β batchSize : ℝ) : Prop :=
   0 < β ∧ β < 1 ∧
     ∀ β' > 0, β' < 1 →
@@ -76,20 +76,20 @@ def IsFixedBatchReducedLeadingProxyMomentumMinimizer
 
 /-- An eventually interior minimizer family on the small fixed-batch branch. -/
 def IsSmallBranchInteriorMomentumMinimizerFamilyFixedBatchReducedLeadingProxy
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (batchSize : ℝ) (betaStar : ℝ → ℝ) : Prop :=
   ∃ cLogLower cLogUpper N0,
     0 < cLogLower ∧ 0 < cLogUpper ∧ 0 < N0 ∧
     ∀ N ≥ N0,
       S.IsFixedBatchReducedLeadingProxyMomentumMinimizer N (betaStar N) batchSize ∧
       S.fixedBatchLeadDriftConst * batchSize
-        < S.theorem14InitialGap * S.lambda * N * (1 - betaStar N) ∧
+        < S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - betaStar N) ∧
       cLogLower * Real.log N
         ≤ Real.log
-            (S.theorem14InitialGap * S.lambda * N * (1 - betaStar N)
+            (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - betaStar N)
               / (S.fixedBatchLeadDriftConst * batchSize)) ∧
       Real.log
-          (S.theorem14InitialGap * S.lambda * N * (1 - betaStar N)
+          (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - betaStar N)
             / (S.fixedBatchLeadDriftConst * batchSize))
         ≤ cLogUpper * Real.log N
 
@@ -98,13 +98,13 @@ Private Definitions
 ------------------------------------------------------------------------ -/
 
 private def fixedBatchLeadingLogArg
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (N β batchSize : ℝ) : ℝ :=
-  S.theorem14InitialGap * S.lambda * N * (1 - β)
+  S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β)
     / (S.fixedBatchLeadDriftConst * batchSize)
 
 private def etaStarFixedBatchClosedForm
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (N β batchSize : ℝ) : ℝ :=
   (batchSize / (S.lambda * N)) * Real.log (S.fixedBatchLeadingLogArg N β batchSize)
 
@@ -113,7 +113,7 @@ Private Lemmas and Theorems
 ------------------------------------------------------------------------ -/
 
 private theorem fixedBatchLeadDriftConst_pos
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    (S : StochasticStarConvexGeometryContext Ω V) :
     0 < S.fixedBatchLeadDriftConst := by
   unfold fixedBatchLeadDriftConst
   have hMain : 0 < 4 * S.L / S.lambda := by
@@ -125,17 +125,17 @@ private theorem fixedBatchLeadDriftConst_pos
   linarith
 
 private theorem etaStarFixedBatchClosedForm_eq
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     (N β batchSize : ℝ) :
     S.etaStarFixedBatchClosedForm N β batchSize
       = (batchSize / (S.lambda * N))
           * Real.log
-              (S.theorem14InitialGap * S.lambda * N * (1 - β)
+              (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β)
                 / (S.fixedBatchLeadDriftConst * batchSize)) :=
   rfl
 
 private theorem etaStarFixedBatchClosedForm_eq_ratio
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize : ℝ} (hN : N ≠ 0) :
     S.etaStarFixedBatchClosedForm N β batchSize
       = (1 / S.lambda)
@@ -144,10 +144,10 @@ private theorem etaStarFixedBatchClosedForm_eq_ratio
   field_simp [S.lambda_pos.ne', hN]
 
 private theorem hasDerivAt_fixedBatchLeadingProxy
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {η N β batchSize : ℝ} :
     HasDerivAt (fun η' => S.fixedBatchLeadingProxy η' N β batchSize)
-      (-(S.theorem14InitialGap * (S.lambda * N / batchSize)
+      (-(S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)
             * Real.exp (-(S.lambda * η * N / batchSize)))
         + S.fixedBatchLeadDriftConst / (1 - β)) η := by
   have hInner :
@@ -159,10 +159,10 @@ private theorem hasDerivAt_fixedBatchLeadingProxy
   have hExp := (Real.hasDerivAt_exp (-(S.lambda * η * N / batchSize))).comp η hInner
   have hMain :
       HasDerivAt
-        (fun η' : ℝ => S.theorem14InitialGap * Real.exp (-(S.lambda * η' * N / batchSize)))
-        (-(S.theorem14InitialGap * (S.lambda * N / batchSize)
+        (fun η' : ℝ => S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(S.lambda * η' * N / batchSize)))
+        (-(S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)
             * Real.exp (-(S.lambda * η * N / batchSize)))) η := by
-    simpa [mul_assoc, mul_left_comm, mul_comm] using hExp.const_mul S.theorem14InitialGap
+    simpa [mul_assoc, mul_left_comm, mul_comm] using hExp.const_mul S.starConvexExpectedSuboptimalityInitialGap
   have hDrift :
       HasDerivAt (fun η' : ℝ => (S.fixedBatchLeadDriftConst / (1 - β)) * η')
         (S.fixedBatchLeadDriftConst / (1 - β)) η := by
@@ -173,14 +173,14 @@ private theorem hasDerivAt_fixedBatchLeadingProxy
     funext η' <;> simp [fixedBatchLeadingProxy, add_assoc, add_comm]
 
 private theorem closedForm_fixedBatchLeading_isMinimizer
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hβ1 : β < 1)
     (hInterior :
       S.fixedBatchLeadDriftConst * batchSize
-        < S.theorem14InitialGap * S.lambda * N * (1 - β)) :
+        < S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β)) :
     S.IsFixedBatchLeadingProxyEtaMinimizer (S.etaStarFixedBatchClosedForm N β batchSize)
       N β batchSize := by
   let A := S.fixedBatchLeadDriftConst / (1 - β)
@@ -208,16 +208,16 @@ private theorem closedForm_fixedBatchLeading_isMinimizer
     refine mul_pos ?_ (Real.log_pos hArgGtOne)
     exact div_pos hBatch (mul_pos S.lambda_pos hN)
   have hExpStar :
-      S.theorem14InitialGap * Real.exp (-(a * ηStar)) = A / a := by
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar)) = A / a := by
     have hMul : a * ηStar = Real.log (S.fixedBatchLeadingLogArg N β batchSize) := by
       dsimp [a, ηStar, etaStarFixedBatchClosedForm, fixedBatchLeadingLogArg]
       field_simp [S.lambda_pos.ne', hN.ne', hBatch.ne',
         S.fixedBatchLeadDriftConst_pos.ne']
     calc
-      S.theorem14InitialGap * Real.exp (-(a * ηStar))
-          = S.theorem14InitialGap * Real.exp (-Real.log (S.fixedBatchLeadingLogArg N β batchSize)) := by
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))
+          = S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-Real.log (S.fixedBatchLeadingLogArg N β batchSize)) := by
               rw [hMul]
-      _ = S.theorem14InitialGap / S.fixedBatchLeadingLogArg N β batchSize := by
+      _ = S.starConvexExpectedSuboptimalityInitialGap / S.fixedBatchLeadingLogArg N β batchSize := by
             rw [Real.exp_neg, Real.exp_log hArgPos]
             simp [div_eq_mul_inv]
       _ = A / a := by
@@ -242,16 +242,16 @@ private theorem closedForm_fixedBatchLeading_isMinimizer
       _ ≤ (A / a) * (Real.exp (-u) + u) := hMul
       _ = (A / a) * Real.exp (-u) + A * (η - ηStar) := by rw [mul_add, hU]
   have hExpEta :
-      S.theorem14InitialGap * Real.exp (-(a * η))
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
         = (A / a) * Real.exp (-u) := by
     have hDecomp : -(a * η) = -(a * ηStar) + (-u) := by
       dsimp [u]
       ring
     calc
-      S.theorem14InitialGap * Real.exp (-(a * η))
-          = S.theorem14InitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
+          = S.starConvexExpectedSuboptimalityInitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
               rw [hDecomp, Real.exp_add]
-      _ = (S.theorem14InitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
+      _ = (S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
       _ = (A / a) * Real.exp (-u) := by rw [hExpStar]
   calc
     S.fixedBatchLeadingProxy ηStar N β batchSize
@@ -276,9 +276,9 @@ private theorem closedForm_fixedBatchLeading_isMinimizer
           ring
 
 private theorem closedForm_fixedBatchLeading_lt_of_ne
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize η : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hβ1 : β < 1)
     (hNe : η ≠ S.etaStarFixedBatchClosedForm N β batchSize) :
@@ -306,16 +306,16 @@ private theorem closedForm_fixedBatchLeading_lt_of_ne
     exact div_pos (mul_pos (mul_pos (mul_pos hGap S.lambda_pos) hN) hDeltaPos)
       (mul_pos S.fixedBatchLeadDriftConst_pos hBatch)
   have hExpStar :
-      S.theorem14InitialGap * Real.exp (-(a * ηStar)) = A / a := by
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar)) = A / a := by
     have hMul : a * ηStar = Real.log (S.fixedBatchLeadingLogArg N β batchSize) := by
       dsimp [a, ηStar, etaStarFixedBatchClosedForm, fixedBatchLeadingLogArg]
       field_simp [S.lambda_pos.ne', hN.ne', hBatch.ne',
         S.fixedBatchLeadDriftConst_pos.ne']
     calc
-      S.theorem14InitialGap * Real.exp (-(a * ηStar))
-          = S.theorem14InitialGap * Real.exp (-Real.log (S.fixedBatchLeadingLogArg N β batchSize)) := by
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))
+          = S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-Real.log (S.fixedBatchLeadingLogArg N β batchSize)) := by
               rw [hMul]
-      _ = S.theorem14InitialGap / S.fixedBatchLeadingLogArg N β batchSize := by
+      _ = S.starConvexExpectedSuboptimalityInitialGap / S.fixedBatchLeadingLogArg N β batchSize := by
             rw [Real.exp_neg, Real.exp_log hArgPos]
             simp [div_eq_mul_inv]
       _ = A / a := by
@@ -337,16 +337,16 @@ private theorem closedForm_fixedBatchLeading_lt_of_ne
       _ < (A / a) * (Real.exp (-u) + u) := hMul
       _ = (A / a) * Real.exp (-u) + A * (η - ηStar) := by rw [mul_add, hU]
   have hExpEta :
-      S.theorem14InitialGap * Real.exp (-(a * η))
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
         = (A / a) * Real.exp (-u) := by
     have hDecomp : -(a * η) = -(a * ηStar) + (-u) := by
       dsimp [u]
       ring
     calc
-      S.theorem14InitialGap * Real.exp (-(a * η))
-          = S.theorem14InitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
+      S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
+          = S.starConvexExpectedSuboptimalityInitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
               rw [hDecomp, Real.exp_add]
-      _ = (S.theorem14InitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
+      _ = (S.starConvexExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
       _ = (A / a) * Real.exp (-u) := by rw [hExpStar]
   calc
     S.fixedBatchLeadingProxy ηStar N β batchSize
@@ -371,14 +371,14 @@ private theorem closedForm_fixedBatchLeading_lt_of_ne
           ring
 
 private theorem fixedBatchLeading_interior_of_isEtaMinimizer
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize ηStar : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hβ1 : β < 1)
     (hMin : S.IsFixedBatchLeadingProxyEtaMinimizer ηStar N β batchSize) :
     S.fixedBatchLeadDriftConst * batchSize
-      < S.theorem14InitialGap * S.lambda * N * (1 - β) := by
+      < S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β) := by
   have hIsMinOn :
       IsMinOn (fun η => S.fixedBatchLeadingProxy η N β batchSize) (Set.Ioi 0) ηStar := by
     intro η hη
@@ -386,7 +386,7 @@ private theorem fixedBatchLeading_interior_of_isEtaMinimizer
   have hLocalMin : IsLocalMin (fun η => S.fixedBatchLeadingProxy η N β batchSize) ηStar := by
     exact hIsMinOn.localize.isLocalMin (Ioi_mem_nhds hMin.1)
   have hDerivZero :
-      -(S.theorem14InitialGap * (S.lambda * N / batchSize)
+      -(S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)
           * Real.exp (-(S.lambda * ηStar * N / batchSize)))
         + S.fixedBatchLeadDriftConst / (1 - β) = 0 := by
     exact hLocalMin.hasDerivAt_eq_zero
@@ -396,46 +396,46 @@ private theorem fixedBatchLeading_interior_of_isEtaMinimizer
     have hArgPos : 0 < S.lambda * ηStar * N / batchSize := by
       exact div_pos (mul_pos (mul_pos S.lambda_pos hMin.1) hN) hBatch
     linarith
-  have hScalePos : 0 < S.theorem14InitialGap * (S.lambda * N / batchSize) := by
+  have hScalePos : 0 < S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize) := by
     exact mul_pos hGap (div_pos (mul_pos S.lambda_pos hN) hBatch)
   have hLt :
       S.fixedBatchLeadDriftConst / (1 - β)
-        < S.theorem14InitialGap * (S.lambda * N / batchSize) := by
+        < S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize) := by
     calc
       S.fixedBatchLeadDriftConst / (1 - β)
-        = S.theorem14InitialGap * (S.lambda * N / batchSize)
+        = S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)
             * Real.exp (-(S.lambda * ηStar * N / batchSize)) := by
             linarith
-      _ < (S.theorem14InitialGap * (S.lambda * N / batchSize)) * 1 := by
+      _ < (S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)) * 1 := by
             exact mul_lt_mul_of_pos_left hExpLtOne hScalePos
-      _ = S.theorem14InitialGap * (S.lambda * N / batchSize) := by ring
+      _ = S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize) := by ring
   have hDeltaPos : 0 < 1 - β := sub_pos.mpr hβ1
   have hLt' :
       S.fixedBatchLeadDriftConst
-        < (S.theorem14InitialGap * (S.lambda * N / batchSize)) * (1 - β) := by
+        < (S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)) * (1 - β) := by
     exact (div_lt_iff₀ hDeltaPos).1 hLt
   have hMul :
       S.fixedBatchLeadDriftConst * batchSize
-        < ((S.theorem14InitialGap * (S.lambda * N / batchSize)) * (1 - β)) * batchSize := by
+        < ((S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)) * (1 - β)) * batchSize := by
     exact mul_lt_mul_of_pos_right hLt' hBatch
   calc
     S.fixedBatchLeadDriftConst * batchSize
-      < ((S.theorem14InitialGap * (S.lambda * N / batchSize)) * (1 - β)) * batchSize := hMul
-    _ = S.theorem14InitialGap * S.lambda * N * (1 - β) := by
+      < ((S.starConvexExpectedSuboptimalityInitialGap * (S.lambda * N / batchSize)) * (1 - β)) * batchSize := hMul
+    _ = S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β) := by
           field_simp [hBatch.ne']
 
 /-- Fixed-batch leading-proxy eta minimizers are equal to the interior closed form. -/
 private theorem fixedBatchEtaMinimizerEqClosedForm
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize ηStar : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hβ1 : β < 1)
     (hMin : S.IsFixedBatchLeadingProxyEtaMinimizer ηStar N β batchSize) :
     ηStar
       = (batchSize / (S.lambda * N))
           * Real.log
-              (S.theorem14InitialGap * S.lambda * N * (1 - β)
+              (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β)
                 / (S.fixedBatchLeadDriftConst * batchSize)) := by
   have hInterior := S.fixedBatchLeading_interior_of_isEtaMinimizer hGap hN hBatch hβ1 hMin
   by_contra hNe
@@ -446,8 +446,8 @@ private theorem fixedBatchEtaMinimizerEqClosedForm
   exact not_lt_of_ge hLe hLt
 
 private theorem fixedBatchLeadingClosedFormFamily_eq
-    (S : StochasticSteepestDescentGeometryContext Ω V)
-    {batchSize : ℝ} (hGap : 0 < S.theorem14InitialGap) (hBatch : 0 < batchSize)
+    (S : StochasticStarConvexGeometryContext Ω V)
+    {batchSize : ℝ} (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap) (hBatch : 0 < batchSize)
     {betaStar etaStar : ℝ → ℝ}
     (hMin : S.IsFixedBatchLeadingProxyEtaMinimizerFamily batchSize betaStar etaStar) :
     ∃ N0, 0 < N0 ∧
@@ -455,7 +455,7 @@ private theorem fixedBatchLeadingClosedFormFamily_eq
         etaStar N
           = (batchSize / (S.lambda * N))
               * Real.log
-                  (S.theorem14InitialGap * S.lambda * N * (1 - betaStar N)
+                  (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - betaStar N)
                     / (S.fixedBatchLeadDriftConst * batchSize)) := by
   rcases hMin with ⟨N0, hN0, hMin⟩
   refine ⟨N0, hN0, ?_⟩
@@ -465,9 +465,9 @@ private theorem fixedBatchLeadingClosedFormFamily_eq
   exact S.fixedBatchEtaMinimizerEqClosedForm hGap hNpos hBatch hβ1 hEtaMin
 
 private theorem hasDerivAt_fixedBatchReducedLeadingProxy
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize) (hβ1 : β < 1) :
     HasDerivAt (fun β' => S.fixedBatchReducedLeadingProxy N β' batchSize)
       (((S.fixedBatchLeadDriftConst * batchSize) / (S.lambda * N * (1 - β) ^ 2))
@@ -476,7 +476,7 @@ private theorem hasDerivAt_fixedBatchReducedLeadingProxy
             / (2 * Real.sqrt batchSize * Real.sqrt (1 - β))) β := by
   let C := S.fixedBatchLeadDriftConst
   let Z := S.fixedBatchLeadNoiseConst
-  let K : ℝ := S.theorem14InitialGap * S.lambda * N / (C * batchSize)
+  let K : ℝ := S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N / (C * batchSize)
   have hCpos : 0 < C := by dsimp [C]; exact S.fixedBatchLeadDriftConst_pos
   have hDeltaPos : 0 < 1 - β := sub_pos.mpr hβ1
   have hKpos : 0 < K := by
@@ -539,9 +539,9 @@ private theorem hasDerivAt_fixedBatchReducedLeadingProxy
     ring
 
 private theorem fixedBatchReducedLeading_deriv_eq_zero_of_isMomentumMinimizer
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hMin : S.IsFixedBatchReducedLeadingProxyMomentumMinimizer N β batchSize) :
     (((S.fixedBatchLeadDriftConst * batchSize) / (S.lambda * N * (1 - β) ^ 2))
@@ -558,9 +558,9 @@ private theorem fixedBatchReducedLeading_deriv_eq_zero_of_isMomentumMinimizer
   exact hLocalMin.hasDerivAt_eq_zero (S.hasDerivAt_fixedBatchReducedLeadingProxy hGap hN hBatch hβ1)
 
 private theorem fixedBatchGap_mul_sqrt_eq_of_isMomentumMinimizer
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hNoise : 0 < S.fixedBatchLeadNoiseConst)
     (hMin : S.IsFixedBatchReducedLeadingProxyMomentumMinimizer N β batchSize) :
@@ -617,9 +617,9 @@ private theorem fixedBatchGap_mul_sqrt_eq_of_isMomentumMinimizer
               field_simp [S.lambda_pos.ne', hN.ne', hNoise.ne']
 
 private theorem fixedBatchLeadingTokenBudgetScalingBounds
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : StochasticStarConvexGeometryContext Ω V)
     {batchSize : ℝ}
-    (hGap : 0 < S.theorem14InitialGap) (hBatch : 0 < batchSize)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap) (hBatch : 0 < batchSize)
     (hNoise : 0 < S.fixedBatchLeadNoiseConst)
     {betaStar : ℝ → ℝ}
     (hMomentum :
@@ -768,7 +768,7 @@ private theorem fixedBatchLeadingTokenBudgetScalingBounds
         etaStar N = S.etaStarFixedBatchClosedForm N (betaStar N) batchSize := by
           trans ((batchSize / (S.lambda * N))
             * Real.log
-                (S.theorem14InitialGap * S.lambda * N * (1 - betaStar N)
+                (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - betaStar N)
                   / (S.fixedBatchLeadDriftConst * batchSize)))
           · exact hEtaEqClosed
           · symm
@@ -823,24 +823,24 @@ SL2: Fixed-Batch Large-Horizon Proxy Theorems
 Public Theorems
 ------------------------------------------------------------------------ -/
 
-theorem theoremSL2_1_etaMinimizerEqClosedForm
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+theorem starConvexScalingLawsTheorem2_1_etaMinimizerEqClosedForm
+    (S : StochasticStarConvexGeometryContext Ω V)
     {N β batchSize ηStar : ℝ}
-    (hGap : 0 < S.theorem14InitialGap)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hβ1 : β < 1)
     (hMin : S.IsFixedBatchLeadingProxyEtaMinimizer ηStar N β batchSize) :
     ηStar
       = (batchSize / (S.lambda * N))
           * Real.log
-              (S.theorem14InitialGap * S.lambda * N * (1 - β)
+              (S.starConvexExpectedSuboptimalityInitialGap * S.lambda * N * (1 - β)
                 / (S.fixedBatchLeadDriftConst * batchSize)) := by
   exact S.fixedBatchEtaMinimizerEqClosedForm hGap hN hBatch hβ1 hMin
 
-theorem theoremSL2_2_tokenBudgetScaling
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+theorem starConvexScalingLawsTheorem2_2_tokenBudgetScaling
+    (S : StochasticStarConvexGeometryContext Ω V)
     {batchSize : ℝ}
-    (hGap : 0 < S.theorem14InitialGap) (hBatch : 0 < batchSize)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap) (hBatch : 0 < batchSize)
     (hNoise : 0 < S.fixedBatchLeadNoiseConst)
     {betaStar etaStar : ℝ → ℝ}
     (hMomentum :
@@ -878,10 +878,10 @@ theorem theoremSL2_2_tokenBudgetScaling
       _ = (cEtaUpperOld / S.lambda) * (batchSize * Real.log N / N) := by
             field_simp [S.lambda_pos.ne', hNpos.ne']
 
-theorem theoremSL2_FixedBatchLargeHorizonProxy
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+theorem starConvexScalingLawsTheorem2_FixedBatchLargeHorizonProxy
+    (S : StochasticStarConvexGeometryContext Ω V)
     {batchSize : ℝ}
-    (hGap : 0 < S.theorem14InitialGap) (hBatch : 0 < batchSize)
+    (hGap : 0 < S.starConvexExpectedSuboptimalityInitialGap) (hBatch : 0 < batchSize)
     (hNoise : 0 < S.fixedBatchLeadNoiseConst)
     {betaStar etaStar : ℝ → ℝ}
     (hMomentum :
@@ -911,7 +911,7 @@ theorem theoremSL2_FixedBatchLargeHorizonProxy
           ≤ etaStar (batchSize * T) ∧
         etaStar (batchSize * T)
           ≤ cEtaUpper * (Real.log (batchSize * T) / T)) := by
-  rcases S.theoremSL2_2_tokenBudgetScaling hGap hBatch hNoise hMomentum hEtaMin with
+  rcases S.starConvexScalingLawsTheorem2_2_tokenBudgetScaling hGap hBatch hNoise hMomentum hEtaMin with
     ⟨cBetaLower, cBetaUpper, cEtaLower, cEtaUpper, N0,
       hcBetaLower, hcBetaUpper, hcEtaLower, hcEtaUpper, hN0, hNBound⟩
   let T0 : ℝ := N0 / batchSize
@@ -926,7 +926,7 @@ theorem theoremSL2_FixedBatchLargeHorizonProxy
   · simpa [div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm, hBatch.ne'] using hNForm.2.2.1
   · simpa [div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm, hBatch.ne'] using hNForm.2.2.2
 
-end StochasticSteepestDescentGeometryContext
+end StochasticStarConvexGeometryContext
 
 end
 

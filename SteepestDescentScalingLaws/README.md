@@ -1,44 +1,72 @@
 # Steepest Descent Scaling Laws
 
-This folder contains the large-horizon scaling-law layer derived from Theorem 14.
+This folder contains the large-horizon scaling-law layer built on top of the
+project's proxy bounds.
 
-Exact optimizer-identification formulas still display `λ`, but the public asymptotic bounds absorb it into the comparison constants because `λ` is treated as fixed.
+`Commons.lean` is the shared algebra layer. It contains family-agnostic
+asymptotic lemmas and `rpow`/`sqrt` identities reused across the scaling-law
+files.
 
-## Overview
+Exact optimizer-identification formulas keep the relevant project constants
+explicit. Public asymptotic bounds absorb fixed constants such as `\lambda` and
+`\mu_{\mathrm{FW}}` into the comparison constants.
 
-- `TheoremSL1.lean` covers the fixed-momentum regime: hold `β` fixed, optimize the learning rate, and then study how the token-budget optimizer scales with `batchSize` and `N`.
-- `TheoremSL2.lean` covers the fixed-batch regime: hold `batchSize` fixed, tune momentum through `1 - β`, and derive the corresponding learning-rate scaling law.
-- `Commons.lean` contains the shared asymptotic algebra used by both files.
+## Star-Convex Expected Suboptimality
 
-## Theorem SL1 in paper-style language
+- `StarConvexScalingLawsTheorem1.lean` is the fixed-momentum large-horizon
+  proxy layer.
+- `StarConvexScalingLawsTheorem2.lean` is the fixed-batch large-horizon proxy
+  layer.
 
-The public SL1 theorems say that when momentum is fixed (`β` fixed with `0 ≤ β < 1`):
+The public laws are:
 
-- In the fixed-step view, the optimal learning rate decays like `log T / T`.
-- In the token-budget view, an interior small-branch optimal batch-size schedule grows like `(N / log N)^(2/3)`.
-- The associated optimal learning-rate schedule scales like `(log N)^(1/3) / N^(1/3)`.
+- with fixed momentum `\beta`, `\eta \asymp \log T / T`;
+- under a token budget `N`, `batchSize \asymp (N / \log N)^{2/3}`;
+- under that token-budget tuning, `\eta \asymp (\log N)^{1/3} / N^{1/3}`;
+- with fixed batch size, `1 - \beta \asymp batchSize * ((\log N) / N)^{2/3}`;
+- under that fixed-batch tuning, `\eta \asymp batchSize * \log N / N`.
 
-In other words, fixed momentum does not change the basic cube-root token-budget law: the optimizer trades off exponential bias decay against the minibatch noise floor, and this balance produces the familiar `(N / log N)^(2/3)` batch-growth law.
+## FW Expected Gap
 
-## Theorem SL2 in paper-style language
+- `FWExpectedGapSLTheorem1.lean` is the fixed-momentum large-horizon
+  Frank-Wolfe expected-gap scaling-law layer.
+- `FWExpectedGapSLTheorem2.lean` is the fixed-batch large-horizon
+  Frank-Wolfe expected-gap scaling-law layer.
 
-The public SL2 theorems say that when batch size is fixed:
+The public laws are:
 
-- The quantity `1 - β` should shrink with the horizon, rather than stay constant.
-- The asymptotically relevant tuning law is
-  `1 - β ≍ batchSize * ((log N) / N)^(2/3)`.
-- Under that tuning, the optimal learning rate scales like
-  `batchSize * log N / N`.
+- with fixed momentum `\beta`, `\eta \asymp T^{-1/2}`;
+- under a token budget `N`, `batchSize \asymp N^{1/2}`;
+- under that token-budget tuning, `\eta \asymp N^{-1/4}`;
+- with fixed batch size, `1 - \beta \asymp \sqrt{batchSize / N}`;
+- under that fixed-batch tuning, `\eta \asymp batchSize^{3/4} N^{-3/4}`.
 
-Equivalently, if `N = batchSize * T`, the step-based form is the same statement rewritten in terms of total steps `T`: the momentum gap `1 - β` closes as the horizon grows, and the learning rate decays at the corresponding logarithmic-over-linear scale.
+## FW Expected Suboptimality
 
-## Reading guide
+- `FWExpectedSuboptimalitySLTheorem1.lean` is the fixed-momentum large-horizon
+  Frank-Wolfe expected-suboptimality scaling-law layer.
+- `FWExpectedSuboptimalitySLTheorem2.lean` is the fixed-batch large-horizon
+  Frank-Wolfe expected-suboptimality scaling-law layer.
 
-Each theorem file is organized as:
+The public laws are:
 
-1. public-facing definitions
+- with fixed momentum `\beta`, `\eta \asymp \log T / T`;
+- under a token budget `N`, `batchSize \asymp (N / \log N)^{2/3}`;
+- under that token-budget tuning,
+  `\eta \asymp (\log N)^{1/3} / N^{1/3}`;
+- with fixed batch size,
+  `1 - \beta \asymp batchSize * ((\log N) / N)^{2/3}`;
+- under that fixed-batch tuning, `\eta \asymp batchSize * \log N / N`.
+
+These exponents match the star-convex expected-suboptimality family, but they
+are derived from the Frank-Wolfe KL expected-suboptimality proxy instead of the
+star-convex proxy.
+
+## File Layout
+
+Each theorem file follows the same structure:
+
+1. public definitions
 2. private definitions
 3. private lemmas and proof machinery
-4. public-facing theorems at the bottom
-
-So the mathematically meaningful API is always concentrated near the top and bottom of each file.
+4. public theorems at the bottom

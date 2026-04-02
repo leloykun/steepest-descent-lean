@@ -950,6 +950,35 @@ variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)]
 variable [CompleteSpace (StrongDual ℝ V)]
 
+/-! ------------------------------------------------------------------------
+Public Definitions
+------------------------------------------------------------------------ -/
+
+/-- The deterministic mean of the concrete minibatch-average noise. -/
+def minibatchNoise (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    StrongDual ℝ V :=
+  ∫ ω, Finset.sum Finset.univ
+      (fun i : Fin S.batchSize => uniformBatchWeight S.batchSize • S.ξ t i ω) ∂S.μ
+
+/-- The norm of the deterministic minibatch-noise mean. -/
+def minibatchNoiseNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
+  ‖S.minibatchNoise t‖
+
+/-- The concrete time-`t` minibatch noise process. -/
+def minibatchNoiseProcess
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    StrongDual ℝ V :=
+  Finset.sum Finset.univ (fun i : Fin S.batchSize => uniformBatchWeight S.batchSize • S.ξ t i ω)
+
+/-- The expected norm of the concrete minibatch noise process. -/
+def expectedMinibatchNoise
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
+  ∫ ω, ‖S.minibatchNoiseProcess t ω‖ ∂S.μ
+
+/-! ------------------------------------------------------------------------
+Private Definitions
+------------------------------------------------------------------------ -/
+
 private def flatBatchIndex
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) : Fin S.batchSize :=
   ⟨m % S.batchSize, Nat.mod_lt _ S.batchSize_pos⟩
@@ -1049,6 +1078,10 @@ private def minibatchPartialSum
     StrongDual ℝ V :=
   weightedPartialSum (fun _ => uniformBatchWeight S.batchSize) (S.minibatchTruncatedSample t) k ω
 
+/-! ------------------------------------------------------------------------
+Private Lemmas and Theorems
+------------------------------------------------------------------------ -/
+
 private theorem minibatchFutureCondexpZero
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     ∀ k, k + 1 < S.batchSize →
@@ -1073,17 +1106,6 @@ private theorem minibatchFutureCondexpZero
     (Nat.lt_succ_self k)
     hMeanZero
 
-/-- The concrete time-`t` minibatch noise process. -/
-def minibatchNoiseProcess
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    StrongDual ℝ V :=
-  Finset.sum Finset.univ (fun i : Fin S.batchSize => uniformBatchWeight S.batchSize • S.ξ t i ω)
-
-/-- The expected norm of the concrete minibatch noise process. -/
-def expectedMinibatchNoise
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
-  ∫ ω, ‖S.minibatchNoiseProcess t ω‖ ∂S.μ
-
 private lemma minibatchNoiseProcess_eq_partialSum
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     S.minibatchNoiseProcess t = S.minibatchPartialSum t S.batchSize := by
@@ -1102,6 +1124,10 @@ private lemma minibatchNoiseProcess_eq_partialSum
             simpa using
               (Fin.sum_univ_eq_sum_range (n := S.batchSize)
                 (fun i => uniformBatchWeight S.batchSize • S.minibatchTruncatedSample t i ω))
+
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
 
 /-- The sampled minibatch noise has zero mean under Assumption 1. -/
 theorem minibatchNoise_eq_zero

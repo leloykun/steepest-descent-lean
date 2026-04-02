@@ -12,7 +12,7 @@ Deriving steepest descent convergence bounds and hyperparameter scaling laws fro
 
 > **NOTE:** In my blog post, Assumption 4 states the (local) smoothness of the map $X^\dagger \mapsto \frac{1}{2}\|X^\dagger\|^{\dagger 2}$, but in [Assumptions.lean](./SteepestDescentOptimizationBounds/Assumptions.lean) we use a proxy potential map and its corresponding (smooth) mirror map instead. This is intentional. The latter is more mathematically sound and also more general, perfect for the Lean code. The former, while less rigorous, produces a more digestible proof of Lemma 5 fitting the tone of the blog post. In practice, $D \approx 1$ either way.
 
-## Expected Suboptimality Bounds
+## Expected suboptimality bounds
 
 Let $\eta > 0$ be the learning rate, weight decay parameter $\lambda > 0$ (such that $\lambda\eta \leq 1$), Nesterov momentum parameter $\beta \in [0, 1)$, and initial momentum $M_0 = 0$. Then, under Assumptions 1 to 4 and Assumption 12 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), the bounded-weight conditions $\|W_0\| \leq \frac{1}{\lambda}$ and $\|W_*\| \leq \frac{1}{\lambda}$, and arbitrary norm pair $(\|\cdot\|, \|\cdot\|^{\dagger})$, we have
 
@@ -30,7 +30,7 @@ $$
 
 where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^{\dagger}$.
 
-## Hyperparameter Scaling Laws
+### Hyperparameter scaling laws derivable from expected suboptimality bounds
 
 **Theorem 1 (Fixed momentum, large horizon proxy).** Fix $\beta \in [0, 1)$ and consider the Expected Suboptimality bound above.
 
@@ -60,6 +60,122 @@ $$
 \end{aligned}
 $$
 
+## Frank-Wolfe expected gap bounds
+
+Let
+
+$$
+\mathcal{G}(X)
+    := \sup_{\|V\| \leq 1 / \lambda} \langle \nabla f(X), X - V \rangle
+    = \langle \nabla f(X), X \rangle + \frac{1}{\lambda}\|\nabla f(X)\|^{\dagger},
+$$
+
+Then, under Assumptions 1 to 4 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), the bounded-weight conditions $\|W_0\| \leq \frac{1}{\lambda}$ and $\|W_*\| \leq \frac{1}{\lambda}$, and arbitrary norm pair $(\|\cdot\|, \|\cdot\|^{\dagger})$, we have the averaged Frank-Wolfe gap bound
+
+$$
+\begin{aligned}
+\frac{1}{T}\sum_{t=0}^{T-1}\mathcal{G}(W_t)
+    &\leq \frac{\Delta_0}{\lambda \eta T} \\
+    &\quad+ \frac{2 G_0 \beta}{(1 - \beta)\lambda T} \\
+    &\quad+ \frac{2\left(\sqrt{\frac{1 - \beta}{1 + \beta}}\,\beta + (1 - \beta)\right)}{\lambda} \frac{\sqrt{D}\sigma}{\sqrt{b}} \\
+    &\quad+ \frac{2L}{\lambda}\left(1 + \frac{2\beta^2}{1 - \beta}\right)\eta,
+\end{aligned}
+$$
+
+where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^{\dagger}$.
+
+Unlike the Expected Suboptimality layer above, this Frank-Wolfe expected-gap layer does not use the star-convexity assumption (Assumption 12).
+
+This also gives a Lean-friendly best-iterate corollary: there exists some $t < T$ such that $\mathcal{G}(W_t)$ is bounded by the same right-hand side.
+
+### Hyperparameter scaling laws derivable from Frank-Wolfe expected gap bounds
+
+**Frank-Wolfe Theorem 1 (Fixed momentum, large horizon proxy).** Fix $\beta \in [0, 1)$ and consider the Frank-Wolfe expected-gap proxy above.
+
+**(1) Iteration scaling.** For fixed large number of training steps $T$ and fixed batch size $b$, the proxy is minimized by
+
+$$
+\eta_T^*(b) \propto T^{-1/2}.
+$$
+
+**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta_T^*, b_T^*)$ satisfies
+
+$$
+\begin{aligned}
+b_T^* &\propto N^{1/2}, \\
+\eta_T^* &\propto N^{-1/4}.
+\end{aligned}
+$$
+
+**Frank-Wolfe Theorem 2 (Fixed batch size, large horizon proxy).** At fixed batch size $b$, the minimizer of the Frank-Wolfe expected-gap proxy $(\eta_T^*, \beta_T^*)$ satisfies
+
+$$
+\begin{aligned}
+1 - \beta_T^* &\propto \sqrt{\frac{b}{N}}, \\
+\eta_T^* &\propto b^{3/4} N^{-3/4}.
+\end{aligned}
+$$
+
+Equivalently, if $N = bT$, the step-based form is
+
+$$
+1 - \beta_T^* \propto T^{-1/2},
+\qquad
+\eta_T^* \propto T^{-3/4}.
+$$
+
+These Frank-Wolfe expected-gap results are formalized in [FrankWolfe.lean](./SteepestDescentOptimizationBounds/FrankWolfe.lean), [FrankWolfeExpectedGap.lean](./SteepestDescentOptimizationBounds/FrankWolfeExpectedGap.lean), [FWExpectedGapSLTheorem1.lean](./SteepestDescentScalingLaws/FWExpectedGapSLTheorem1.lean), and [FWExpectedGapSLTheorem2.lean](./SteepestDescentScalingLaws/FWExpectedGapSLTheorem2.lean).
+
+## Frank-Wolfe expected suboptimality bounds
+
+Assume now the Frank-Wolfe KL condition along the iterates:
+\[
+\mathcal{G}(W_t) \ge \mu_{\mathrm{FW}} \bigl(f(W_t) - f(W_*)\bigr)
+\qquad \text{for all } t,
+\]
+with $\mu_{\mathrm{FW}} > 0$, together with $\mu_{\mathrm{FW}} \lambda \eta \le 1$.
+Then, under Assumptions 1 to 4 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), we have the expected-suboptimality bound,
+\[
+\begin{aligned}
+\mathbb{E}[f(W_T) - f(W_*)]
+    &\leq (1 - \mu_{\mathrm{FW}}\lambda\eta)^T \Delta_0 \\
+    &\quad+ \frac{2}{\mu_{\mathrm{FW}}\lambda}
+      \left(\sqrt{\frac{1 - \beta}{1 + \beta}}\,\beta + (1 - \beta)\right)
+      \frac{\sqrt{D}\,\sigma}{\sqrt{b}} \\
+    &\quad+ \left[
+      \frac{2\beta}{1 - \beta} G_0
+      + \frac{2L}{\mu_{\mathrm{FW}}\lambda}
+        \left(1 + \frac{2\beta^2}{1 - \beta}\right)
+    \right]\eta,
+\end{aligned}
+\]
+where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^\dagger$.
+
+Unlike the star-convex expected-suboptimality layer, this result does not use
+the star-convexity assumption. It uses the Frank-Wolfe KL assumption instead.
+
+### Hyperparameter scaling laws derivable from Frank-Wolfe expected suboptimality bounds
+
+The resulting large-horizon exponents match the star-convex expected-suboptimality
+family:
+
+**(1) Iteration scaling.** For fixed large number of training steps $T$ and fixed batch size $b$, the Expected Suboptimality is minimized by,
+
+$$
+\eta_T^*(b) \propto \frac{\log T}{T}.
+$$
+
+**(2) Token-budget scaling.** For fixed token budget $N$, the minimizer of the Expected Suboptimality $(\eta_T^*, b_T^*)$ satisfies,
+
+$$
+\begin{aligned}
+b_T^* &\propto \left(\frac{N}{\log N}\right)^{2/3}, \\
+\eta_T^* &\propto \left(\frac{\log N}{N}\right)^{1/3}.
+\end{aligned}
+$$
+
+These Frank-Wolfe expected-suboptimality results are formalized in [FrankWolfeExpectedSuboptimality.lean](./SteepestDescentOptimizationBounds/FrankWolfeExpectedSuboptimality.lean), [FWExpectedSuboptimalitySLTheorem1.lean](./SteepestDescentScalingLaws/FWExpectedSuboptimalitySLTheorem1.lean), and [FWExpectedSuboptimalitySLTheorem2.lean](./SteepestDescentScalingLaws/FWExpectedSuboptimalitySLTheorem2.lean).
+
 ## Discussion
 
 1. **When do the results here hold?**
@@ -68,7 +184,7 @@ $$
 
    Regarding the norm, what this means in practice is that we have to choose optimizers, layers, and parameterizations on our model such that, when composed with the loss function, we get an $L$-Lipschitz objective function $f = \ell \circ \text{model}$. For a single-layer linear model, we can already construct well-known optimizers such as SignSGD (AdamW without accumulation) and Muon (Shampoo without accumulation) from the dualizer of the chosen norm (elementwise max norm and spectral norm for the two examples, respectively) ([Bernstein and Newhouse, 2024](https://arxiv.org/abs/2409.20325)). Multilayer models require more careful design on how to compose the layers and the layerwise norms, but the core idea is the same: we can derive the appropriate optimizer and parameterization from the chosen norm ([Large et al., 2024](https://arxiv.org/abs/2405.14813)).
 
-   Regarding the metric, we currently use Expected Suboptimality bounds to derive our convergence bounds and scaling laws. We could instead use Expected Gradient Stationarity as in [Kovalev, 2025](https://arxiv.org/abs/2503.12645), [Shulgin et al., 2026](https://arxiv.org/abs/2603.15958), and [Islamov et al., 2026](https://arxiv.org/abs/2603.21191). But these are *expected* bounds at time $T$. Last-iterate bounds may be more relevant in practice, but they are more difficult to derive and may not be amenable to purely analytical scaling-law derivations. So for now, we stick to Expected Suboptimality bounds.
+   Regarding the metric, we currently use Expected Suboptimality bounds directly to derive our convergence bounds and scaling laws. We could instead use Expected Gradient Stationarity as in [Kovalev, 2025](https://arxiv.org/abs/2503.12645) and [Shulgin et al., 2026](https://arxiv.org/abs/2603.15958), or derive convergence bounds from our Expected Suboptimality bounds first as in [Islamov et al., 2026](https://arxiv.org/abs/2603.21191). Last-iterate bounds may be more relevant in practice, but they are more difficult to derive and may not be amenable to purely analytical scaling-law derivations.
 
 ## References
 

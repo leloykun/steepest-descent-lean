@@ -5,6 +5,22 @@ namespace SteepestDescentOptimizationBounds
 
 noncomputable section
 
+/-!
+This file contains the common geometric feasibility and update-control lemmas
+for the decoupled weight-decay iteration.
+
+Upstream dependency:
+
+- `Assumptions.lean` provides the geometry context, the LMO direction, and the
+  update rule.
+
+Downstream use:
+
+- `StarConvex.lean` reuses Proposition 9 and the common step-ball geometry.
+- `FrankWolfe.lean` reuses Proposition 9 directly for the deterministic
+  Frank-Wolfe-gap descent argument.
+-/
+
 section Geometry
 
 namespace StochasticSteepestDescentGeometryContext
@@ -14,6 +30,30 @@ variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+/-! ------------------------------------------------------------------------
+Public Definitions
+------------------------------------------------------------------------ -/
+
+/-- The center of the radius-`η` feasible ball used by the update. -/
+def stepCenter (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : V :=
+  (1 - S.lambda * S.eta) • S.W t
+
+/-! ------------------------------------------------------------------------
+Private Definitions
+------------------------------------------------------------------------ -/
+
+-- No private definitions are introduced in this file.
+
+/-! ------------------------------------------------------------------------
+Private Lemmas and Theorems
+------------------------------------------------------------------------ -/
+
+-- No private lemmas are currently needed in this file.
+
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
 
 /-- The chosen LMO direction lies in the primal unit ball. -/
 lemma aStar_norm_le
@@ -39,12 +79,6 @@ lemma weight_sub_stepCenter
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     S.W t - S.stepCenter t = (S.lambda * S.eta) • S.W t := by
   simp [StochasticSteepestDescentGeometryContext.stepCenter, sub_eq_add_neg, one_smul, add_smul]
-
-/-- Rewrites the displacement from the step center to `X_t` as a scaled copy of `W_*`. -/
-lemma interpolatedPoint_sub_stepCenter
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    S.interpolatedPoint t - S.stepCenter t = (S.lambda * S.eta) • S.WStar := by
-  simp [StochasticSteepestDescentGeometryContext.interpolatedPoint]
 
 /-- The update is feasible because the chosen LMO direction has norm at most `1`. -/
 lemma step_feasible
@@ -168,110 +202,6 @@ theorem proposition9_weight_and_update_bounds
     _ = 2 * S.eta := by
           field_simp [S.lambda_pos.ne']
           ring
-
-/-- Shows that the auxiliary point `X_t` is feasible for the linear minimization step. -/
-lemma interpolatedPoint_feasible
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    ‖S.interpolatedPoint t - S.stepCenter t‖ ≤ S.eta := by
-  have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
-  calc
-    ‖S.interpolatedPoint t - S.stepCenter t‖ = ‖(S.lambda * S.eta) • S.WStar‖ := by
-      rw [interpolatedPoint_sub_stepCenter]
-    _ = (S.lambda * S.eta) * ‖S.WStar‖ := by
-      simp [norm_smul, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
-      gcongr
-      exact S.WStar_bound
-    _ = S.eta := by
-      field_simp [S.lambda_pos.ne']
-
-/-- The auxiliary point `X_t` also stays inside the primal `1 / λ` ball. -/
-lemma interpolatedPoint_bound
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda := by
-  have hWeight := weight_bound_from_feasible_step S t
-  have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
-  have hDecayNonneg : 0 ≤ 1 - S.lambda * S.eta := S.one_sub_lambda_eta_nonneg
-  have hFirst :
-      (1 - S.lambda * S.eta) * ‖S.W t‖ ≤ (1 - S.lambda * S.eta) * (1 / S.lambda) := by
-    exact mul_le_mul_of_nonneg_left hWeight hDecayNonneg
-  have hSecond :
-      (S.lambda * S.eta) * ‖S.WStar‖ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
-    exact mul_le_mul_of_nonneg_left S.WStar_bound hScaleNonneg
-  calc
-    ‖S.interpolatedPoint t‖
-      = ‖(1 - S.lambda * S.eta) • S.W t + (S.lambda * S.eta) • S.WStar‖ := by
-          simp [StochasticSteepestDescentGeometryContext.interpolatedPoint,
-            StochasticSteepestDescentGeometryContext.stepCenter]
-    _ ≤ ‖(1 - S.lambda * S.eta) • S.W t‖ + ‖(S.lambda * S.eta) • S.WStar‖ := norm_add_le _ _
-    _ = (1 - S.lambda * S.eta) * ‖S.W t‖ + (S.lambda * S.eta) * ‖S.WStar‖ := by
-          simp [norm_smul, Real.norm_of_nonneg hDecayNonneg, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ (1 - S.lambda * S.eta) * (1 / S.lambda) + (S.lambda * S.eta) * (1 / S.lambda) := by
-          linarith
-    _ = 1 / S.lambda := by
-          field_simp [S.lambda_pos.ne']
-          ring
-
-/-- Shows that the current iterate `W_t` is also feasible for the same radius-`η` ball. -/
-lemma current_weight_feasible
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    ‖S.W t - S.stepCenter t‖ ≤ S.eta := by
-  have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
-  have hWeight := weight_bound_from_feasible_step S t
-  calc
-    ‖S.W t - S.stepCenter t‖ = ‖(S.lambda * S.eta) • S.W t‖ := by
-      rw [weight_sub_stepCenter]
-    _ = (S.lambda * S.eta) * ‖S.W t‖ := by
-      simp [norm_smul, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
-      gcongr
-    _ = S.eta := by
-      field_simp [S.lambda_pos.ne']
-
-/--
-Lemma 13: the chosen update is directionally optimal against `X_t`, and both
-`W_t` and `W_{t+1}` stay within distance `2η` of `X_t`.
--/
-theorem lemma13_directional_and_distance_bounds
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ t,
-      (S.C t) (S.W (t + 1) - S.interpolatedPoint t) ≤ 0 ∧
-        ‖S.W t - S.interpolatedPoint t‖ ≤ 2 * S.eta ∧
-        ‖S.W (t + 1) - S.interpolatedPoint t‖ ≤ 2 * S.eta := by
-  intro t
-  have hXFeasible := interpolatedPoint_feasible S t
-  have hOptimal := S.step_optimal t (S.interpolatedPoint t) hXFeasible
-  refine ⟨?_, ?_, ?_⟩
-  · have : (S.C t) (S.W (t + 1)) - (S.C t) (S.interpolatedPoint t) ≤ 0 :=
-      sub_nonpos.mpr hOptimal
-    simpa using this
-  · calc
-      ‖S.W t - S.interpolatedPoint t‖
-          = ‖(S.W t - S.stepCenter t) - (S.interpolatedPoint t - S.stepCenter t)‖ := by
-              have hDecomp :
-                  S.W t - S.interpolatedPoint t =
-                    (S.W t - S.stepCenter t) - (S.interpolatedPoint t - S.stepCenter t) := by
-                abel_nf
-              rw [hDecomp]
-      _ ≤ ‖S.W t - S.stepCenter t‖ + ‖S.interpolatedPoint t - S.stepCenter t‖ := norm_sub_le _ _
-      _ ≤ S.eta + S.eta := by
-            gcongr
-            exact S.current_weight_feasible t
-      _ = 2 * S.eta := by ring
-  · calc
-      ‖S.W (t + 1) - S.interpolatedPoint t‖
-          = ‖(S.W (t + 1) - S.stepCenter t) - (S.interpolatedPoint t - S.stepCenter t)‖ := by
-              have hDecomp :
-                  S.W (t + 1) - S.interpolatedPoint t =
-                    (S.W (t + 1) - S.stepCenter t) -
-                      (S.interpolatedPoint t - S.stepCenter t) := by
-                abel_nf
-              rw [hDecomp]
-      _ ≤ ‖S.W (t + 1) - S.stepCenter t‖ + ‖S.interpolatedPoint t - S.stepCenter t‖ := norm_sub_le _ _
-      _ ≤ S.eta + S.eta := by
-            gcongr
-            exact S.step_feasible t
-      _ = 2 * S.eta := by ring
 
 end StochasticSteepestDescentGeometryContext
 

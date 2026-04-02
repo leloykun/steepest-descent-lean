@@ -524,13 +524,12 @@ lemma star_convex (h : Assumption12_StarConvexityAtReferencePoint f WStar) :
 end Assumption12_StarConvexityAtReferencePoint
 
 /--
-Canonical geometric context for stochastic steepest descent with weight decay.
+Canonical common geometric context for stochastic steepest descent with weight
+decay under Assumptions 1--4.
 
-This is the single theorem-facing base carrier for Proposition 9, Lemma 13,
-Corollaries 10/11, Proposition 6, Lemma 5 instantiation, and Theorem 14.
-
-It is also the current global deterministic geometry-and-trajectory context used
-by the formalization.
+This is the shared theorem-facing base carrier for Proposition 9, Lemma 13,
+Corollaries 10/11, Proposition 6, Lemma 5 instantiation, and the Frank-Wolfe
+layer.
 
 The theorem-facing stochastic model is a fresh-sampling oracle
 `g(W_t; ζ_{t,i})` on the ambient probability space `Ω`. The derived noise
@@ -558,7 +557,6 @@ structure StochasticSteepestDescentGeometryContext
   pairing : ContinuousDualPairingContext (StrongDual ℝ V) V
   WStar : V
   WStar_optimality : ∀ W, f WStar ≤ f W
-  WStar_bound : ‖WStar‖ ≤ 1 / lambda
 
   -- Deterministic trajectory/dynamics.
   W : ℕ → V
@@ -599,15 +597,121 @@ structure StochasticSteepestDescentGeometryContext
     Assumption3_FLocalSmoothness fGrad lambda
   assumption4_localProxyPotential :
     Assumption4_LocalSmoothProxyPotential V (StrongDual ℝ V) pairing
-  assumption12_starConvexity :
-    Assumption12_StarConvexityAtReferencePoint f WStar
   -- Almost-sure support condition connecting oracle noise to the proxy radius.
   oracle_sample_norm_le_noiseRadius_ae :
     ∀ t i, ∀ᵐ ω ∂drawProcess.μ,
       ‖fGrad (W t) - stochasticGradientOracle.g (W t) (drawProcess.draw t i ω)‖ ≤
         assumption4_localProxyPotential.noiseRadius
 
+/--
+Stochastic geometry context specialized to the star-convex setting used by
+Theorem 14, the convergence layer, and the scaling-law files.
+-/
+structure StochasticStarConvexGeometryContext
+    (Ω V : Type*)
+    [MeasurableSpace Ω]
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    extends StochasticSteepestDescentGeometryContext Ω V where
+  WStar_bound : ‖WStar‖ ≤ 1 / lambda
+  assumption12_starConvexity :
+    Assumption12_StarConvexityAtReferencePoint f WStar
+
+/--
+Frank-Wolfe Kurdyka-Lojasiewicz assumption along the deterministic iterate
+sequence.
+
+This is phrased directly in terms of the radius-`1 / λ` Frank-Wolfe gap so that
+`Assumptions.lean` stays independent of the downstream `FrankWolfe.lean`
+definitions.
+-/
+structure AssumptionFrankWolfeKLAlongIterates
+    (V : Type*)
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    (f : V → ℝ)
+    (fGrad : V → StrongDual ℝ V)
+    (WStar : V)
+    (W : ℕ → V)
+    (muFW lambda : ℝ) where
+  gap_lower_bound :
+    ∀ t,
+      muFW * (f (W t) - f WStar) ≤
+        sSup ((fun V => (fGrad (W t)) (W t - V)) '' Metric.closedBall (0 : V) (1 / lambda))
+
+/--
+Stochastic geometry context for the Frank-Wolfe layer.
+
+This currently adds no assumptions beyond the common Assumptions-1--4 carrier,
+but keeps the Frank-Wolfe stack on its own theorem-facing type.
+-/
+structure StochasticFrankWolfeGeometryContext
+    (Ω V : Type*)
+    [MeasurableSpace Ω]
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    extends StochasticSteepestDescentGeometryContext Ω V
+
+/--
+Stochastic Frank-Wolfe geometry context augmented with the FW-KL contraction
+assumption used by the expected-suboptimality layer.
+-/
+structure StochasticFrankWolfeKLGeometryContext
+    (Ω V : Type*)
+    [MeasurableSpace Ω]
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    extends StochasticFrankWolfeGeometryContext Ω V where
+  muFW : ℝ
+  muFW_pos : 0 < muFW
+  muFW_lambda_eta_le_one : muFW * lambda * eta ≤ 1
+  assumptionFrankWolfeKL :
+    AssumptionFrankWolfeKLAlongIterates V f fGrad WStar W muFW lambda
+
 attribute [instance] StochasticSteepestDescentGeometryContext.sampleMeasurableSpace
+
+namespace StochasticFrankWolfeKLGeometryContext
+
+variable {Ω V : Type*}
+variable [MeasurableSpace Ω]
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+lemma muFW_nonneg (S : StochasticFrankWolfeKLGeometryContext Ω V) : 0 ≤ S.muFW :=
+  S.muFW_pos.le
+
+lemma muFW_lambda_eta_nonneg (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    0 ≤ S.muFW * S.lambda * S.eta :=
+  mul_nonneg (mul_nonneg S.muFW_pos.le S.lambda_pos.le) S.eta_pos.le
+
+lemma muFW_lambda_eta_pos (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    0 < S.muFW * S.lambda * S.eta :=
+  mul_pos (mul_pos S.muFW_pos S.lambda_pos) S.eta_pos
+
+lemma muFW_lambda_eta_ne_zero (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    S.muFW * S.lambda * S.eta ≠ 0 :=
+  ne_of_gt S.muFW_lambda_eta_pos
+
+lemma one_sub_muFW_lambda_eta_nonneg (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    0 ≤ 1 - S.muFW * S.lambda * S.eta := by
+  nlinarith [S.muFW_lambda_eta_le_one]
+
+lemma one_sub_muFW_lambda_eta_le_one (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    1 - S.muFW * S.lambda * S.eta ≤ 1 := by
+  nlinarith [S.muFW_lambda_eta_nonneg]
+
+lemma one_sub_muFW_lambda_eta_lt_one (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    1 - S.muFW * S.lambda * S.eta < 1 := by
+  nlinarith [S.muFW_lambda_eta_pos]
+
+lemma one_sub_one_sub_muFW_lambda_eta (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    1 - (1 - S.muFW * S.lambda * S.eta) = S.muFW * S.lambda * S.eta := by
+  ring
+
+end StochasticFrankWolfeKLGeometryContext
 
 namespace StochasticSteepestDescentGeometryContext
 
@@ -849,74 +953,9 @@ lemma sample_norm_le_noiseRadius_ae
     StochasticSteepestDescentGeometryContext.noiseRadius] using
     S.oracle_sample_norm_le_noiseRadius_ae t i
 
-/-- The center of the radius-`η` feasible ball used by the update. -/
-def stepCenter (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : V :=
-  (1 - S.lambda * S.eta) • S.W t
-
-/-- The point `X_t = (1 - λη) W_t + λη W_*`. -/
-def interpolatedPoint (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : V :=
-  S.stepCenter t + (S.lambda * S.eta) • S.WStar
-
 /-- The suboptimality gap at time `t`. -/
 def suboptimality (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
   S.f (S.W t) - S.f S.WStar
-
-/-- The concrete minibatch stochastic gradient estimator at time `t`. -/
-def minibatchGradient
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    StrongDual ℝ V :=
-  Finset.sum Finset.univ
-    (fun i : Fin S.batchSize =>
-      uniformBatchWeight S.batchSize • S.stochasticGradientSample t i ω)
-
-/-- The derived stochastic-gradient sample is unbiased at each visited iterate. -/
-theorem stochasticGradientSample_mean_eq_grad
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (i : Fin S.batchSize) :
-    ∫ ω, S.stochasticGradientSample t i ω ∂S.μ = S.grad t := by
-  simpa [StochasticSteepestDescentGeometryContext.grad,
-    StochasticSteepestDescentGeometryContext.stochasticGradientSample,
-    StochasticSteepestDescentGeometryContext.sampleDraw,
-    StochasticSteepestDescentGeometryContext.μ] using
-    S.assumption1_sampling.estimator_mean_eq_grad t i
-
-/-- The derived minibatch stochastic-gradient estimator is unbiased. -/
-theorem minibatchGradient_mean_eq_grad
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    ∫ ω, S.minibatchGradient t ω ∂S.μ = S.grad t := by
-  letI : IsProbabilityMeasure S.μ := S.prob
-  have hInt :
-      ∀ i ∈ (Finset.univ : Finset (Fin S.batchSize)),
-        Integrable (fun ω =>
-          uniformBatchWeight S.batchSize • S.stochasticGradientSample t i ω) S.μ := by
-    intro i hi
-    have hEstimator :
-        Integrable (S.stochasticGradientSample t i) S.μ := by
-      simpa [StochasticSteepestDescentGeometryContext.μ,
-        StochasticSteepestDescentGeometryContext.stochasticGradientSample,
-        StochasticSteepestDescentGeometryContext.sampleDraw] using
-        S.assumption1_sampling.estimator_integrable t i
-    exact hEstimator.smul (uniformBatchWeight S.batchSize)
-  have hCoeffSum :
-      Finset.sum (Finset.univ : Finset (Fin S.batchSize))
-        (fun _ : Fin S.batchSize => uniformBatchWeight S.batchSize) = 1 := by
-    simpa [StochasticSteepestDescentParameters.batchSizeℝ] using
-      uniformBatchWeight_sum_eq_one S.batchSize_pos
-  calc
-    ∫ ω, S.minibatchGradient t ω ∂S.μ
-      = Finset.sum (Finset.univ : Finset (Fin S.batchSize))
-          (fun i => ∫ ω, uniformBatchWeight S.batchSize • S.stochasticGradientSample t i ω ∂S.μ) := by
-            simp [StochasticSteepestDescentGeometryContext.minibatchGradient,
-              MeasureTheory.integral_finset_sum, hInt]
-    _ = Finset.sum (Finset.univ : Finset (Fin S.batchSize))
-          (fun i => uniformBatchWeight S.batchSize • S.grad t) := by
-            refine Finset.sum_congr rfl ?_
-            intro i hi
-            rw [integral_smul, S.stochasticGradientSample_mean_eq_grad t i]
-    _ = (Finset.sum (Finset.univ : Finset (Fin S.batchSize))
-          (fun _ : Fin S.batchSize => uniformBatchWeight S.batchSize)) • S.grad t := by
-            rw [← Finset.sum_smul]
-    _ = (1 : ℝ) • S.grad t := by rw [hCoeffSum]
-    _ = S.grad t := by simp
 
 /-- The momentum-corrected search dual `C_t`. -/
 def C (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : StrongDual ℝ V :=
@@ -925,91 +964,6 @@ def C (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : StrongDual
 /-- The initial gradient norm. -/
 def initialGradNorm (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
   ‖S.grad 0‖
-
-/-- The deterministic mean of the concrete minibatch-average noise. -/
-def minibatchNoise (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    StrongDual ℝ V :=
-  ∫ ω, Finset.sum Finset.univ
-      (fun i : Fin S.batchSize => uniformBatchWeight S.batchSize • S.ξ t i ω) ∂S.μ
-
-/-- The norm of the deterministic minibatch-noise mean. -/
-def minibatchNoiseNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
-  ‖S.minibatchNoise t‖
-
-/-- The momentum error `E_t = ∇f(W_t) - M_t`. -/
-def momentumError (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    StrongDual ℝ V :=
-  S.grad t - S.momentum t
-
-/-- The norm of the momentum error. -/
-def momentumErrorNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
-  ‖S.momentumError t‖
-
-/-- The gradient-splitting residual `∇f(W_t) - C_t`. -/
-def nesterovError (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    StrongDual ℝ V :=
-  S.grad t - S.C t
-
-/-- The Nesterov error `‖∇f(W_t) - C_t‖`. -/
-def nesterovErrorNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
-  ‖S.nesterovError t‖
-
-/-- The Corollary-11 momentum-noise prefactor. -/
-def momentumNoisePrefactor (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
-  Real.sqrt ((1 - S.beta) / (1 + S.beta)) * S.beta + (1 - S.beta)
-
-/-- The drift component of the momentum error recursion. -/
-def driftComponent (S : StochasticSteepestDescentGeometryContext Ω V) : ℕ → StrongDual ℝ V
-  | 0 => S.grad 0
-  | t + 1 => S.beta • S.driftComponent t + S.beta • (S.grad (t + 1) - S.grad t)
-
-/-- The noise component of the momentum error recursion. -/
-def noiseComponent (S : StochasticSteepestDescentGeometryContext Ω V) : ℕ → StrongDual ℝ V
-  | 0 => 0
-  | t + 1 => S.beta • S.noiseComponent t + (1 - S.beta) • S.minibatchNoise (t + 1)
-
-/-- The norm of the noise component. -/
-def noiseComponentNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
-  ‖S.noiseComponent t‖
-
-/-- The Nesterov vector split is definitional from the concrete `C_t`. -/
-lemma nesterovError_split (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    S.grad t = S.C t + S.nesterovError t := by
-  simp [StochasticSteepestDescentGeometryContext.nesterovError, StochasticSteepestDescentGeometryContext.C,
-    sub_eq_add_neg, add_comm, add_left_comm, add_assoc]
-
-/-- The Nesterov error is a norm and is therefore nonnegative. -/
-lemma nesterovErrorNorm_nonneg (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    0 ≤ S.nesterovErrorNorm t := by
-  simp [StochasticSteepestDescentGeometryContext.nesterovErrorNorm]
-
-/-- The concrete Nesterov residual acts on vectors with the usual operator-norm bound. -/
-lemma nesterovError_apply_le
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (v : V) :
-    (S.nesterovError t) v ≤ S.nesterovErrorNorm t * ‖v‖ := by
-  calc
-    (S.nesterovError t) v ≤ ‖(S.nesterovError t) v‖ := le_abs_self _
-    _ ≤ ‖S.nesterovError t‖ * ‖v‖ := by
-      simpa using (S.nesterovError t).le_opNorm v
-    _ = S.nesterovErrorNorm t * ‖v‖ := by
-      simp [StochasticSteepestDescentGeometryContext.nesterovErrorNorm]
-
-/-- The Corollary-11 momentum-noise prefactor is nonnegative. -/
-lemma momentumNoisePrefactor_nonneg (S : StochasticSteepestDescentGeometryContext Ω V) :
-    0 ≤ S.momentumNoisePrefactor := by
-  have hSqrtNonneg : 0 ≤ Real.sqrt ((1 - S.beta) / (1 + S.beta)) := Real.sqrt_nonneg _
-  exact add_nonneg (mul_nonneg hSqrtNonneg S.beta_nonneg) S.one_sub_beta_pos.le
-
-/-- `W_*` is optimal by Assumption 12. -/
-lemma wStar_optimal (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ W, S.f S.WStar ≤ S.f W :=
-  S.WStar_optimality
-
-/-- The star-convex interpolation inequality from Assumption 12. -/
-lemma star_convex_prop (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ W α, 0 ≤ α → α ≤ 1 →
-      S.f ((1 - α) • W + α • S.WStar) ≤ (1 - α) * S.f W + α * S.f S.WStar :=
-  Assumption12_StarConvexityAtReferencePoint.star_convex S.assumption12_starConvexity
 
 end StochasticSteepestDescentGeometryContext
 

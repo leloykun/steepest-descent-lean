@@ -14,12 +14,39 @@ variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
+/-! ------------------------------------------------------------------------
+Public Definitions
+------------------------------------------------------------------------ -/
+
+/-- The gradient-splitting residual `∇f(W_t) - C_t`. -/
+def nesterovError (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    StrongDual ℝ V :=
+  S.grad t - S.C t
+
+/-- The Nesterov error `‖∇f(W_t) - C_t‖`. -/
+def nesterovErrorNorm (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
+  ‖S.nesterovError t‖
+
+/-- The Corollary-11 momentum-noise prefactor. -/
+def momentumNoisePrefactor (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
+  Real.sqrt ((1 - S.beta) / (1 + S.beta)) * S.beta + (1 - S.beta)
+
+/-! ------------------------------------------------------------------------
+Private Definitions
+------------------------------------------------------------------------ -/
+
+-- No private definitions are introduced in this file.
+
+/-! ------------------------------------------------------------------------
+Private Lemmas and Theorems
+------------------------------------------------------------------------ -/
+
 /--
 The vector identity behind Corollary 7 / Corollary 11:
 
 `∇f(W_t) - C_t = β E_t + (1 - β) ξ_{S_t}`.
 -/
-lemma nesterovVector_eq
+private lemma nesterovVector_eq
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     S.nesterovError t =
       S.beta • S.momentumError t + (1 - S.beta) • S.minibatchNoise t := by
@@ -31,7 +58,7 @@ lemma nesterovVector_eq
   abel_nf
 
 /-- Norm form of the Nesterov split used in Corollary 11. -/
-theorem nesterovErrorNorm_le
+private theorem nesterovErrorNorm_le
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,
       S.nesterovErrorNorm t ≤
@@ -263,6 +290,45 @@ theorem corollary11_average_nesterovError_bound
   exact average_nesterovError_bound_of_pointwise
     S
     (Corollary11PointwiseNesterovErrorBound S)
+
+namespace StochasticSteepestDescentGeometryContext
+
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
+
+/--
+The Nesterov vector split is definitional from the concrete `C_t`.
+-/
+lemma nesterovError_split (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    S.grad t = S.C t + S.nesterovError t := by
+  simp [StochasticSteepestDescentGeometryContext.nesterovError,
+    StochasticSteepestDescentGeometryContext.C,
+    sub_eq_add_neg, add_comm, add_left_comm, add_assoc]
+
+/-- The Nesterov error is a norm and is therefore nonnegative. -/
+lemma nesterovErrorNorm_nonneg (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    0 ≤ S.nesterovErrorNorm t := by
+  simp [StochasticSteepestDescentGeometryContext.nesterovErrorNorm]
+
+/-- The concrete Nesterov residual acts on vectors with the usual operator-norm bound. -/
+lemma nesterovError_apply_le
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (v : V) :
+    (S.nesterovError t) v ≤ S.nesterovErrorNorm t * ‖v‖ := by
+  calc
+    (S.nesterovError t) v ≤ ‖(S.nesterovError t) v‖ := le_abs_self _
+    _ ≤ ‖S.nesterovError t‖ * ‖v‖ := by
+      simpa using (S.nesterovError t).le_opNorm v
+    _ = S.nesterovErrorNorm t * ‖v‖ := by
+      simp [StochasticSteepestDescentGeometryContext.nesterovErrorNorm]
+
+/-- The Corollary-11 momentum-noise prefactor is nonnegative. -/
+lemma momentumNoisePrefactor_nonneg (S : StochasticSteepestDescentGeometryContext Ω V) :
+    0 ≤ S.momentumNoisePrefactor := by
+  have hSqrtNonneg : 0 ≤ Real.sqrt ((1 - S.beta) / (1 + S.beta)) := Real.sqrt_nonneg _
+  exact add_nonneg (mul_nonneg hSqrtNonneg S.beta_nonneg) S.one_sub_beta_pos.le
+
+end StochasticSteepestDescentGeometryContext
 
 end Corollary11
 

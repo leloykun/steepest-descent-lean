@@ -1,10 +1,8 @@
-import SteepestDescentOptimizationBounds.Theorem14
+import SteepestDescentOptimizationBounds.StarConvex
 
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section
-
-namespace StochasticSteepestDescentGeometryContext
 
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
@@ -92,7 +90,69 @@ theorem mul_bounds_of_nonneg
   · nlinarith [haLowerNonneg, hbLowerNonneg, haLower, hbLower]
   · nlinarith [haLowerNonneg, hbLowerNonneg, haUpper, hbUpper]
 
-end StochasticSteepestDescentGeometryContext
+theorem le_sqrt_of_nonneg_of_le_one
+    {x : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1) :
+    x ≤ Real.sqrt x := by
+  have hxSq : x ^ 2 ≤ x := by nlinarith
+  have hSqrtSq : (Real.sqrt x) ^ 2 = x := by
+    simpa [sq] using (Real.sq_sqrt hx0)
+  have hSqrtNonneg : 0 ≤ Real.sqrt x := Real.sqrt_nonneg x
+  nlinarith
+
+theorem sqrt_le_sqrt_sqrt_of_nonneg_of_le_one
+    {x : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1) :
+    Real.sqrt x ≤ Real.sqrt (Real.sqrt x) := by
+  exact Real.sqrt_le_sqrt (le_sqrt_of_nonneg_of_le_one hx0 hx1)
+
+theorem sqrt_sqrt_eq_rpow_quarter
+    {x : ℝ} (hx : 0 ≤ x) :
+    Real.sqrt (Real.sqrt x) = Real.rpow x (1 / 4 : ℝ) := by
+  rw [Real.sqrt_eq_rpow]
+  rw [Real.sqrt_eq_rpow]
+  rw [← Real.rpow_mul hx (1 / 2 : ℝ) (1 / 2 : ℝ)]
+  norm_num
+
+theorem sqrt_mul_sqrt_sqrt_eq_rpow_three_quarters
+    {x : ℝ} (hx : 0 ≤ x) :
+    Real.sqrt x * Real.sqrt (Real.sqrt x) = Real.rpow x (3 / 4 : ℝ) := by
+  by_cases hx0 : x = 0
+  · simp [hx0]
+  · have hxne : x ≠ 0 := hx0
+    have hxpos : 0 < x := lt_of_le_of_ne hx hxne.symm
+    nth_rewrite 1 [Real.sqrt_eq_rpow]
+    rw [sqrt_sqrt_eq_rpow_quarter hx]
+    change Real.rpow x (1 / 2 : ℝ) * Real.rpow x (1 / 4 : ℝ) = Real.rpow x (3 / 4 : ℝ)
+    convert (Real.rpow_add hxpos (1 / 2 : ℝ) (1 / 4 : ℝ)).symm using 1
+    norm_num
+
+theorem reciprocal_linear_eq_min_add_sq
+    {a A η ηStar : ℝ}
+    (hη : 0 < η)
+    (hRel : a = A * ηStar ^ 2) :
+    a / η + A * η = 2 * A * ηStar + A * (η - ηStar) ^ 2 / η := by
+  field_simp [hη.ne']
+  nlinarith [hRel]
+
+theorem reciprocal_linear_value_at_closed_form
+    {a A ηStar : ℝ}
+    (hEtaStar : 0 < ηStar)
+    (hRel : a = A * ηStar ^ 2) :
+    a / ηStar + A * ηStar = 2 * A * ηStar := by
+  field_simp [hEtaStar.ne']
+  nlinarith [hRel]
+
+theorem reciprocal_linear_lt_of_ne
+    {a A η ηStar : ℝ}
+    (hA : 0 < A) (hη : 0 < η)
+    (hRel : a = A * ηStar ^ 2)
+    (hNe : η ≠ ηStar) :
+    2 * A * ηStar < a / η + A * η := by
+  rw [reciprocal_linear_eq_min_add_sq hη hRel]
+  have hSq : 0 < (η - ηStar) ^ 2 := by
+    exact sq_pos_iff.mpr (sub_ne_zero.mpr hNe)
+  have hTerm : 0 < A * (η - ηStar) ^ 2 / η := by
+    positivity
+  linarith
 
 end
 
