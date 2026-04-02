@@ -568,10 +568,14 @@ structure StochasticSteepestDescentGeometryContext
     ∀ t,
       momentum (t + 1) =
         beta • momentum t + (1 - beta) • fGrad (W (t + 1))
+  -- Nesterov-corrected search dual.
+  C : ℕ → StrongDual ℝ V
+  C_spec :
+    ∀ t, C t = beta • momentum t + (1 - beta) • fGrad (W t)
   -- Update rule
   aStar : ℕ → V
   aStar_spec :
-    ∀ t, IsLMO (beta • momentum t + (1 - beta) • fGrad (W t)) (aStar t)
+    ∀ t, IsLMO (C t) (aStar t)
   update_eq :
     ∀ t,
       W (t + 1) = ((1 - lambda * eta) • W t)
@@ -957,9 +961,11 @@ lemma sample_norm_le_noiseRadius_ae
 def suboptimality (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
   S.f (S.W t) - S.f S.WStar
 
-/-- The momentum-corrected search dual `C_t`. -/
-def C (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : StrongDual ℝ V :=
-  S.beta • S.momentum t + (1 - S.beta) • S.grad t
+/-- The momentum-corrected search dual is the Nesterov combination of momentum and gradient. -/
+@[simp] lemma C_eq
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    S.C t = S.beta • S.momentum t + (1 - S.beta) • S.grad t :=
+  S.C_spec t
 
 /-- The initial gradient norm. -/
 def initialGradNorm (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=

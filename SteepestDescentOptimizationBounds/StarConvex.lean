@@ -223,9 +223,8 @@ theorem lemma13_directional_and_distance_bounds
   have hXFeasible := S.interpolatedPoint_feasible t
   have hOptimal := S.step_optimal t (S.interpolatedPoint t) hXFeasible
   refine ⟨?_, ?_, ?_⟩
-  · have : (S.C t) (S.W (t + 1)) - (S.C t) (S.interpolatedPoint t) ≤ 0 :=
-      sub_nonpos.mpr hOptimal
-    simpa using this
+  · rw [(S.C t).map_sub]
+    exact sub_nonpos.mpr hOptimal
   · calc
       ‖S.W t - S.interpolatedPoint t‖
           = ‖(S.W t - S.stepCenter t) - (S.interpolatedPoint t - S.stepCenter t)‖ := by

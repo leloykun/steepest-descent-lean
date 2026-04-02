@@ -411,7 +411,15 @@ private theorem fixedStepIterationScalingBounds
     · exact div_nonneg
         (div_nonneg (le_of_lt hGap) S.lambda_pos.le)
         (S.fwGapProxyDriftCoeff_pos hβ0 hβ1).le
-  constructor <;> simpa [hEq, hRewrite]
+  constructor
+  · calc
+      c / Real.rpow T (1 / 2 : ℝ) = etaStepStar T := by
+        simp [hEq, hRewrite]
+      _ ≤ etaStepStar T := le_rfl
+  · calc
+      etaStepStar T = c / Real.rpow T (1 / 2 : ℝ) := by
+        simp [hEq, hRewrite]
+      _ ≤ c / Real.rpow T (1 / 2 : ℝ) := le_rfl
 
 private theorem closedForm_fixedToken_isMinimizer
     (S : StochasticFrankWolfeGeometryContext Ω V)
@@ -532,10 +540,10 @@ private theorem quarterScale_pos {N : ℝ} (hN : 0 < N) :
   unfold quarterScale
   exact Real.sqrt_pos.2 <| Real.sqrt_pos.2 hN
 
-private theorem quarterScale_sq {N : ℝ} (hN : 0 < N) :
+private theorem quarterScale_sq {N : ℝ} :
     (quarterScale N) ^ 2 = Real.sqrt N := by
   unfold quarterScale
-  simpa [pow_two] using (Real.sq_sqrt (Real.sqrt_nonneg N))
+  exact Real.sq_sqrt (Real.sqrt_nonneg N)
 
 private theorem fixedMomentumFrankWolfeGapTokenBudgetScalingBounds
     (S : StochasticFrankWolfeGeometryContext Ω V)
@@ -583,7 +591,7 @@ private theorem fixedMomentumFrankWolfeGapTokenBudgetScalingBounds
   let rN : ℝ := quarterScale N
   have hrNpos : 0 < rN := quarterScale_pos hNpos
   have hSqrtNpos : 0 < Real.sqrt N := Real.sqrt_pos.2 hNpos
-  have hRNSq : rN ^ 2 = Real.sqrt N := quarterScale_sq hNpos
+  have hRNSq : rN ^ 2 = Real.sqrt N := quarterScale_sq
   have hRatio :
       Real.sqrt N / N = 1 / Real.sqrt N := by
     field_simp [hNpos.ne']
@@ -722,7 +730,7 @@ private theorem fixedMomentumFrankWolfeGapTokenBudgetScalingBounds
         ((B / K) * rN) * ((B / K) * rN) = (B / K) ^ 2 * (rN * rN) := by ring
         _ = (B / K) ^ 2 * Real.rpow N (1 / 2 : ℝ) := by
               rw [show rN * rN = Real.sqrt N by simpa [pow_two] using hRNSq]
-              simpa [Real.sqrt_eq_rpow]
+              simp [Real.sqrt_eq_rpow]
     have hRight :
         Real.sqrt (batchSizeStar N) * Real.sqrt (batchSizeStar N) = batchSizeStar N := by
       simpa [pow_two] using (Real.sq_sqrt hBatchPos.le)
@@ -743,7 +751,7 @@ private theorem fixedMomentumFrankWolfeGapTokenBudgetScalingBounds
             = (K / (2 * Real.sqrt (Δ * A))) ^ 2 * (rN * rN) := by ring
         _ = (K / (2 * Real.sqrt (Δ * A))) ^ 2 * Real.rpow N (1 / 2 : ℝ) := by
               rw [show rN * rN = Real.sqrt N by simpa [pow_two] using hRNSq]
-              simpa [Real.sqrt_eq_rpow]
+              simp [Real.sqrt_eq_rpow]
     simpa [hLeft, hRight] using hSq
   have hEtaEqClosed :
       etaTokenStar N (batchSizeStar N) = S.etaStarFixedMomentumClosedForm N β (batchSizeStar N) := by

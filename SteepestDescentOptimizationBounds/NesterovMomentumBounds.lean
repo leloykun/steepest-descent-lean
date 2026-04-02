@@ -52,7 +52,6 @@ private lemma nesterovVector_eq
       S.beta • S.momentumError t + (1 - S.beta) • S.minibatchNoise t := by
   rw [S.minibatchNoise_eq_zero t]
   simp [StochasticSteepestDescentGeometryContext.nesterovError,
-    StochasticSteepestDescentGeometryContext.C,
     StochasticSteepestDescentGeometryContext.momentumError,
     sub_eq_add_neg, smul_add, add_smul, add_assoc, add_left_comm, add_comm]
   abel_nf
@@ -303,7 +302,6 @@ The Nesterov vector split is definitional from the concrete `C_t`.
 lemma nesterovError_split (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     S.grad t = S.C t + S.nesterovError t := by
   simp [StochasticSteepestDescentGeometryContext.nesterovError,
-    StochasticSteepestDescentGeometryContext.C,
     sub_eq_add_neg, add_comm, add_left_comm, add_assoc]
 
 /-- The Nesterov error is a norm and is therefore nonnegative. -/

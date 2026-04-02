@@ -168,9 +168,10 @@ private theorem hasDerivAt_fixedBatchLeadingProxy
         (S.fixedBatchLeadDriftConst / (1 - β)) η := by
     simpa [mul_comm] using
       (hasDerivAt_id η).const_mul (S.fixedBatchLeadDriftConst / (1 - β))
-  convert hMain.add
-      (hDrift.add_const (S.fixedBatchLeadNoiseConst * Real.sqrt ((1 - β) / batchSize))) using 1 <;>
-    funext η' <;> simp [fixedBatchLeadingProxy, add_assoc, add_comm]
+  (convert hMain.add
+      (hDrift.add_const (S.fixedBatchLeadNoiseConst * Real.sqrt ((1 - β) / batchSize))) using 1
+    ; funext η'
+      ; simp [fixedBatchLeadingProxy, add_assoc, add_comm])
 
 private theorem closedForm_fixedBatchLeading_isMinimizer
     (S : StochasticStarConvexGeometryContext Ω V)

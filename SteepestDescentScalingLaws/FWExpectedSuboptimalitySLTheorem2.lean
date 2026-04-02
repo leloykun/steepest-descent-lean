@@ -169,9 +169,10 @@ private theorem hasDerivAt_fixedBatchFWExpectedSuboptimalityLeadingProxy
         (S.fixedBatchFWExpectedSuboptimalityLeadDriftConst / (1 - β)) η := by
     simpa [mul_comm] using
       (hasDerivAt_id η).const_mul (S.fixedBatchFWExpectedSuboptimalityLeadDriftConst / (1 - β))
-  convert hMain.add
-      (hDrift.add_const (S.fixedBatchFWExpectedSuboptimalityLeadNoiseConst * Real.sqrt ((1 - β) / batchSize))) using 1 <;>
-    funext η' <;> simp [fixedBatchFWExpectedSuboptimalityLeadingProxy, add_assoc, add_comm]
+  (convert hMain.add
+      (hDrift.add_const (S.fixedBatchFWExpectedSuboptimalityLeadNoiseConst * Real.sqrt ((1 - β) / batchSize))) using 1
+    ; funext η'
+      ; simp [fixedBatchFWExpectedSuboptimalityLeadingProxy, add_assoc, add_comm])
 
 private theorem closedForm_fixedBatchLeading_isMinimizer
     (S : StochasticFrankWolfeKLGeometryContext Ω V)

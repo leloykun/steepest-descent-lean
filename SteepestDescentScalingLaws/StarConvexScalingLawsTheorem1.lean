@@ -475,8 +475,9 @@ private theorem hasDerivAt_proxySL1
   have hDrift :
       HasDerivAt (fun η' : ℝ => S.proxyDriftCoeff β * η') (S.proxyDriftCoeff β) η := by
     simpa [mul_comm] using (hasDerivAt_id η).const_mul (S.proxyDriftCoeff β)
-  convert hMain.add (hDrift.add_const (S.proxyNoiseCoeff β / Real.sqrt batchSize)) using 1 <;>
-    funext η' <;> simp [proxySL1, add_assoc, add_comm]
+  (convert hMain.add (hDrift.add_const (S.proxyNoiseCoeff β / Real.sqrt batchSize)) using 1
+    ; funext η'
+      ; simp [proxySL1, add_assoc, add_comm])
 
 private theorem hasDerivAt_proxySL1Token
     (S : StochasticStarConvexGeometryContext Ω V)
@@ -501,8 +502,9 @@ private theorem hasDerivAt_proxySL1Token
   have hDrift :
       HasDerivAt (fun η' : ℝ => S.proxyDriftCoeff β * η') (S.proxyDriftCoeff β) η := by
     simpa [mul_comm] using (hasDerivAt_id η).const_mul (S.proxyDriftCoeff β)
-  convert hMain.add (hDrift.add_const (S.proxyNoiseCoeff β / Real.sqrt batchSize)) using 1 <;>
-    funext η' <;> simp [proxySL1Token, add_assoc, add_comm]
+  (convert hMain.add (hDrift.add_const (S.proxyNoiseCoeff β / Real.sqrt batchSize)) using 1
+    ; funext η'
+      ; simp [proxySL1Token, add_assoc, add_comm])
 
 private theorem closedForm_fixedStep_isMinimizer
     (S : StochasticStarConvexGeometryContext Ω V)
