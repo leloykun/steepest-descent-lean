@@ -250,57 +250,6 @@ private lemma exists_lt_neg_apply_closedBall_of_lt
         simpa [mul_comm] using this
       simpa [ContinuousLinearMap.map_smul, smul_eq_mul] using hmul
 
-omit [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)] in
-private lemma sSup_neg_apply_closedBall_eq
-    (f : StrongDual ℝ V) {r : ℝ} (hr : 0 < r) :
-    sSup ((fun x : V => -f x) '' Metric.closedBall (0 : V) r) = r * ‖f‖ := by
-  refine csSup_eq_of_forall_le_of_forall_lt_exists_gt ?_ ?_ ?_
-  · exact (Metric.nonempty_closedBall.mpr hr.le).image _
-  · intro y hy
-    rcases hy with ⟨x, hx, rfl⟩
-    have hxNorm : ‖x‖ ≤ r := by
-      simpa [Metric.mem_closedBall, dist_eq_norm] using hx
-    have hOp : ‖f x‖ ≤ ‖f‖ * r := by
-      simpa using f.le_opNorm_of_le hxNorm
-    exact (le_abs_self _).trans (by simpa [mul_comm] using hOp)
-  · intro w hw
-    rcases exists_lt_neg_apply_closedBall_of_lt f hr hw with ⟨x, hx, hxlt⟩
-    exact ⟨-f x, ⟨x, hx, rfl⟩, hxlt⟩
-
-private lemma frankWolfeGap_values_nonempty
-    (S : StochasticFrankWolfeGeometryContext Ω V) (X : V) :
-    (((fun V => (S.fGrad X) (X - V)) '' S.constraintBall) : Set ℝ).Nonempty := by
-  refine ⟨(S.fGrad X) (X - 0), ?_⟩
-  refine ⟨0, ?_, rfl⟩
-  simpa [StochasticFrankWolfeGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
-    using (show ‖(0 : V)‖ ≤ 1 / S.lambda by simp [S.lambda_pos.le])
-
-private lemma fwGapInf_set_eq_neg
-    (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) :
-    sInf ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall) = -S.frankWolfeGap t := by
-  have hSet :
-      ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall) =
-        -(((fun V => (S.grad t) (S.W t - V)) '' S.constraintBall) : Set ℝ) := by
-    have hFun :
-        (fun V => (S.grad t) (V - S.W t)) =
-          fun V => -((S.grad t) (S.W t - V)) := by
-      funext x
-      have hVec : x - S.W t = -(S.W t - x) := by
-        abel_nf
-      rw [hVec, map_neg]
-    rw [hFun, ← Set.image_image, Set.image_neg_eq_neg]
-  calc
-    sInf ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall)
-        = sInf (-(((fun V => (S.grad t) (S.W t - V)) '' S.constraintBall) : Set ℝ)) := by
-            rw [hSet]
-    _ = -sSup (((fun V => (S.grad t) (S.W t - V)) '' S.constraintBall) : Set ℝ) := by
-          rw [Real.sInf_neg]
-    _ = -S.frankWolfeGap t := by
-          simp [StochasticFrankWolfeGeometryContext.frankWolfeGap,
-            StochasticFrankWolfeGeometryContext.frankWolfeGapAt,
-            StochasticSteepestDescentGeometryContext.grad]
-
 private lemma sum_range_fwGap_telescope
     (S : StochasticFrankWolfeGeometryContext Ω V) :
     ∀ T,
@@ -343,10 +292,11 @@ The Frank-Wolfe gap over the radius-`1 / λ` ball has the expected closed form.
 theorem fwGap_ball_formula
     (S : StochasticFrankWolfeGeometryContext Ω V) (X : V) :
     S.frankWolfeGapAt X = (S.fGrad X) X + (1 / S.lambda) * ‖S.fGrad X‖ := by
-  let targetSet : Set ℝ :=
-    ((fun V => (S.fGrad X) (X - V)) '' S.constraintBall)
   refine csSup_eq_of_forall_le_of_forall_lt_exists_gt ?_ ?_ ?_
-  · simpa [targetSet] using S.frankWolfeGap_values_nonempty X
+  · refine ⟨(S.fGrad X) (X - 0), ?_⟩
+    refine ⟨0, ?_, rfl⟩
+    simpa [StochasticFrankWolfeGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
+      using (show ‖(0 : V)‖ ≤ 1 / S.lambda by simp [S.lambda_pos.le])
   · intro y hy
     rcases hy with ⟨V, hV, rfl⟩
     have hUpper :
@@ -441,7 +391,30 @@ theorem approx_lmo_fwGap_inner_bound
       (S.grad t) (S.scaledLMOPoint t - S.W t) - c ≤
         sInf ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall) :=
     le_csInf hNonempty hLower
-  rw [S.fwGapInf_set_eq_neg t] at hInf
+  -- The `sInf` term is just the negated Frank-Wolfe gap on the same ball.
+  have hNegGap :
+      sInf ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall) = -S.frankWolfeGap t := by
+    have hSet :
+        ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall) =
+          -(((fun V => (S.grad t) (S.W t - V)) '' S.constraintBall) : Set ℝ) := by
+      have hFun :
+          (fun V => (S.grad t) (V - S.W t)) =
+            fun V => -((S.grad t) (S.W t - V)) := by
+        funext x
+        have hVec : x - S.W t = -(S.W t - x) := by
+          abel_nf
+        rw [hVec, map_neg]
+      rw [hFun, ← Set.image_image, Set.image_neg_eq_neg]
+    calc
+      sInf ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall)
+          = sInf (-(((fun V => (S.grad t) (S.W t - V)) '' S.constraintBall) : Set ℝ)) := by
+              rw [hSet]
+      _ = -sSup (((fun V => (S.grad t) (S.W t - V)) '' S.constraintBall) : Set ℝ) := by
+            rw [Real.sInf_neg]
+      _ = -S.frankWolfeGap t := by
+            simp [StochasticFrankWolfeGeometryContext.frankWolfeGap,
+              StochasticFrankWolfeGeometryContext.frankWolfeGapAt,
+              StochasticSteepestDescentGeometryContext.grad]
   linarith
 
 /--

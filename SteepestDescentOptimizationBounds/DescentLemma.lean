@@ -1,11 +1,28 @@
 import Mathlib
 import SteepestDescentOptimizationBounds.Assumptions
 
+/-!
+Analytic descent-lemma toolkit for the project.
+
+Upstream dependency:
+
+- `Mathlib` provides the Taylor, derivative, and convexity infrastructure.
+
+Downstream use:
+
+- `StarConvex.lean` and the Frank-Wolfe layers use these one-step and
+  closed-ball descent inequalities.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section
 
 section GeneralNormDescent
+
+/-! ------------------------------------------------------------------------
+Public Theorems
+------------------------------------------------------------------------ -/
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
@@ -282,6 +299,10 @@ theorem taylor_bound_of_lipschitz_fderiv_on_convex
 end GeneralNormDescent
 
 section DualPairBridge
+
+/-! ------------------------------------------------------------------------
+Public Theorems
+------------------------------------------------------------------------ -/
 
 variable {V VDual : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]

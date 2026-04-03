@@ -24,7 +24,7 @@ Downstream use:
   bound into the schedule form used by the project.
 -/
 
-section Theorem14Assembly
+section PrivateTheorems
 
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
@@ -173,7 +173,7 @@ private theorem starConvexExpectedSuboptimality_existsConstants_of_corollary11
   intro T
   simpa using starConvexExpectedSuboptimality_bound_of_corollary11 S hCor11 T
 
-end Theorem14Assembly
+end PrivateTheorems
 
 namespace StochasticStarConvexGeometryContext
 

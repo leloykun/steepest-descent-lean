@@ -1,5 +1,14 @@
 import SteepestDescentScalingLaws.Commons
 
+/-!
+Frank-Wolfe expected gap scaling laws, fixed-momentum family.
+
+Upstream: `SteepestDescentScalingLaws.Commons` and the Frank-Wolfe expected-gap
+bounds in `SteepestDescentOptimizationBounds`.
+Downstream: the README summaries and the fixed-momentum FW expected-gap
+section of the blueprint.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section

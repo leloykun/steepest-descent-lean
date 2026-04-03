@@ -4,6 +4,21 @@ open scoped BigOperators
 
 namespace SteepestDescentOptimizationBounds
 
+/- Nesterov-residual layer for the stochastic steepest-descent project.
+
+Upstream dependencies:
+
+- `MomentumBounds.lean` provides the momentum error decomposition and the
+  Corollary-10 bounds used here.
+
+Downstream use:
+
+- `StarConvex.lean` uses the residual split in the deterministic star-convex
+  descent proof.
+- `FrankWolfe.lean` and `FrankWolfeExpectedSuboptimality.lean` reuse the public
+  residual bounds and the momentum-noise prefactor.
+-/
+
 noncomputable section
 
 namespace StochasticSteepestDescentGeometryContext
@@ -250,7 +265,11 @@ private theorem pointwiseNesterovErrorBound_of_corollary10_and_minibatch_bound
     pointwiseNesterovErrorBound_of_momentum_and_minibatch_bounds
       S expectedMomentumError expectedMinibatchNoise hNesterovSplit hCor10 hMinibatch
 
-/- Pointwise Nesterov-error bound on the canonical Nesterov-error sequence. -/
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
+
+/-- Pointwise Nesterov-error bound on the canonical Nesterov-error sequence. -/
 theorem Corollary11PointwiseNesterovErrorBound
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,
@@ -291,10 +310,6 @@ theorem corollary11_average_nesterovError_bound
     (Corollary11PointwiseNesterovErrorBound S)
 
 namespace StochasticSteepestDescentGeometryContext
-
-/-! ------------------------------------------------------------------------
-Public Lemmas and Theorems
------------------------------------------------------------------------- -/
 
 /--
 The Nesterov vector split is definitional from the concrete `C_t`.

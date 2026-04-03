@@ -6,6 +6,20 @@ import Mathlib.Tactic
 
 open scoped BigOperators
 
+/-!
+Pure weighted last-iterate identity infrastructure.
+
+Upstream dependency:
+
+- `Mathlib` supplies the finite-sum and arithmetic tools for the telescoping
+  proof.
+
+Downstream use:
+
+- later expected-suboptimality layers can reuse the weighted tail identity
+  without re-proving the last-iterate telescoping argument.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section
@@ -65,12 +79,6 @@ private theorem tailNumerator_step
     _ = w k * q k + tailNumerator w q (k + 1) n := by
       rw [tailNumerator]
 
-private theorem tailWeight_mul_tailAvg_eq_tailNumerator
-    (w q : ℕ → ℝ) {k n : ℕ} (hW : tailWeight w k n ≠ 0) :
-    tailWeight w k n * tailAvg w q k n = tailNumerator w q k n := by
-  unfold tailAvg
-  field_simp [hW]
-
 private theorem tailAvg_sub_anchor_eq
     (w q : ℕ → ℝ) {k n : ℕ} (_hk : k ≤ n) (hW : tailWeight w k n ≠ 0) :
     tailAvg w q k n - q k =
@@ -121,7 +129,9 @@ private theorem tailAvg_step_recurrence_anchor
       rw [tailAvg, hNum]
     _ =
         (tailWeight w k n * tailAvg w q k n - w k * q k) / tailWeight w (k + 1) n := by
-      rw [tailWeight_mul_tailAvg_eq_tailNumerator (w := w) (q := q) (k := k) (n := n) hWk]
+      rw [show tailNumerator w q k n = tailWeight w k n * tailAvg w q k n by
+        unfold tailAvg
+        field_simp [hWk]]
     _ =
         ((w k + tailWeight w (k + 1) n) * tailAvg w q k n - w k * q k) /
           tailWeight w (k + 1) n := by

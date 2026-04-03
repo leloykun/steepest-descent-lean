@@ -1,6 +1,15 @@
 import SteepestDescentScalingLaws.Commons
 import SteepestDescentOptimizationBounds.FrankWolfeExpectedSuboptimality
 
+/-!
+Frank-Wolfe expected-suboptimality scaling laws, fixed-batch family.
+
+Upstream: `SteepestDescentScalingLaws.Commons` and the FW expected-suboptimality
+bounds in `SteepestDescentOptimizationBounds`.
+Downstream: the README summaries and the fixed-batch FW expected-suboptimality
+section of the blueprint.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section

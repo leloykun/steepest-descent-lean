@@ -22,6 +22,11 @@ variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
+/-
+Private lemmas and theorems for the schedule-form conversion.
+-/
+section PrivateTheorems
+
 private theorem momentumNoisePrefactor_le_theta_sqrt
     (S : StochasticStarConvexGeometryContext Ω V) :
     S.momentumNoisePrefactor ≤ Real.sqrt 2 * Real.sqrt (1 - S.beta) := by
@@ -399,6 +404,13 @@ private theorem theta_noise_term_le_quarter_epsilon_of_schedule
       nlinarith
     simpa [N] using hLe
 
+end PrivateTheorems
+
+/-
+Public theorems for the star-convex expected-suboptimality schedule form.
+-/
+section PublicTheorems
+
 /--
 The expected-suboptimality bound in the `θ = 1 - β` form used by the
 convergence schedule argument.
@@ -498,6 +510,8 @@ theorem starConvexExpectedSuboptimality_le_epsilon_of_min_schedule
   · exact le_trans hEta (min_le_left _ _)
   · exact le_trans hEta (min_le_right _ _)
   · exact hT
+
+end PublicTheorems
 
 end StochasticStarConvexGeometryContext
 

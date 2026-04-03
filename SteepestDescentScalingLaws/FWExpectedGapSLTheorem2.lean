@@ -1,5 +1,14 @@
 import SteepestDescentScalingLaws.Commons
 
+/-!
+Frank-Wolfe expected gap scaling laws, fixed-batch family.
+
+Upstream: `SteepestDescentScalingLaws.Commons` and the Frank-Wolfe expected-gap
+bounds in `SteepestDescentOptimizationBounds`.
+Downstream: the README summaries and the fixed-batch FW expected-gap section of
+the blueprint.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section
@@ -108,12 +117,6 @@ private theorem fixedBatchFwGapLeadDriftConst_pos
     0 < S.fixedBatchFwGapLeadDriftConst := by
   unfold fixedBatchFwGapLeadDriftConst
   exact div_pos (mul_pos (by norm_num) S.L_pos) S.lambda_pos
-
-private theorem fixedBatchFwGapLeadInitConst_nonneg
-    (S : StochasticFrankWolfeGeometryContext Ω V) :
-    0 ≤ S.fixedBatchFwGapLeadInitConst := by
-  unfold fixedBatchFwGapLeadInitConst
-  exact div_nonneg (mul_nonneg (by norm_num) (norm_nonneg _)) S.lambda_pos.le
 
 private theorem fwGapLeadBiasCoeff_pos
     (S : StochasticFrankWolfeGeometryContext Ω V)

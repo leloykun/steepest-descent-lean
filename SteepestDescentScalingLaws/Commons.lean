@@ -1,5 +1,13 @@
 import SteepestDescentOptimizationBounds.StarConvex
 
+/-!
+Common asymptotic and algebraic lemmas for the scaling-law modules.
+
+Upstream: `SteepestDescentOptimizationBounds.StarConvex` and the shared
+optimization-bounds layer.
+Downstream: all star-convex and Frank-Wolfe scaling-law theorem files.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section
@@ -45,10 +53,6 @@ theorem pow_three_halves_eq_mul_sqrt {x : ℝ} (hx : 0 ≤ x) :
       norm_num
     _ = x * Real.sqrt x := by rw [Real.rpow_one, Real.sqrt_eq_rpow]
 
-theorem mul_sqrt_eq_pow_three_halves {x : ℝ} (hx : 0 ≤ x) :
-    x * Real.sqrt x = x ^ (3 / 2 : ℝ) := by
-  rw [pow_three_halves_eq_mul_sqrt hx]
-
 theorem rpow_two_thirds_pow_three_halves {x : ℝ} (hx : 0 ≤ x) :
     (x ^ (3 / 2 : ℝ)) ^ (2 / 3 : ℝ) = x := by
   rw [← Real.rpow_mul hx (3 / 2 : ℝ) (2 / 3 : ℝ)]
@@ -58,7 +62,7 @@ theorem le_rpow_two_thirds_of_mul_sqrt_le
     {x y : ℝ} (hx : 0 ≤ x) (hxy : x * Real.sqrt x ≤ y) :
     x ≤ y ^ (2 / 3 : ℝ) := by
   have hpow : x ^ (3 / 2 : ℝ) ≤ y := by
-    simpa [mul_sqrt_eq_pow_three_halves hx] using hxy
+    simpa [pow_three_halves_eq_mul_sqrt hx] using hxy
   have h' :=
     Real.rpow_le_rpow (show 0 ≤ x ^ (3 / 2 : ℝ) by positivity) hpow
       (by positivity : 0 ≤ (2 / 3 : ℝ))
@@ -68,7 +72,7 @@ theorem rpow_two_thirds_le_of_le_mul_sqrt
     {x y : ℝ} (hx : 0 ≤ x) (hy : 0 ≤ y) (hxy : y ≤ x * Real.sqrt x) :
     y ^ (2 / 3 : ℝ) ≤ x := by
   have hpow : y ≤ x ^ (3 / 2 : ℝ) := by
-    simpa [mul_sqrt_eq_pow_three_halves hx] using hxy
+    simpa [pow_three_halves_eq_mul_sqrt hx] using hxy
   have h' := Real.rpow_le_rpow hy hpow (by positivity : 0 ≤ (2 / 3 : ℝ))
   simpa [rpow_two_thirds_pow_three_halves hx] using h'
 
@@ -99,11 +103,6 @@ theorem le_sqrt_of_nonneg_of_le_one
   have hSqrtNonneg : 0 ≤ Real.sqrt x := Real.sqrt_nonneg x
   nlinarith
 
-theorem sqrt_le_sqrt_sqrt_of_nonneg_of_le_one
-    {x : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1) :
-    Real.sqrt x ≤ Real.sqrt (Real.sqrt x) := by
-  exact Real.sqrt_le_sqrt (le_sqrt_of_nonneg_of_le_one hx0 hx1)
-
 theorem sqrt_sqrt_eq_rpow_quarter
     {x : ℝ} (hx : 0 ≤ x) :
     Real.sqrt (Real.sqrt x) = Real.rpow x (1 / 4 : ℝ) := by
@@ -111,19 +110,6 @@ theorem sqrt_sqrt_eq_rpow_quarter
   rw [Real.sqrt_eq_rpow]
   rw [← Real.rpow_mul hx (1 / 2 : ℝ) (1 / 2 : ℝ)]
   norm_num
-
-theorem sqrt_mul_sqrt_sqrt_eq_rpow_three_quarters
-    {x : ℝ} (hx : 0 ≤ x) :
-    Real.sqrt x * Real.sqrt (Real.sqrt x) = Real.rpow x (3 / 4 : ℝ) := by
-  by_cases hx0 : x = 0
-  · simp [hx0]
-  · have hxne : x ≠ 0 := hx0
-    have hxpos : 0 < x := lt_of_le_of_ne hx hxne.symm
-    nth_rewrite 1 [Real.sqrt_eq_rpow]
-    rw [sqrt_sqrt_eq_rpow_quarter hx]
-    change Real.rpow x (1 / 2 : ℝ) * Real.rpow x (1 / 4 : ℝ) = Real.rpow x (3 / 4 : ℝ)
-    convert (Real.rpow_add hxpos (1 / 2 : ℝ) (1 / 4 : ℝ)).symm using 1
-    norm_num
 
 theorem reciprocal_linear_eq_min_add_sq
     {a A η ηStar : ℝ}

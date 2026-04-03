@@ -6,6 +6,21 @@ open scoped BigOperators
 
 namespace SteepestDescentOptimizationBounds
 
+/- Minibatch-noise estimates for the stochastic steepest-descent project.
+
+Upstream dependencies:
+
+- `Assumptions.lean` supplies the stochastic geometry and sample assumptions.
+- `DescentLemma.lean` supplies the local smoothness/Taylor control used in the
+  weighted-noise bounds.
+
+Downstream use:
+
+- `MomentumBounds.lean` reuses the weighted minibatch noise estimates here.
+- `NesterovMomentumBounds.lean` reuses the pointwise and averaged minibatch
+  noise bounds here.
+-/
+
 noncomputable section
 
 open MeasureTheory
@@ -44,7 +59,7 @@ theorem centered_noise_condexp_natural_ae_eq_zero
 
 end NaturalNoise
 
-section
+section CrossTerm
 
 set_option linter.unusedSectionVars false
 
@@ -84,13 +99,7 @@ theorem integral_clm_apply_eq_zero_of_condexp_zero
     _ = ∫ ω, (0 : ℝ) ∂μ := integral_congr_ae hCondCrossZero
     _ = 0 := by simp
 
-end
-
-section NaturalNoise
-
-variable [MeasurableSpace VDual] [BorelSpace VDual]
-
-end NaturalNoise
+end CrossTerm
 
 /--
 On a probability space, the first moment of `‖X‖` is bounded by the square root

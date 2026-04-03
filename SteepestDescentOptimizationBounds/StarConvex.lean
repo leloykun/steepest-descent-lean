@@ -128,6 +128,20 @@ private lemma star_convex_prop
       S.f ((1 - α) • W + α • S.WStar) ≤ (1 - α) * S.f W + α * S.f S.WStar :=
   Assumption12_StarConvexityAtReferencePoint.star_convex S.assumption12_starConvexity
 
+/-- Shared scaling estimate for vectors already in the `1 / λ` ball. -/
+private lemma scaled_norm_le_eta
+    (S : StochasticStarConvexGeometryContext Ω V) {x : V}
+    (hx : ‖x‖ ≤ 1 / S.lambda) :
+    ‖(S.lambda * S.eta) • x‖ ≤ S.eta := by
+  have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
+  calc
+    ‖(S.lambda * S.eta) • x‖ = (S.lambda * S.eta) * ‖x‖ := by
+      simp [norm_smul, Real.norm_of_nonneg hScaleNonneg]
+    _ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
+      gcongr
+    _ = S.eta := by
+      field_simp [S.lambda_pos.ne']
+
 end PrivateLemmas
 
 section PublicTheorems
@@ -152,17 +166,11 @@ lemma interpolatedPoint_sub_stepCenter
 lemma interpolatedPoint_feasible
     (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
     ‖S.interpolatedPoint t - S.stepCenter t‖ ≤ S.eta := by
-  have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
   calc
     ‖S.interpolatedPoint t - S.stepCenter t‖ = ‖(S.lambda * S.eta) • S.WStar‖ := by
       rw [interpolatedPoint_sub_stepCenter]
-    _ = (S.lambda * S.eta) * ‖S.WStar‖ := by
-      simp [norm_smul, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
-      gcongr
-      exact S.WStar_bound
-    _ = S.eta := by
-      field_simp [S.lambda_pos.ne']
+    _ ≤ S.eta := by
+      exact S.scaled_norm_le_eta S.WStar_bound
 
 /-- The auxiliary point `X_t` also stays inside the primal `1 / λ` ball. -/
 lemma interpolatedPoint_bound
@@ -193,50 +201,33 @@ lemma interpolatedPoint_bound
           field_simp [S.lambda_pos.ne']
           ring
 
-/-- Shows that the current iterate `W_t` is also feasible for the same radius-`η` ball. -/
-lemma current_weight_feasible
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
-    ‖S.W t - S.stepCenter t‖ ≤ S.eta := by
-  have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
-  have hWeight := S.weight_bound_from_feasible_step t
-  calc
-    ‖S.W t - S.stepCenter t‖ = ‖(S.lambda * S.eta) • S.W t‖ := by
-      rw [S.weight_sub_stepCenter t]
-    _ = (S.lambda * S.eta) * ‖S.W t‖ := by
-      simp [norm_smul, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
-      gcongr
-    _ = S.eta := by
-      field_simp [S.lambda_pos.ne']
-
 /--
-Lemma 13: the chosen update is directionally optimal against `X_t`, and both
-`W_t` and `W_{t+1}` stay within distance `2η` of `X_t`.
+File-local packaging of the `X_t` geometry used in the one-step descent proof.
 -/
-theorem lemma13_directional_and_distance_bounds
-    (S : StochasticStarConvexGeometryContext Ω V) :
-    ∀ t,
+theorem lemma13_interpolatedPoint_geometry
+    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
+    ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda ∧
       (S.C t) (S.W (t + 1) - S.interpolatedPoint t) ≤ 0 ∧
-        ‖S.W t - S.interpolatedPoint t‖ ≤ 2 * S.eta ∧
-        ‖S.W (t + 1) - S.interpolatedPoint t‖ ≤ 2 * S.eta := by
-  intro t
-  have hXFeasible := S.interpolatedPoint_feasible t
+      ‖S.interpolatedPoint t - S.W t‖ ≤ 2 * S.eta ∧
+      ‖S.W (t + 1) - S.interpolatedPoint t‖ ≤ 2 * S.eta := by
+  have hInterp := interpolatedPoint_bound S t
+  have hXFeasible := interpolatedPoint_feasible S t
+  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step t
+  have hWeightCenter : ‖S.W t - S.stepCenter t‖ ≤ S.eta := by
+    rw [StochasticSteepestDescentGeometryContext.weight_sub_stepCenter]
+    exact S.scaled_norm_le_eta hWeight
   have hOptimal := S.step_optimal t (S.interpolatedPoint t) hXFeasible
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨hInterp, ?_, ?_, ?_⟩
   · rw [(S.C t).map_sub]
     exact sub_nonpos.mpr hOptimal
   · calc
-      ‖S.W t - S.interpolatedPoint t‖
-          = ‖(S.W t - S.stepCenter t) - (S.interpolatedPoint t - S.stepCenter t)‖ := by
-              have hDecomp :
-                  S.W t - S.interpolatedPoint t =
-                    (S.W t - S.stepCenter t) - (S.interpolatedPoint t - S.stepCenter t) := by
-                abel_nf
-              rw [hDecomp]
-      _ ≤ ‖S.W t - S.stepCenter t‖ + ‖S.interpolatedPoint t - S.stepCenter t‖ := norm_sub_le _ _
+      ‖S.interpolatedPoint t - S.W t‖
+          = ‖(S.interpolatedPoint t - S.stepCenter t) - (S.W t - S.stepCenter t)‖ := by
+              abel_nf
+      _ ≤ ‖S.interpolatedPoint t - S.stepCenter t‖ + ‖S.W t - S.stepCenter t‖ :=
+          norm_sub_le _ _
       _ ≤ S.eta + S.eta := by
-            gcongr
-            exact S.current_weight_feasible t
+          exact add_le_add hXFeasible hWeightCenter
       _ = 2 * S.eta := by ring
   · calc
       ‖S.W (t + 1) - S.interpolatedPoint t‖
@@ -247,30 +238,15 @@ theorem lemma13_directional_and_distance_bounds
                       (S.interpolatedPoint t - S.stepCenter t) := by
                 abel_nf
               rw [hDecomp]
-      _ ≤ ‖S.W (t + 1) - S.stepCenter t‖ + ‖S.interpolatedPoint t - S.stepCenter t‖ := norm_sub_le _ _
+      _ ≤ ‖S.W (t + 1) - S.stepCenter t‖ + ‖S.interpolatedPoint t - S.stepCenter t‖ :=
+          norm_sub_le _ _
       _ ≤ S.eta + S.eta := by
-            gcongr
-            exact S.step_feasible t
+          exact add_le_add (S.step_feasible t) hXFeasible
       _ = 2 * S.eta := by ring
 
 /--
-Blog-style packaging of the `X_t` geometry used in the star-convex one-step
-descent proof.
--/
-theorem lemma13_interpolatedPoint_geometry
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
-    ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda ∧
-      (S.C t) (S.W (t + 1) - S.interpolatedPoint t) ≤ 0 ∧
-      ‖S.interpolatedPoint t - S.W t‖ ≤ 2 * S.eta ∧
-      ‖S.W (t + 1) - S.interpolatedPoint t‖ ≤ 2 * S.eta := by
-  have hInterp := S.interpolatedPoint_bound t
-  rcases S.lemma13_directional_and_distance_bounds t with ⟨hDir, hWeightX, hNextX⟩
-  refine ⟨hInterp, hDir, ?_, hNextX⟩
-  simpa [norm_sub_rev] using hWeightX
-
-/--
 Concrete one-step descent theorem proved directly from the descent-lemma Taylor
-bound plus Proposition 9 / Lemma 13 geometry.
+bound plus Proposition 9 and the star-convex geometry lemmas.
 -/
 theorem one_step_descent_bound
     (S : StochasticStarConvexGeometryContext Ω V) :
@@ -278,12 +254,12 @@ theorem one_step_descent_bound
       S.f (S.W (t + 1)) ≤
         S.f (S.interpolatedPoint t) + 4 * S.L * S.eta ^ 2 + 2 * S.eta * S.nesterovErrorNorm t := by
   intro t
-  have hProp9 := S.proposition9_weight_and_update_bounds t
+  have hLemma13 := lemma13_interpolatedPoint_geometry S t
+  rcases hLemma13 with ⟨hInterpWeight, hOptimalDir, hXWeightBound, hNextXBound⟩
+  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda :=
+    S.weight_bound_from_feasible_step t
   have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda :=
     S.weight_bound_from_feasible_step (t + 1)
-  have hLemma13 := S.lemma13_interpolatedPoint_geometry t
-  rcases hProp9 with ⟨hWeight, hUpdateBound⟩
-  rcases hLemma13 with ⟨hInterpWeight, hOptimalDir, hXWeightBound, hNextXBound⟩
   have hTaylorInterp :=
     taylor_bound_of_LSmoothOnClosedBallUnderPair
       (continuousDualPairing (V := V))
@@ -306,6 +282,8 @@ theorem one_step_descent_bound
       S.assumption3_fLocalSmoothness.local_lipschitz
       hWeight
       hNextWeight
+  have hUpdateBound : ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta :=
+    (S.proposition9_weight_and_update_bounds t).2
   have hGradDecomp :
       S.gradientLinear t (S.W (t + 1) - S.W t) =
         (S.C t) (S.W (t + 1) - S.interpolatedPoint t) +
@@ -357,7 +335,12 @@ theorem one_step_descent_bound
       have hHalfLNonneg : 0 ≤ S.L / 2 := by
         exact div_nonneg S.assumption3_fLocalSmoothness.nonneg (by norm_num)
       nlinarith [hSquare, hHalfLNonneg]
-    linarith
+    have hQuad' :
+        S.f (S.interpolatedPoint t) + S.L / 2 * ‖S.interpolatedPoint t - S.W t‖ ^ 2 ≤
+          S.f (S.interpolatedPoint t) + 2 * S.L * S.eta ^ 2 := by
+      simpa [add_comm, add_left_comm, add_assoc] using
+        (add_le_add_left hQuad (S.f (S.interpolatedPoint t)))
+    exact le_trans hCompLeft hQuad'
   have hSmoothStep :
       S.f (S.W (t + 1)) ≤
         S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := by
@@ -384,7 +367,13 @@ theorem one_step_descent_bound
       have hHalfLNonneg : 0 ≤ S.L / 2 := by
         exact div_nonneg S.assumption3_fLocalSmoothness.nonneg (by norm_num)
       nlinarith [hSquare, hHalfLNonneg]
-    linarith
+    have hQuad' :
+        S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) +
+            S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤
+          S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := by
+      simpa [add_comm, add_left_comm, add_assoc] using
+        (add_le_add_left hQuad (S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t)))
+    exact le_trans hStepRight hQuad'
   calc
     S.f (S.W (t + 1))
       ≤ S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := hSmoothStep

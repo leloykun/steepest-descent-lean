@@ -1,13 +1,32 @@
+/-
+The umbrella module for the optimization-bounds layer.
+
+Upstream:
+- the individual files in `SteepestDescentOptimizationBounds/`
+
+Downstream:
+- `SteepestDescent.lean`
+- the scaling-law layer
+
+Importing this file exposes the full theorem-development stack from the shared
+geometry assumptions up through the star-convex and Frank-Wolfe expected-bound
+results.
+-/
+
 import SteepestDescentOptimizationBounds.Assumptions
 import SteepestDescentOptimizationBounds.DescentLemma
+
 import SteepestDescentOptimizationBounds.MinibatchNoise
 import SteepestDescentOptimizationBounds.WeightAndUpdateBounds
-import SteepestDescentOptimizationBounds.FrankWolfe
 import SteepestDescentOptimizationBounds.MomentumBounds
 import SteepestDescentOptimizationBounds.NesterovMomentumBounds
+
 import SteepestDescentOptimizationBounds.StarConvex
 import SteepestDescentOptimizationBounds.StarConvexExpectedSuboptimality
+import SteepestDescentOptimizationBounds.StarConvexExpectedSuboptimalityConvergence
+
+import SteepestDescentOptimizationBounds.FrankWolfe
 import SteepestDescentOptimizationBounds.FrankWolfeExpectedGap
 import SteepestDescentOptimizationBounds.FrankWolfeExpectedSuboptimality
+
 import SteepestDescentOptimizationBounds.LastIterateLemma
-import SteepestDescentOptimizationBounds.StarConvexExpectedSuboptimalityConvergence

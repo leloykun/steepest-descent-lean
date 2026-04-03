@@ -1,5 +1,19 @@
 import Mathlib
 
+/-!
+Core stochastic geometry and oracle assumptions for the steepest-descent and
+Frank-Wolfe developments.
+
+Upstream dependency:
+
+- `Mathlib` supplies the linear-analytic and measure-theoretic infrastructure.
+
+Downstream use:
+
+- `WeightAndUpdateBounds.lean`, `StarConvex.lean`, and the Frank-Wolfe layers
+  reuse the geometry contexts and the Assumptions 1--4 support lemmas.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section
@@ -13,6 +27,8 @@ Continuous realization of the abstract dual pairing.
 This is the extra analytic structure needed to connect a normed dual variable
 `X† : VDual` to a Fréchet derivative `V →L[ℝ] ℝ`.
 -/
+-- Public Geometry Contexts and Compatibility API
+
 structure ContinuousDualPairingContext
     (V VDual : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
@@ -134,6 +150,10 @@ lemma sqrt_batchSizeℝ_pos (P : StochasticSteepestDescentParameters) :
 lemma sqrt_batchSizeℝ_ne_zero (P : StochasticSteepestDescentParameters) :
     Real.sqrt P.batchSizeℝ ≠ 0 :=
   ne_of_gt P.sqrt_batchSizeℝ_pos
+
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
 
 end StochasticSteepestDescentParameters
 
@@ -542,6 +562,8 @@ The iterate and momentum trajectories are still deterministic sequences
 stated directly in terms of fresh sample draws rather than as a conditional
 statement about a random iterate process.
 -/
+-- Public Definitions
+
 structure StochasticSteepestDescentGeometryContext
     (Ω V : Type*)
     [MeasurableSpace Ω]
@@ -570,6 +592,7 @@ structure StochasticSteepestDescentGeometryContext
         beta • momentum t + (1 - beta) • fGrad (W (t + 1))
   -- Nesterov-corrected search dual.
   C : ℕ → StrongDual ℝ V
+  -- Compatibility bridge between the explicit `C` field and the analytic formula.
   C_spec :
     ∀ t, C t = beta • momentum t + (1 - beta) • fGrad (W t)
   -- Update rule
@@ -714,6 +737,10 @@ lemma one_sub_muFW_lambda_eta_lt_one (S : StochasticFrankWolfeKLGeometryContext 
 lemma one_sub_one_sub_muFW_lambda_eta (S : StochasticFrankWolfeKLGeometryContext Ω V) :
     1 - (1 - S.muFW * S.lambda * S.eta) = S.muFW * S.lambda * S.eta := by
   ring
+
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
 
 end StochasticFrankWolfeKLGeometryContext
 
@@ -960,6 +987,10 @@ lemma sample_norm_le_noiseRadius_ae
 /-- The suboptimality gap at time `t`. -/
 def suboptimality (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
   S.f (S.W t) - S.f S.WStar
+
+/-! ------------------------------------------------------------------------
+Public Lemmas and Theorems
+------------------------------------------------------------------------ -/
 
 /-- The momentum-corrected search dual is the Nesterov combination of momentum and gradient. -/
 @[simp] lemma C_eq

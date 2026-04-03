@@ -1,5 +1,14 @@
 import SteepestDescentScalingLaws.Commons
 
+/-!
+Star-convex expected-suboptimality scaling laws, fixed-batch family.
+
+Upstream: `SteepestDescentScalingLaws.Commons` and the star-convex expected-
+suboptimality bounds in `SteepestDescentOptimizationBounds`.
+Downstream: the README summaries and the fixed-batch scaling-law section of the
+blueprint.
+-/
+
 namespace SteepestDescentOptimizationBounds
 
 noncomputable section

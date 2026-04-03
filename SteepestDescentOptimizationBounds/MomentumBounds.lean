@@ -6,21 +6,26 @@ open scoped BigOperators
 
 namespace SteepestDescentOptimizationBounds
 
+/- Momentum-error layer for the stochastic steepest-descent project.
+
+Upstream dependencies:
+
+- `MinibatchNoise.lean` supplies the centered minibatch-noise process and the
+  weighted-noise estimates used in the proof.
+- `WeightAndUpdateBounds.lean` supplies the common geometry and Proposition 9.
+
+Downstream use:
+
+- `NesterovMomentumBounds.lean` reuses the momentum-error process, the drift /
+  noise decomposition, and the geometric-sum helpers here.
+- `FrankWolfeExpectedGap.lean` and the star-convex expected-suboptimality
+  files reuse the Corollary-10 and averaged momentum-error bounds here.
+-/
+
 open MeasureTheory
 open ProbabilityTheory
 
 noncomputable section
-
-/-!
-Momentum-error layer used upstream of Theorem 14.
-
-This module collects:
-
-1. the vector-valued momentum recursion identities;
-2. the scalar geometric-sum lemmas used to unroll the final recurrence;
-3. the concrete Proposition-6 momentum-noise process and its bounds;
-4. Corollary 10 in pointwise and averaged form.
--/
 
 section ScalarLemmas
 
@@ -587,6 +592,7 @@ private theorem flatCoeff_sq_sum_bound
               field_simp [S.batchSizeℝ_ne_zero, hOneAddNe]
               ring
 
+/-- The expected norm of the concrete momentum-noise process. -/
 theorem expectedNoise_bound
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,

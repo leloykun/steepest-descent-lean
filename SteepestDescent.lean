@@ -1,16 +1,32 @@
--- This module serves as the root of the `SteepestDescent` library.
--- Import modules here that should be built as part of the library.
+/-
+The root module for the `SteepestDescent` library.
+
+Upstream:
+- `SteepestDescentOptimizationBounds.lean`
+- `SteepestDescentScalingLaws.lean`
+
+Downstream:
+- external users who want the full public development from a single import
+
+Importing this file brings in the shared geometry context, deterministic and
+stochastic optimization bounds, and the scaling-law theorems.
+-/
+
 import SteepestDescentOptimizationBounds.Assumptions
 import SteepestDescentOptimizationBounds.DescentLemma
+
 import SteepestDescentOptimizationBounds.MinibatchNoise
 import SteepestDescentOptimizationBounds.WeightAndUpdateBounds
-import SteepestDescentOptimizationBounds.FrankWolfe
 import SteepestDescentOptimizationBounds.MomentumBounds
 import SteepestDescentOptimizationBounds.NesterovMomentumBounds
+
 import SteepestDescentOptimizationBounds.StarConvex
 import SteepestDescentOptimizationBounds.StarConvexExpectedSuboptimality
+import SteepestDescentOptimizationBounds.StarConvexExpectedSuboptimalityConvergence
+
+import SteepestDescentOptimizationBounds.FrankWolfe
 import SteepestDescentOptimizationBounds.FrankWolfeExpectedGap
 import SteepestDescentOptimizationBounds.FrankWolfeExpectedSuboptimality
+
 import SteepestDescentOptimizationBounds.LastIterateLemma
 import SteepestDescentScalingLaws
-import SteepestDescentOptimizationBounds.StarConvexExpectedSuboptimalityConvergence
