@@ -161,7 +161,7 @@ theorem taylor_bound_of_lipschitz_fderiv
 /--
 Local version of the sharp descent lemma on a convex set.
 
-This is the form needed to use Assumption 4 on the closed noise ball from the
+This is the form needed to use the local smooth proxy potential on the closed noise ball from the
 closed-ball formulation: the derivative only needs to be `L`-Lipschitz on the convex region
 containing the segment between `x` and `y`.
 -/
@@ -410,7 +410,7 @@ theorem taylor_compare_of_LSmoothUnderPair
 
 /--
 One-step descent-lemma form specialized to a nonnegative scaled increment
-`α • ξ`. This is the exact analytic inequality used in Lemma 5.
+`α • ξ`. This is the exact analytic inequality used in the weighted-noise proof.
 -/
 theorem step_upper_of_LSmoothUnderPair
     (P : ContinuousDualPairingContext V VDual)

@@ -8,39 +8,31 @@ namespace SteepestDescentOptimizationBounds
 noncomputable section
 
 /-!
-This file contains the deterministic and analytic star-convex layer used by the
-project's expected-suboptimality development.
+Deterministic and pathwise star-convex descent layer.
 
 Upstream dependencies:
 
-- `DescentLemma.lean` provides the local Taylor bound.
-- `WeightAndUpdateBounds.lean` provides Proposition 9 and the common
-  weight-decay geometry.
-- `NesterovMomentumBounds.lean` provides the Nesterov residual split.
+- `DescentLemma.lean` supplies the local Taylor comparison.
+- `WeightAndUpdateBounds.lean` supplies the decoupled weight-decay geometry.
+- `NesterovMomentumBounds.lean` supplies the Nesterov-residual split.
 
 Downstream use:
 
-- `StarConvexExpectedSuboptimality.lean` imports this file and adds the
-  Corollary-11 stochastic assembly.
-- `SteepestDescentScalingLaws/Commons.lean` imports the public coefficient
-  definitions from this file.
+- `StarConvexExpectedSuboptimality.lean` integrates the pathwise recurrence.
+- the scaling-law layer reuses the deterministic coefficient definitions on the
+  stochastic wrapper namespace.
 -/
 
-namespace StochasticStarConvexGeometryContext
+namespace StarConvexPathGeometryContext
 
 section PublicDefinitions
 
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-! ------------------------------------------------------------------------
-Public Definitions
------------------------------------------------------------------------- -/
-
-/-- Canonical pairing context for the actual continuous dual. -/
+/-- Canonical pairing context for the continuous dual. -/
 def continuousDualPairing :
     ContinuousDualPairingContext V (StrongDual ℝ V) where
   toLinear := by
@@ -49,54 +41,22 @@ def continuousDualPairing :
     intro xDual
     simp
 
-/-- The linear functional induced by the current gradient. -/
-def gradientLinear
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) : V →ₗ[ℝ] ℝ :=
+/-- The linear functional induced by the current true gradient. -/
+def gradientLinear (S : StarConvexPathGeometryContext V) (t : ℕ) : V →ₗ[ℝ] ℝ :=
   (S.grad t).toLinearMap
 
-/-- The point `X_t = (1 - λη) W_t + λη W_*`. -/
-def interpolatedPoint (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) : V :=
+/-- The interpolation point `X_t = (1 - λη) W_t + λη W_*`. -/
+def interpolatedPoint (S : StarConvexPathGeometryContext V) (t : ℕ) : V :=
   S.stepCenter t + (S.lambda * S.eta) • S.WStar
-
-/-- The initial suboptimality gap `f(W_0) - f(W_*)`. -/
-def starConvexExpectedSuboptimalityInitialGap
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  S.suboptimality 0
-
-/-- The batch-size-dependent `1 / sqrt(b)` coefficient in Theorem 14. -/
-def starConvexExpectedSuboptimalityMinibatchCoefficient
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma
-
-/-- The batch-size-independent drift floor accumulated in Theorem 14. -/
-def starConvexExpectedSuboptimalityDriftFloor
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  4 * (1 + S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta ^ 2
-
-/-- The batch-size-dependent noise floor accumulated in Theorem 14. -/
-def starConvexExpectedSuboptimalityNoiseFloor
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  (2 * S.eta * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ
-
-/-- The residual floor `Z` from Theorem 14. -/
-def starConvexExpectedSuboptimalityResidualFloor
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-      + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta
 
 end PublicDefinitions
 
 section PrivateDefinitions
 
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-
-/-! ------------------------------------------------------------------------
-Private Definitions
------------------------------------------------------------------------- -/
 
 -- No private definitions are introduced in this file.
 
@@ -104,41 +64,37 @@ end PrivateDefinitions
 
 section PrivateLemmas
 
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-! ------------------------------------------------------------------------
-Private Lemmas and Theorems
------------------------------------------------------------------------- -/
-
-/-- Unpacks the decomposition `∇f(W_t) = C_t + error_t` on a concrete vector. -/
+/-- Unpacks `∇f(W_t) = C_t + error_t` on a concrete vector. -/
 private lemma grad_split_apply
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (v : V) :
+    (S : StarConvexPathGeometryContext V) (t : ℕ) (v : V) :
     S.gradientLinear t v = (S.C t) v + S.nesterovError t v := by
-  have h := congrArg (fun f : StrongDual ℝ V => f v) (S.nesterovError_split t)
-  simpa [gradientLinear] using h
+  rw [gradientLinear, SteepestDescentPathGeometryContext.nesterovError]
+  simp [SteepestDescentPathGeometryContext.grad, sub_eq_add_neg]
+  ring
 
 /-- File-local star-convex interpolation inequality from Assumption 12. -/
 private lemma star_convex_prop
-    (S : StochasticStarConvexGeometryContext Ω V) :
+    (S : StarConvexPathGeometryContext V) :
     ∀ W α, 0 ≤ α → α ≤ 1 →
       S.f ((1 - α) • W + α • S.WStar) ≤ (1 - α) * S.f W + α * S.f S.WStar :=
   Assumption12_StarConvexityAtReferencePoint.star_convex S.assumption12_starConvexity
 
-/-- Shared scaling estimate for vectors already in the `1 / λ` ball. -/
+/-- Shared scaling estimate for vectors already in the radius-`1 / λ` ball. -/
 private lemma scaled_norm_le_eta
-    (S : StochasticStarConvexGeometryContext Ω V) {x : V}
+    (S : StarConvexPathGeometryContext V) {x : V}
     (hx : ‖x‖ ≤ 1 / S.lambda) :
     ‖(S.lambda * S.eta) • x‖ ≤ S.eta := by
   have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
   calc
     ‖(S.lambda * S.eta) • x‖ = (S.lambda * S.eta) * ‖x‖ := by
-      simp [norm_smul, Real.norm_of_nonneg hScaleNonneg]
+      rw [norm_smul, Real.norm_of_nonneg hScaleNonneg]
     _ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
-      gcongr
+      exact mul_le_mul_of_nonneg_left hx hScaleNonneg
     _ = S.eta := by
       field_simp [S.lambda_pos.ne']
 
@@ -146,35 +102,29 @@ end PrivateLemmas
 
 section PublicTheorems
 
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-! ------------------------------------------------------------------------
-Public Lemmas and Theorems
------------------------------------------------------------------------- -/
-
-/-- Rewrites the displacement from the step center to `X_t` as a scaled copy of `W_*`. -/
+/-- Rewrites the displacement from the step center to `X_t`. -/
 lemma interpolatedPoint_sub_stepCenter
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
+    (S : StarConvexPathGeometryContext V) (t : ℕ) :
     S.interpolatedPoint t - S.stepCenter t = (S.lambda * S.eta) • S.WStar := by
-  simp [StochasticStarConvexGeometryContext.interpolatedPoint]
+  simp [interpolatedPoint]
 
-/-- Shows that the auxiliary point `X_t` is feasible for the linear minimization step. -/
+/-- The interpolation point is feasible for the linearized update ball. -/
 lemma interpolatedPoint_feasible
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
+    (S : StarConvexPathGeometryContext V) (t : ℕ) :
     ‖S.interpolatedPoint t - S.stepCenter t‖ ≤ S.eta := by
   calc
     ‖S.interpolatedPoint t - S.stepCenter t‖ = ‖(S.lambda * S.eta) • S.WStar‖ := by
       rw [interpolatedPoint_sub_stepCenter]
-    _ ≤ S.eta := by
-      exact S.scaled_norm_le_eta S.WStar_bound
+    _ ≤ S.eta := S.scaled_norm_le_eta S.WStar_bound
 
-/-- The auxiliary point `X_t` also stays inside the primal `1 / λ` ball. -/
+/-- The interpolation point also stays in the primal radius-`1 / λ` ball. -/
 lemma interpolatedPoint_bound
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
+    (S : StarConvexPathGeometryContext V) (t : ℕ) :
     ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda := by
   have hWeight := S.weight_bound_from_feasible_step t
   have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
@@ -182,11 +132,10 @@ lemma interpolatedPoint_bound
   calc
     ‖S.interpolatedPoint t‖
       = ‖(1 - S.lambda * S.eta) • S.W t + (S.lambda * S.eta) • S.WStar‖ := by
-          simp [StochasticStarConvexGeometryContext.interpolatedPoint,
-            StochasticSteepestDescentGeometryContext.stepCenter]
+          simp [interpolatedPoint, SteepestDescentPathGeometryContext.stepCenter]
     _ ≤ ‖(1 - S.lambda * S.eta) • S.W t‖ + ‖(S.lambda * S.eta) • S.WStar‖ := norm_add_le _ _
     _ = (1 - S.lambda * S.eta) * ‖S.W t‖ + (S.lambda * S.eta) * ‖S.WStar‖ := by
-          simp [norm_smul, Real.norm_of_nonneg hDecayNonneg, Real.norm_of_nonneg hScaleNonneg]
+          rw [norm_smul, norm_smul, Real.norm_of_nonneg hDecayNonneg, Real.norm_of_nonneg hScaleNonneg]
     _ ≤ (1 - S.lambda * S.eta) * (1 / S.lambda) + (S.lambda * S.eta) * (1 / S.lambda) := by
           have hFirst :
               (1 - S.lambda * S.eta) * ‖S.W t‖ ≤
@@ -201,11 +150,9 @@ lemma interpolatedPoint_bound
           field_simp [S.lambda_pos.ne']
           ring
 
-/--
-File-local packaging of the `X_t` geometry used in the one-step descent proof.
--/
+/-- Geometry package for the interpolation point used in the one-step proof. -/
 theorem lemma13_interpolatedPoint_geometry
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
+    (S : StarConvexPathGeometryContext V) (t : ℕ) :
     ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda ∧
       (S.C t) (S.W (t + 1) - S.interpolatedPoint t) ≤ 0 ∧
       ‖S.interpolatedPoint t - S.W t‖ ≤ 2 * S.eta ∧
@@ -214,7 +161,7 @@ theorem lemma13_interpolatedPoint_geometry
   have hXFeasible := interpolatedPoint_feasible S t
   have hWeight : ‖S.W t‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step t
   have hWeightCenter : ‖S.W t - S.stepCenter t‖ ≤ S.eta := by
-    rw [StochasticSteepestDescentGeometryContext.weight_sub_stepCenter]
+    rw [S.weight_sub_stepCenter t]
     exact S.scaled_norm_le_eta hWeight
   have hOptimal := S.step_optimal t (S.interpolatedPoint t) hXFeasible
   refine ⟨hInterp, ?_, ?_, ?_⟩
@@ -224,10 +171,8 @@ theorem lemma13_interpolatedPoint_geometry
       ‖S.interpolatedPoint t - S.W t‖
           = ‖(S.interpolatedPoint t - S.stepCenter t) - (S.W t - S.stepCenter t)‖ := by
               abel_nf
-      _ ≤ ‖S.interpolatedPoint t - S.stepCenter t‖ + ‖S.W t - S.stepCenter t‖ :=
-          norm_sub_le _ _
-      _ ≤ S.eta + S.eta := by
-          exact add_le_add hXFeasible hWeightCenter
+      _ ≤ ‖S.interpolatedPoint t - S.stepCenter t‖ + ‖S.W t - S.stepCenter t‖ := norm_sub_le _ _
+      _ ≤ S.eta + S.eta := add_le_add hXFeasible hWeightCenter
       _ = 2 * S.eta := by ring
   · calc
       ‖S.W (t + 1) - S.interpolatedPoint t‖
@@ -238,28 +183,21 @@ theorem lemma13_interpolatedPoint_geometry
                       (S.interpolatedPoint t - S.stepCenter t) := by
                 abel_nf
               rw [hDecomp]
-      _ ≤ ‖S.W (t + 1) - S.stepCenter t‖ + ‖S.interpolatedPoint t - S.stepCenter t‖ :=
-          norm_sub_le _ _
-      _ ≤ S.eta + S.eta := by
-          exact add_le_add (S.step_feasible t) hXFeasible
+      _ ≤ ‖S.W (t + 1) - S.stepCenter t‖ + ‖S.interpolatedPoint t - S.stepCenter t‖ := norm_sub_le _ _
+      _ ≤ S.eta + S.eta := add_le_add (S.step_feasible t) hXFeasible
       _ = 2 * S.eta := by ring
 
-/--
-Concrete one-step descent theorem proved directly from the descent-lemma Taylor
-bound plus Proposition 9 and the star-convex geometry lemmas.
--/
+/-- Pathwise one-step star-convex descent with an explicit Nesterov residual. -/
 theorem one_step_descent_bound
-    (S : StochasticStarConvexGeometryContext Ω V) :
+    (S : StarConvexPathGeometryContext V) :
     ∀ t,
       S.f (S.W (t + 1)) ≤
         S.f (S.interpolatedPoint t) + 4 * S.L * S.eta ^ 2 + 2 * S.eta * S.nesterovErrorNorm t := by
   intro t
   have hLemma13 := lemma13_interpolatedPoint_geometry S t
   rcases hLemma13 with ⟨hInterpWeight, hOptimalDir, hXWeightBound, hNextXBound⟩
-  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda :=
-    S.weight_bound_from_feasible_step t
-  have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda :=
-    S.weight_bound_from_feasible_step (t + 1)
+  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step t
+  have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step (t + 1)
   have hTaylorInterp :=
     taylor_bound_of_LSmoothOnClosedBallUnderPair
       (continuousDualPairing (V := V))
@@ -302,7 +240,8 @@ theorem one_step_descent_bound
     have hErr :
         S.nesterovError t (S.W (t + 1) - S.interpolatedPoint t) ≤
           S.nesterovErrorNorm t * ‖S.W (t + 1) - S.interpolatedPoint t‖ :=
-      S.nesterovError_apply_le t (S.W (t + 1) - S.interpolatedPoint t)
+      le_trans (le_abs_self _)
+        (S.nesterovError_apply_le t (S.W (t + 1) - S.interpolatedPoint t))
     have hMul :
         S.nesterovErrorNorm t * ‖S.W (t + 1) - S.interpolatedPoint t‖ ≤
           S.nesterovErrorNorm t * (2 * S.eta) := by
@@ -316,7 +255,7 @@ theorem one_step_descent_bound
     have hLinearInterp :
         S.gradientLinear t (S.interpolatedPoint t - S.W t) =
           (S.fGrad (S.W t)) (S.interpolatedPoint t) - (S.fGrad (S.W t)) (S.W t) := by
-      simp [gradientLinear, StochasticSteepestDescentGeometryContext.grad]
+      simp [gradientLinear, SteepestDescentPathGeometryContext.grad]
     have hCompLeft :
         S.f (S.W t) + S.gradientLinear t (S.interpolatedPoint t - S.W t) ≤
           S.f (S.interpolatedPoint t) + S.L / 2 * ‖S.interpolatedPoint t - S.W t‖ ^ 2 := by
@@ -326,7 +265,7 @@ theorem one_step_descent_bound
             S.f (S.interpolatedPoint t) -
               (S.f (S.W t)
                 + ((S.fGrad (S.W t)) (S.interpolatedPoint t) - (S.fGrad (S.W t)) (S.W t))) := by
-        simpa [continuousDualPairing, StochasticSteepestDescentGeometryContext.grad] using hCompLeftRaw
+        simpa [continuousDualPairing, SteepestDescentPathGeometryContext.grad] using hCompLeftRaw
       linarith
     have hQuad :
         S.L / 2 * ‖S.interpolatedPoint t - S.W t‖ ^ 2 ≤ 2 * S.L * S.eta ^ 2 := by
@@ -348,7 +287,7 @@ theorem one_step_descent_bound
     have hLinearNext :
         S.gradientLinear t (S.W (t + 1) - S.W t) =
           (S.fGrad (S.W t)) (S.W (t + 1)) - (S.fGrad (S.W t)) (S.W t) := by
-      simp [gradientLinear, StochasticSteepestDescentGeometryContext.grad]
+      simp [gradientLinear, SteepestDescentPathGeometryContext.grad]
     have hStepRight :
         S.f (S.W (t + 1)) ≤
           S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
@@ -358,7 +297,7 @@ theorem one_step_descent_bound
               (S.f (S.W t)
                 + ((S.fGrad (S.W t)) (S.W (t + 1)) - (S.fGrad (S.W t)) (S.W t))) ≤
             S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
-        simpa [continuousDualPairing, StochasticSteepestDescentGeometryContext.grad] using hStepRightRaw
+        simpa [continuousDualPairing, SteepestDescentPathGeometryContext.grad] using hStepRightRaw
       linarith
     have hQuad :
         S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤ 2 * S.L * S.eta ^ 2 := by
@@ -368,8 +307,7 @@ theorem one_step_descent_bound
         exact div_nonneg S.assumption3_fLocalSmoothness.nonneg (by norm_num)
       nlinarith [hSquare, hHalfLNonneg]
     have hQuad' :
-        S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) +
-            S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤
+        S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤
           S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := by
       simpa [add_comm, add_left_comm, add_assoc] using
         (add_le_add_left hQuad (S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t)))
@@ -392,19 +330,15 @@ theorem one_step_descent_bound
               calc
                 (S.C t) (S.W (t + 1) - S.interpolatedPoint t) +
                     S.nesterovError t (S.W (t + 1) - S.interpolatedPoint t)
-                    ≤ 0 + 2 * S.eta * S.nesterovErrorNorm t := by
-                      exact add_le_add hOptimalDir hErrorTerm
+                    ≤ 0 + 2 * S.eta * S.nesterovErrorNorm t := add_le_add hOptimalDir hErrorTerm
                 _ = 2 * S.eta * S.nesterovErrorNorm t := by ring
             nlinarith [hPairErr]
     _ ≤ S.f (S.interpolatedPoint t) + 4 * S.L * S.eta ^ 2 + 2 * S.eta * S.nesterovErrorNorm t := by
           linarith [hSmoothCompare]
 
-/--
-Public scalar suboptimality recurrence extracted from the one-step descent
-argument and Assumption 12.
--/
+/-- Pathwise star-convex scalar recurrence. -/
 theorem suboptimality_recurrence_step
-    (S : StochasticStarConvexGeometryContext Ω V) :
+    (S : StarConvexPathGeometryContext V) :
     ∀ t,
       S.suboptimality (t + 1) ≤
         (1 - S.lambda * S.eta) * S.suboptimality t
@@ -417,11 +351,138 @@ theorem suboptimality_recurrence_step
   have hX :
       S.f (S.interpolatedPoint t) ≤
         (1 - S.lambda * S.eta) * S.f (S.W t) + (S.lambda * S.eta) * S.f S.WStar := by
-    simpa [StochasticStarConvexGeometryContext.interpolatedPoint,
-      StochasticSteepestDescentGeometryContext.stepCenter] using hStar
+    simpa [interpolatedPoint, SteepestDescentPathGeometryContext.stepCenter] using hStar
   have hLocal := S.one_step_descent_bound t
-  dsimp [StochasticSteepestDescentGeometryContext.suboptimality]
+  dsimp [SteepestDescentPathGeometryContext.suboptimality]
   linarith
+
+end PublicTheorems
+
+end StarConvexPathGeometryContext
+
+namespace StochasticStarConvexGeometryContext
+
+section PublicDefinitions
+
+variable {Ω V : Type*}
+variable [MeasurableSpace Ω]
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+/-- The pathwise interpolation point `X_t(ω)`. -/
+def interpolatedPoint (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) : V :=
+  (S.path ω).interpolatedPoint t
+
+/-- The batch-size-dependent `1 / sqrt(b)` coefficient in the star-convex bound. -/
+def starConvexExpectedSuboptimalityMinibatchCoefficient
+    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
+  (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma
+
+/-- The batch-size-independent drift floor in the star-convex bound. -/
+def starConvexExpectedSuboptimalityDriftFloor
+    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
+  4 * (1 + S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta ^ 2
+
+/-- The batch-size-dependent noise floor in the star-convex bound. -/
+def starConvexExpectedSuboptimalityNoiseFloor
+    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
+  (2 * S.eta * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ
+
+/-- The residual floor used by the expected star-convex bounds. -/
+def starConvexExpectedSuboptimalityResidualFloor
+    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
+  ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
+      + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta
+
+end PublicDefinitions
+
+section PrivateDefinitions
+
+variable {Ω V : Type*}
+variable [MeasurableSpace Ω]
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+-- No private definitions are introduced in this wrapper layer.
+
+end PrivateDefinitions
+
+section PrivateLemmas
+
+variable {Ω V : Type*}
+variable [MeasurableSpace Ω]
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+-- No private lemmas are needed beyond the pathwise wrappers.
+
+end PrivateLemmas
+
+section PublicTheorems
+
+variable {Ω V : Type*}
+variable [MeasurableSpace Ω]
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+/-- Pathwise displacement from the step center to `X_t(ω)`. -/
+lemma interpolatedPoint_sub_stepCenter
+    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    S.interpolatedPoint t ω - S.stepCenter t ω = (S.lambda * S.eta) • S.WStar := by
+  simpa [interpolatedPoint, StochasticSteepestDescentGeometryContext.stepCenter] using
+    (S.path ω).interpolatedPoint_sub_stepCenter t
+
+/-- Pathwise feasibility of the interpolation point. -/
+lemma interpolatedPoint_feasible
+    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    ‖S.interpolatedPoint t ω - S.stepCenter t ω‖ ≤ S.eta := by
+  simpa [interpolatedPoint, StochasticSteepestDescentGeometryContext.stepCenter] using
+    (S.path ω).interpolatedPoint_feasible t
+
+/-- Pathwise radius-`1 / λ` bound for the interpolation point. -/
+lemma interpolatedPoint_bound
+    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    ‖S.interpolatedPoint t ω‖ ≤ 1 / S.lambda := by
+  simpa [interpolatedPoint] using (S.path ω).interpolatedPoint_bound t
+
+/-- Pathwise packaging of the interpolation geometry used in the descent proof. -/
+theorem lemma13_interpolatedPoint_geometry
+    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    ‖S.interpolatedPoint t ω‖ ≤ 1 / S.lambda ∧
+      (S.C t ω) (S.W (t + 1) ω - S.interpolatedPoint t ω) ≤ 0 ∧
+      ‖S.interpolatedPoint t ω - S.W t ω‖ ≤ 2 * S.eta ∧
+      ‖S.W (t + 1) ω - S.interpolatedPoint t ω‖ ≤ 2 * S.eta := by
+  simpa [interpolatedPoint] using (S.path ω).lemma13_interpolatedPoint_geometry t
+
+/-- Pathwise one-step star-convex descent bound. -/
+theorem one_step_descent_bound
+    (S : StochasticStarConvexGeometryContext Ω V) :
+    ∀ t ω,
+      S.f (S.W (t + 1) ω) ≤
+        S.f (S.interpolatedPoint t ω) + 4 * S.L * S.eta ^ 2 + 2 * S.eta * S.nesterovErrorNorm t ω := by
+  intro t ω
+  simpa [interpolatedPoint] using (S.path ω).one_step_descent_bound t
+
+/-- Pathwise scalar star-convex recurrence. -/
+theorem suboptimality_recurrence_step
+    (S : StochasticStarConvexGeometryContext Ω V) :
+    ∀ t ω,
+      S.suboptimality (t + 1) ω ≤
+        (1 - S.lambda * S.eta) * S.suboptimality t ω
+          + 4 * S.L * S.eta ^ 2
+          + 2 * S.eta * S.nesterovErrorNorm t ω := by
+  intro t ω
+  have h := (S.path ω).suboptimality_recurrence_step t
+  simpa [SteepestDescentPathGeometryContext.suboptimality,
+    StochasticSteepestDescentGeometryContext.suboptimality] using h
 
 end PublicTheorems
 

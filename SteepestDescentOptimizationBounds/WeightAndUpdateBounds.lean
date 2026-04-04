@@ -6,83 +6,64 @@ namespace SteepestDescentOptimizationBounds
 noncomputable section
 
 /-!
-This file contains the common geometric feasibility and update-control lemmas
-for the decoupled weight-decay iteration.
+Common geometric feasibility and update-control lemmas for the decoupled
+weight-decay iteration.
 
 Upstream dependency:
 
-- `Assumptions.lean` provides the geometry context, the LMO direction, and the
-  update rule.
+- `Assumptions.lean` provides both the deterministic sample-path geometry
+  context and the realized stochastic context that wraps it.
 
 Downstream use:
 
-- `StarConvex.lean` reuses Proposition 9 and the common step-ball geometry.
-- `FrankWolfe.lean` reuses Proposition 9 directly for the deterministic
+- `StarConvex.lean` reuses the common iterate/update ball geometry.
+- `FrankWolfe.lean` reuses it directly for the pathwise
   Frank-Wolfe-gap descent argument.
+- `MomentumBounds.lean` reuses the pathwise update bound inside the expected
+  momentum-recursion estimate.
 -/
 
-section Geometry
+section PathGeometry
 
-namespace StochasticSteepestDescentGeometryContext
+namespace SteepestDescentPathGeometryContext
 
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-! ------------------------------------------------------------------------
-Public Definitions
------------------------------------------------------------------------- -/
-
 /-- The center of the radius-`η` feasible ball used by the update. -/
-def stepCenter (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : V :=
+def stepCenter (S : SteepestDescentPathGeometryContext V) (t : ℕ) : V :=
   (1 - S.lambda * S.eta) • S.W t
-
-/-! ------------------------------------------------------------------------
-Private Definitions
------------------------------------------------------------------------- -/
-
--- No private definitions are introduced in this file.
-
-/-! ------------------------------------------------------------------------
-Private Lemmas and Theorems
------------------------------------------------------------------------- -/
-
--- No private lemmas are currently needed in this file.
-
-/-! ------------------------------------------------------------------------
-Public Lemmas and Theorems
------------------------------------------------------------------------- -/
 
 /-- The chosen LMO direction lies in the primal unit ball. -/
 lemma aStar_norm_le
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
     ‖S.aStar t‖ ≤ 1 :=
   (S.aStar_spec t).1
 
 /-- The chosen LMO direction minimizes the pairing over the primal unit ball. -/
 lemma aStar_optimal
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (A : V) (hA : ‖A‖ ≤ 1) :
+    (S : SteepestDescentPathGeometryContext V) (t : ℕ) (A : V) (hA : ‖A‖ ≤ 1) :
     (S.C t) (S.aStar t) ≤ (S.C t) A :=
   (S.aStar_spec t).2 A hA
 
 /-- The weight-decay step is exactly the center plus `η` times the LMO direction. -/
 lemma step_sub_center
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
     S.W (t + 1) - S.stepCenter t = S.eta • S.aStar t := by
-  rw [S.update_eq t, StochasticSteepestDescentGeometryContext.stepCenter]
+  rw [S.update_eq t, SteepestDescentPathGeometryContext.stepCenter]
   abel_nf
 
 /-- Rewrites the displacement from `W_t` to the step center as a scaled copy of `W_t`. -/
 lemma weight_sub_stepCenter
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
     S.W t - S.stepCenter t = (S.lambda * S.eta) • S.W t := by
-  simp [StochasticSteepestDescentGeometryContext.stepCenter, sub_eq_add_neg, one_smul, add_smul]
+  simp [SteepestDescentPathGeometryContext.stepCenter, sub_eq_add_neg, one_smul, add_smul]
 
 /-- The update is feasible because the chosen LMO direction has norm at most `1`. -/
 lemma step_feasible
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
     ‖S.W (t + 1) - S.stepCenter t‖ ≤ S.eta := by
   rw [S.step_sub_center t]
   calc
@@ -97,7 +78,7 @@ Any point feasible for the radius-`η` ball is no better than the chosen update
 for the linear minimization subproblem.
 -/
 lemma step_optimal
-    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (S : SteepestDescentPathGeometryContext V)
     (t : ℕ) (X : V) (hX : ‖X - S.stepCenter t‖ ≤ S.eta) :
     (S.C t) (S.W (t + 1)) ≤ (S.C t) X := by
   let A : V := (1 / S.eta) • (X - S.stepCenter t)
@@ -134,7 +115,7 @@ lemma step_optimal
   calc
     (S.C t) (S.W (t + 1))
       = (S.C t) (S.stepCenter t) + S.eta * (S.C t) (S.aStar t) := by
-          rw [S.update_eq t, StochasticSteepestDescentGeometryContext.stepCenter,
+          rw [S.update_eq t, SteepestDescentPathGeometryContext.stepCenter,
             ContinuousLinearMap.map_add, ContinuousLinearMap.map_smul, ContinuousLinearMap.map_smul]
           simp [smul_eq_mul]
     _ ≤ (S.C t) (S.stepCenter t) + S.eta * (S.C t) A := by
@@ -148,7 +129,7 @@ lemma step_optimal
 
 /-- Bootstraps the bound `‖W_t‖ ≤ 1 / λ` for every iterate. -/
 lemma weight_bound_from_feasible_step
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    (S : SteepestDescentPathGeometryContext V) :
     ∀ t, ‖S.W t‖ ≤ 1 / S.lambda
   | 0 => S.W0_bound
   | t + 1 => by
@@ -157,13 +138,13 @@ lemma weight_bound_from_feasible_step
       calc
         ‖S.W (t + 1)‖ = ‖(S.W (t + 1) - S.stepCenter t) + S.stepCenter t‖ := by
           congr
-          simp [StochasticSteepestDescentGeometryContext.stepCenter]
+          simp [SteepestDescentPathGeometryContext.stepCenter]
         _ ≤ ‖S.W (t + 1) - S.stepCenter t‖ + ‖S.stepCenter t‖ := norm_add_le _ _
         _ ≤ S.eta + ‖S.stepCenter t‖ := by
           gcongr
           exact S.step_feasible t
         _ = S.eta + (1 - S.lambda * S.eta) * ‖S.W t‖ := by
-          simp [StochasticSteepestDescentGeometryContext.stepCenter, norm_smul,
+          simp [SteepestDescentPathGeometryContext.stepCenter, norm_smul,
             Real.norm_of_nonneg hScaleNonneg]
         _ ≤ S.eta + (1 - S.lambda * S.eta) * (1 / S.lambda) := by
           gcongr
@@ -172,15 +153,15 @@ lemma weight_bound_from_feasible_step
           ring
 
 /--
-Proposition 9: every iterate remains inside the `1 / λ` ball, and every update
-has size at most `2η`.
+Every iterate remains inside the `1 / λ` ball, and every update has size at
+most `2η`.
 -/
 theorem proposition9_weight_and_update_bounds
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    (S : SteepestDescentPathGeometryContext V) :
     ∀ t, ‖S.W t‖ ≤ 1 / S.lambda ∧ ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta := by
   intro t
   have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
-  have hWeight := weight_bound_from_feasible_step S t
+  have hWeight := S.weight_bound_from_feasible_step t
   refine ⟨hWeight, ?_⟩
   calc
     ‖S.W (t + 1) - S.W t‖
@@ -203,9 +184,92 @@ theorem proposition9_weight_and_update_bounds
           field_simp [S.lambda_pos.ne']
           ring
 
+end SteepestDescentPathGeometryContext
+
+end PathGeometry
+
+section StochasticWrappers
+
+namespace StochasticSteepestDescentGeometryContext
+
+variable {Ω V : Type*}
+variable [MeasurableSpace Ω]
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+/-- The center of the radius-`η` feasible ball along a realized sample path. -/
+def stepCenter (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) : V :=
+  (S.path ω).stepCenter t
+
+/-- The chosen LMO direction lies in the primal unit ball pathwise. -/
+lemma aStar_norm_le
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    ‖S.aStar t ω‖ ≤ 1 := by
+  simpa [StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).aStar_norm_le t
+
+/-- The chosen LMO direction minimizes the pairing pathwise. -/
+lemma aStar_optimal
+    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (t : ℕ) (ω : Ω) (A : V) (hA : ‖A‖ ≤ 1) :
+    (S.C t ω) (S.aStar t ω) ≤ (S.C t ω) A := by
+  simpa [StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).aStar_optimal t A hA
+
+/-- The weight-decay step is exactly the center plus `η` times the LMO direction pathwise. -/
+lemma step_sub_center
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    S.W (t + 1) ω - S.stepCenter t ω = S.eta • S.aStar t ω := by
+  simpa [StochasticSteepestDescentGeometryContext.stepCenter,
+    StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).step_sub_center t
+
+/-- Rewrites the displacement from `W_t` to the step center pathwise. -/
+lemma weight_sub_stepCenter
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    S.W t ω - S.stepCenter t ω = (S.lambda * S.eta) • S.W t ω := by
+  simpa [StochasticSteepestDescentGeometryContext.stepCenter,
+    StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).weight_sub_stepCenter t
+
+/-- The update is feasible pathwise. -/
+lemma step_feasible
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    ‖S.W (t + 1) ω - S.stepCenter t ω‖ ≤ S.eta := by
+  simpa [StochasticSteepestDescentGeometryContext.stepCenter,
+    StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).step_feasible t
+
+/-- Linear-minimization optimality along a realized sample path. -/
+lemma step_optimal
+    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (t : ℕ) (ω : Ω) (X : V) (hX : ‖X - S.stepCenter t ω‖ ≤ S.eta) :
+    (S.C t ω) (S.W (t + 1) ω) ≤ (S.C t ω) X := by
+  simpa [StochasticSteepestDescentGeometryContext.stepCenter,
+    StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).step_optimal t X hX
+
+/-- The iterate norm stays inside the `1 / λ` ball pathwise. -/
+lemma weight_bound_from_feasible_step
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t ω, ‖S.W t ω‖ ≤ 1 / S.lambda := by
+  intro t ω
+  simpa [StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).weight_bound_from_feasible_step t
+
+/-- Pathwise iterate/update ball bound for the decoupled weight-decay step. -/
+theorem proposition9_weight_and_update_bounds
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t ω, ‖S.W t ω‖ ≤ 1 / S.lambda ∧ ‖S.W (t + 1) ω - S.W t ω‖ ≤ 2 * S.eta := by
+  intro t ω
+  simpa [StochasticSteepestDescentGeometryContext.path] using
+    (S.path ω).proposition9_weight_and_update_bounds t
+
 end StochasticSteepestDescentGeometryContext
 
-end Geometry
+end StochasticWrappers
 
 end
 

@@ -19,6 +19,7 @@ namespace StochasticFrankWolfeKLGeometryContext
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace V] [BorelSpace V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -30,31 +31,31 @@ SL1: Fixed-Momentum Large-Horizon Proxy
 Public Definitions
 ------------------------------------------------------------------------ -/
 
-/-- The exact Theorem-14 drift coefficient expressed in `β`. -/
+/-- Exact drift coefficient for the FW expected-suboptimality large-horizon proxy. -/
 def fWExpectedSuboptimalityProxyDriftCoeff (S : StochasticFrankWolfeKLGeometryContext Ω V) (β : ℝ) : ℝ :=
   (2 * S.L / (S.muFW * S.lambda)) * (1 + 2 * β ^ 2 / (1 - β))
     + (2 * β / (1 - β)) * S.initialGradNorm
 
-/-- The exact Theorem-14 minibatch-noise coefficient expressed in `β`. -/
+/-- Exact minibatch-noise coefficient for the FW expected-suboptimality large-horizon proxy. -/
 def fWExpectedSuboptimalityProxyNoiseCoeff (S : StochasticFrankWolfeKLGeometryContext Ω V) (β : ℝ) : ℝ :=
   (2 / (S.muFW * S.lambda))
     * (β * Real.sqrt ((1 - β) / (1 + β)) + (1 - β))
     * Real.sqrt S.D
     * S.sigma
 
-/-- The fixed-step large-horizon proxy derived from Theorem 14. -/
+/-- Fixed-step large-horizon proxy for the FW expected-suboptimality bound. -/
 def fWExpectedSuboptimalityProxySL1
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     (η batchSize T β : ℝ) : ℝ :=
-  S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(S.muFW * S.lambda * η * T))
+  S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(S.muFW * S.lambda * η * T))
     + S.fWExpectedSuboptimalityProxyNoiseCoeff β / Real.sqrt batchSize
     + S.fWExpectedSuboptimalityProxyDriftCoeff β * η
 
-/-- The token-budget large-horizon proxy derived from Theorem 14. -/
+/-- Token-budget large-horizon proxy for the FW expected-suboptimality bound. -/
 def fWExpectedSuboptimalityProxySL1Token
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     (η batchSize N β : ℝ) : ℝ :=
-  S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(S.muFW * S.lambda * η * N / batchSize))
+  S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(S.muFW * S.lambda * η * N / batchSize))
     + S.fWExpectedSuboptimalityProxyNoiseCoeff β / Real.sqrt batchSize
     + S.fWExpectedSuboptimalityProxyDriftCoeff β * η
 
@@ -92,7 +93,7 @@ def fixedMomentumFWExpectedSuboptimalityReducedProxy
     (N β batchSize : ℝ) : ℝ :=
   (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize / (S.muFW * S.lambda * N))
       * (1 + Real.log
-          (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)))
+          (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)))
     + S.fWExpectedSuboptimalityProxyNoiseCoeff β / Real.sqrt batchSize
 
 /-- `batchSize` minimizes the reduced token-budget SL1 proxy on the interior branch. -/
@@ -100,9 +101,9 @@ def IsFixedMomentumFWExpectedSuboptimalityReducedProxyBatchMinimizer
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     (N β batchSize : ℝ) : Prop :=
   0 < batchSize ∧
-    1 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize) ∧
+    1 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize) ∧
     ∀ batchSize' > 0,
-      1 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize') →
+      1 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize') →
       S.fixedMomentumFWExpectedSuboptimalityReducedProxy N β batchSize
         ≤ S.fixedMomentumFWExpectedSuboptimalityReducedProxy N β batchSize'
 
@@ -116,10 +117,10 @@ def IsSmallBranchInteriorBatchMinimizerFamilyFixedMomentumFWExpectedSuboptimalit
       S.IsFixedMomentumFWExpectedSuboptimalityReducedProxyBatchMinimizer N β (batchSizeStar N) ∧
       cLogLower * Real.log N
         ≤ Real.log
-            (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N
+            (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N
               / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSizeStar N)) ∧
       Real.log
-          (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N
+          (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N
             / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSizeStar N))
         ≤ cLogUpper * Real.log N
 
@@ -131,7 +132,7 @@ private def etaStarFixedStepsClosedForm
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     (T β : ℝ) : ℝ :=
   (1 / (S.muFW * S.lambda * T))
-    * Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β)
+    * Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β)
 
 /-- Closed-form token-budget optimizer at fixed batch size. -/
 private def etaStarFixedMomentumClosedForm
@@ -139,20 +140,20 @@ private def etaStarFixedMomentumClosedForm
     (N β batchSize : ℝ) : ℝ :=
   (batchSize / (S.muFW * S.lambda * N))
     * Real.log
-        (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize))
+        (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize))
 
 private def fixedMomentumCriticalExpression
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     (N β batchSize : ℝ) : ℝ :=
   batchSize ^ (3 / 2 : ℝ)
       * Real.log
-          (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize))
+          (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize))
     - (S.fWExpectedSuboptimalityProxyNoiseCoeff β * (S.muFW * S.lambda) / (2 * S.fWExpectedSuboptimalityProxyDriftCoeff β)) * N
 
 private def fixedMomentumLogArg
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     (N β batchSize : ℝ) : ℝ :=
-  S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)
+  S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)
 
 private def IsInteriorCriticalPointFixedMomentumReducedProxy
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
@@ -218,7 +219,7 @@ private theorem etaStarFixedMomentumClosedForm_eq
     S.etaStarFixedMomentumClosedForm N β batchSize
       = (batchSize / (S.muFW * S.lambda * N))
           * Real.log
-              (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)) :=
+              (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)) :=
   rfl
 
 private theorem fixedMomentumFWExpectedSuboptimalityReducedProxy_eq
@@ -227,7 +228,7 @@ private theorem fixedMomentumFWExpectedSuboptimalityReducedProxy_eq
     S.fixedMomentumFWExpectedSuboptimalityReducedProxy N β batchSize
       = (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize / (S.muFW * S.lambda * N))
           * (1 + Real.log
-              (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)))
+              (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)))
         + S.fWExpectedSuboptimalityProxyNoiseCoeff β / Real.sqrt batchSize :=
   rfl
 
@@ -235,20 +236,20 @@ private theorem hasDerivAt_fixedMomentumFWExpectedSuboptimalityReducedProxy
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β N batchSize : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize) :
     HasDerivAt (fun b => S.fixedMomentumFWExpectedSuboptimalityReducedProxy N β b)
       ((S.fWExpectedSuboptimalityProxyDriftCoeff β / (S.muFW * S.lambda * N)) * Real.log (S.fixedMomentumLogArg N β batchSize)
         - S.fWExpectedSuboptimalityProxyNoiseCoeff β / (2 * batchSize ^ (3 / 2 : ℝ))) batchSize := by
   let A := S.fWExpectedSuboptimalityProxyDriftCoeff β
   let B := S.fWExpectedSuboptimalityProxyNoiseCoeff β
-  let C := S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / A
+  let C := S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / A
   have hApos : 0 < A := by
     dsimp [A]
     exact S.fWExpectedSuboptimalityProxyDriftCoeff_pos hβ0 hβ1
   have hCpos : 0 < C := by
     dsimp [C]
-    have hNum : 0 < (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda) * N := by
+    have hNum : 0 < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda) * N := by
       exact mul_pos (mul_pos (mul_pos hGap S.muFW_pos) S.lambda_pos) hN
     exact div_pos (by simpa [mul_assoc] using hNum) hApos
   have hLogArgDeriv : HasDerivAt (fun b => Real.log (C / b)) (-1 / batchSize) batchSize := by
@@ -319,17 +320,17 @@ private theorem isInteriorCriticalPointFixedMomentumReducedProxy_of_isBatchMinim
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β N batchSize : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hN : 0 < N)
     (hMin : S.IsFixedMomentumFWExpectedSuboptimalityReducedProxyBatchMinimizer N β batchSize) :
     S.IsInteriorCriticalPointFixedMomentumReducedProxy N β batchSize := by
   rcases hMin with ⟨hBatch, hInterior, hMinOn⟩
   let A := S.fWExpectedSuboptimalityProxyDriftCoeff β
-  let C : ℝ := S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / A
+  let C : ℝ := S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / A
   have hApos : 0 < A := by
     dsimp [A]
     exact S.fWExpectedSuboptimalityProxyDriftCoeff_pos hβ0 hβ1
-  have hInteriorMul : A * batchSize < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N := by
+  have hInteriorMul : A * batchSize < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N := by
     have hDenPos : 0 < A * batchSize := mul_pos hApos hBatch
     exact (one_lt_div hDenPos).1 (by
       simpa [fixedMomentumLogArg, A, div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm] using hInterior)
@@ -339,11 +340,11 @@ private theorem isInteriorCriticalPointFixedMomentumReducedProxy_of_isBatchMinim
   have hIsMinOn :
       IsMinOn (fun b => S.fixedMomentumFWExpectedSuboptimalityReducedProxy N β b) (Set.Ioo 0 C) batchSize := by
     intro b hb
-    have hbInterior : 1 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * b) := by
-      have hMul : A * b < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N := by
+    have hbInterior : 1 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * b) := by
+      have hMul : A * b < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N := by
         calc
           A * b < A * C := mul_lt_mul_of_pos_left hb.2 hApos
-          _ = S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N := by
+          _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N := by
                 dsimp [C]
                 field_simp [hApos.ne']
       exact (one_lt_div (mul_pos hApos hb.1)).2 hMul
@@ -365,7 +366,7 @@ private theorem fixedMomentumCriticalExpression_eq_zero_of_isInteriorCriticalPoi
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β N batchSize : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hN : 0 < N)
     (hCrit : S.IsInteriorCriticalPointFixedMomentumReducedProxy N β batchSize) :
     S.fixedMomentumCriticalExpression N β batchSize = 0 := by
@@ -471,7 +472,7 @@ private theorem hasDerivAt_fWExpectedSuboptimalityProxySL1
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {η batchSize T β : ℝ} :
     HasDerivAt (fun η' => S.fWExpectedSuboptimalityProxySL1 η' batchSize T β)
-      (-(S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * η * T)))
+      (-(S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * η * T)))
         + S.fWExpectedSuboptimalityProxyDriftCoeff β) η := by
   have hInner :
       HasDerivAt (fun η' : ℝ => -(S.muFW * S.lambda * η' * T)) (-(S.muFW * S.lambda * T)) η := by
@@ -481,9 +482,9 @@ private theorem hasDerivAt_fWExpectedSuboptimalityProxySL1
   have hExp := (Real.hasDerivAt_exp (-(S.muFW * S.lambda * η * T))).comp η hInner
   have hMain :
       HasDerivAt
-        (fun η' : ℝ => S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(S.muFW * S.lambda * η' * T)))
-        (-(S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * η * T)))) η := by
-    simpa [mul_assoc, mul_left_comm, mul_comm] using hExp.const_mul S.frankWolfeExpectedSuboptimalityInitialGap
+        (fun η' : ℝ => S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(S.muFW * S.lambda * η' * T)))
+        (-(S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * η * T)))) η := by
+    simpa [mul_assoc, mul_left_comm, mul_comm] using hExp.const_mul S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality
   have hDrift :
       HasDerivAt (fun η' : ℝ => S.fWExpectedSuboptimalityProxyDriftCoeff β * η') (S.fWExpectedSuboptimalityProxyDriftCoeff β) η := by
     simpa [mul_comm] using (hasDerivAt_id η).const_mul (S.fWExpectedSuboptimalityProxyDriftCoeff β)
@@ -496,7 +497,7 @@ private theorem hasDerivAt_fWExpectedSuboptimalityProxySL1Token
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {η batchSize N β : ℝ} :
     HasDerivAt (fun η' => S.fWExpectedSuboptimalityProxySL1Token η' batchSize N β)
-      (-(S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize)
+      (-(S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize)
             * Real.exp (-(S.muFW * S.lambda * η * N / batchSize)))
         + S.fWExpectedSuboptimalityProxyDriftCoeff β) η := by
   have hInner :
@@ -508,10 +509,10 @@ private theorem hasDerivAt_fWExpectedSuboptimalityProxySL1Token
   have hExp := (Real.hasDerivAt_exp (-(S.muFW * S.lambda * η * N / batchSize))).comp η hInner
   have hMain :
       HasDerivAt
-        (fun η' : ℝ => S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(S.muFW * S.lambda * η' * N / batchSize)))
-        (-(S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize)
+        (fun η' : ℝ => S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(S.muFW * S.lambda * η' * N / batchSize)))
+        (-(S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize)
             * Real.exp (-(S.muFW * S.lambda * η * N / batchSize)))) η := by
-    simpa [mul_assoc, mul_left_comm, mul_comm] using hExp.const_mul S.frankWolfeExpectedSuboptimalityInitialGap
+    simpa [mul_assoc, mul_left_comm, mul_comm] using hExp.const_mul S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality
   have hDrift :
       HasDerivAt (fun η' : ℝ => S.fWExpectedSuboptimalityProxyDriftCoeff β * η') (S.fWExpectedSuboptimalityProxyDriftCoeff β) η := by
     simpa [mul_comm] using (hasDerivAt_id η).const_mul (S.fWExpectedSuboptimalityProxyDriftCoeff β)
@@ -524,9 +525,9 @@ private theorem closedForm_fixedStep_isMinimizer
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize T : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hT : 0 < T)
-    (hInterior : S.fWExpectedSuboptimalityProxyDriftCoeff β < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T) :
+    (hInterior : S.fWExpectedSuboptimalityProxyDriftCoeff β < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T) :
     S.IsFixedStepFWExpectedSuboptimalityProxyMinimizer (S.etaStarFixedStepsClosedForm T β) batchSize T β := by
   let A := S.fWExpectedSuboptimalityProxyDriftCoeff β
   let a : ℝ := S.muFW * S.lambda * T
@@ -538,11 +539,11 @@ private theorem closedForm_fixedStep_isMinimizer
     dsimp [a]
     exact mul_pos (mul_pos S.muFW_pos S.lambda_pos) hT
   have hArgPos :
-      0 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A := by
-    have hNum : 0 < (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda) * T := by
+      0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A := by
+    have hNum : 0 < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda) * T := by
       exact mul_pos (mul_pos (mul_pos hGap S.muFW_pos) S.lambda_pos) hT
     exact div_pos (by simpa [mul_assoc] using hNum) hApos
-  have hArgGtOne : 1 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A := by
+  have hArgGtOne : 1 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A := by
     have hDiv := (one_lt_div hApos).2 hInterior
     simpa [one_mul] using hDiv
   have hEtaPos : 0 < ηStar := by
@@ -550,17 +551,17 @@ private theorem closedForm_fixedStep_isMinimizer
     refine mul_pos ?_ (Real.log_pos hArgGtOne)
     exact one_div_pos.mpr (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hT)
   have hExpStar :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar)) = A / a := by
-    have hMul : a * ηStar = Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar)) = A / a := by
+    have hMul : a * ηStar = Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) := by
       dsimp [a, ηStar, etaStarFixedStepsClosedForm]
       field_simp [S.muFW_pos.ne', S.lambda_pos.ne', hT.ne']
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))
-          = S.frankWolfeExpectedSuboptimalityInitialGap
-              * Real.exp (-Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality
+              * Real.exp (-Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A)) := by
                 rw [hMul]
-      _ = S.frankWolfeExpectedSuboptimalityInitialGap / (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) := by
+      _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) := by
             rw [Real.exp_neg, Real.exp_log hArgPos]
             simp [div_eq_mul_inv]
       _ = A / a := by
@@ -585,16 +586,16 @@ private theorem closedForm_fixedStep_isMinimizer
       _ ≤ (A / a) * (Real.exp (-u) + u) := hMul
       _ = (A / a) * Real.exp (-u) + A * (η - ηStar) := by rw [mul_add, hU]
   have hExpEta :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
         = (A / a) * Real.exp (-u) := by
     have hDecomp : -(a * η) = -(a * ηStar) + (-u) := by
       dsimp [u]
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
-          = S.frankWolfeExpectedSuboptimalityInitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
               rw [hDecomp, Real.exp_add]
-      _ = (S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
+      _ = (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
       _ = (A / a) * Real.exp (-u) := by rw [hExpStar]
   calc
     S.fWExpectedSuboptimalityProxySL1 ηStar batchSize T β
@@ -621,17 +622,17 @@ private theorem closedForm_fixedStep_isMinimizer
 private theorem fixedToken_interior_of_isMinimizer
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize N ηStar : ℝ}
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hMin : S.IsFixedTokenBudgetFWExpectedSuboptimalityProxyMinimizer ηStar batchSize N β) :
-    S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N := by
+    S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N := by
   have hIsMinOn : IsMinOn (fun η => S.fWExpectedSuboptimalityProxySL1Token η batchSize N β) (Set.Ioi 0) ηStar := by
     intro η hη
     exact hMin.2 η hη
   have hLocalMin : IsLocalMin (fun η => S.fWExpectedSuboptimalityProxySL1Token η batchSize N β) ηStar := by
     exact hIsMinOn.localize.isLocalMin (Ioi_mem_nhds hMin.1)
   have hDerivZero :
-      -(S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize)
+      -(S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize)
           * Real.exp (-(S.muFW * S.lambda * ηStar * N / batchSize)))
         + S.fWExpectedSuboptimalityProxyDriftCoeff β = 0 := by
     exact hLocalMin.hasDerivAt_eq_zero (S.hasDerivAt_fWExpectedSuboptimalityProxySL1Token (η := ηStar))
@@ -640,34 +641,34 @@ private theorem fixedToken_interior_of_isMinimizer
     have hArgPos : 0 < S.muFW * S.lambda * ηStar * N / batchSize := by
       exact div_pos (mul_pos (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hMin.1) hN) hBatch
     linarith
-  have hScalePos : 0 < S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize) := by
+  have hScalePos : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize) := by
     exact mul_pos hGap (div_pos (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hN) hBatch)
   have hLt :
       S.fWExpectedSuboptimalityProxyDriftCoeff β
-        < S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize) := by
+        < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize) := by
     calc
       S.fWExpectedSuboptimalityProxyDriftCoeff β
-        = S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize)
+        = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize)
             * Real.exp (-(S.muFW * S.lambda * ηStar * N / batchSize)) := by
             linarith
-      _ < (S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize)) * 1 := by
+      _ < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize)) * 1 := by
             exact mul_lt_mul_of_pos_left hExpLtOne hScalePos
-      _ = S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize) := by ring
+      _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize) := by ring
   have hMul :
       S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize
-        < (S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize)) * batchSize := by
+        < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize)) * batchSize := by
     exact mul_lt_mul_of_pos_right hLt hBatch
   calc
     S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize
-      < (S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * N / batchSize)) * batchSize := hMul
-    _ = S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N := by
+      < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * N / batchSize)) * batchSize := hMul
+    _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N := by
           field_simp [hBatch.ne']
 
 private theorem closedForm_fixedStep_lt_of_ne
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize T η : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hT : 0 < T)
     (hNe : η ≠ S.etaStarFixedStepsClosedForm T β) :
     S.fWExpectedSuboptimalityProxySL1 (S.etaStarFixedStepsClosedForm T β) batchSize T β
@@ -688,22 +689,22 @@ private theorem closedForm_fixedStep_lt_of_ne
     · exact (ne_of_gt (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hT))
     · exact sub_ne_zero.mpr hNe
   have hArgPos :
-      0 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A := by
-    have hNum : 0 < (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda) * T := by
+      0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A := by
+    have hNum : 0 < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda) * T := by
       exact mul_pos (mul_pos (mul_pos hGap S.muFW_pos) S.lambda_pos) hT
     exact div_pos (by simpa [mul_assoc] using hNum) hApos
   have hExpStar :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar)) = A / a := by
-    have hMul : a * ηStar = Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar)) = A / a := by
+    have hMul : a * ηStar = Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) := by
       dsimp [a, ηStar, etaStarFixedStepsClosedForm]
       field_simp [S.muFW_pos.ne', S.lambda_pos.ne', hT.ne']
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))
-          = S.frankWolfeExpectedSuboptimalityInitialGap
-              * Real.exp (-Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality
+              * Real.exp (-Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A)) := by
                 rw [hMul]
-      _ = S.frankWolfeExpectedSuboptimalityInitialGap / (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) := by
+      _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) := by
             rw [Real.exp_neg, Real.exp_log hArgPos]
             simp [div_eq_mul_inv]
       _ = A / a := by
@@ -724,16 +725,16 @@ private theorem closedForm_fixedStep_lt_of_ne
       _ < (A / a) * (Real.exp (-u) + u) := hMul
       _ = (A / a) * Real.exp (-u) + A * (η - ηStar) := by rw [mul_add, hU]
   have hExpEta :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
         = (A / a) * Real.exp (-u) := by
     have hDecomp : -(a * η) = -(a * ηStar) + (-u) := by
       dsimp [u]
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
-          = S.frankWolfeExpectedSuboptimalityInitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
               rw [hDecomp, Real.exp_add]
-      _ = (S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
+      _ = (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
       _ = (A / a) * Real.exp (-u) := by rw [hExpStar]
   calc
     S.fWExpectedSuboptimalityProxySL1 ηStar batchSize T β
@@ -761,9 +762,9 @@ private theorem closedForm_fixedToken_isMinimizer
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize N : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize)
-    (hInterior : S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N) :
+    (hInterior : S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N) :
     S.IsFixedTokenBudgetFWExpectedSuboptimalityProxyMinimizer (S.etaStarFixedMomentumClosedForm N β batchSize)
       batchSize N β := by
   let A := S.fWExpectedSuboptimalityProxyDriftCoeff β
@@ -776,11 +777,11 @@ private theorem closedForm_fixedToken_isMinimizer
     dsimp [a]
     exact div_pos (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hN) hBatch
   have hArgPos :
-      0 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize) := by
-    have hNum : 0 < (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda) * N := by
+      0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize) := by
+    have hNum : 0 < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda) * N := by
       exact mul_pos (mul_pos (mul_pos hGap S.muFW_pos) S.lambda_pos) hN
     exact div_pos (by simpa [mul_assoc] using hNum) (mul_pos hApos hBatch)
-  have hArgGtOne : 1 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize) := by
+  have hArgGtOne : 1 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize) := by
     have hDenPos : 0 < A * batchSize := mul_pos hApos hBatch
     have hDiv := (one_lt_div hDenPos).2 hInterior
     simpa [one_mul] using hDiv
@@ -789,17 +790,17 @@ private theorem closedForm_fixedToken_isMinimizer
     refine mul_pos ?_ (Real.log_pos hArgGtOne)
     exact div_pos hBatch (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hN)
   have hExpStar :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar)) = A / a := by
-    have hMul : a * ηStar = Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar)) = A / a := by
+    have hMul : a * ηStar = Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize)) := by
       dsimp [a, ηStar, etaStarFixedMomentumClosedForm]
       field_simp [S.muFW_pos.ne', S.lambda_pos.ne', hN.ne', hBatch.ne']
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))
-          = S.frankWolfeExpectedSuboptimalityInitialGap
-              * Real.exp (-Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize))) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality
+              * Real.exp (-Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize))) := by
                 rw [hMul]
-      _ = S.frankWolfeExpectedSuboptimalityInitialGap / (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize)) := by
+      _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize)) := by
             rw [Real.exp_neg, Real.exp_log hArgPos]
             simp [div_eq_mul_inv]
       _ = A / a := by
@@ -824,16 +825,16 @@ private theorem closedForm_fixedToken_isMinimizer
       _ ≤ (A / a) * (Real.exp (-u) + u) := hMul
       _ = (A / a) * Real.exp (-u) + A * (η - ηStar) := by rw [mul_add, hU]
   have hExpEta :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
         = (A / a) * Real.exp (-u) := by
     have hDecomp : -(a * η) = -(a * ηStar) + (-u) := by
       dsimp [u]
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
-          = S.frankWolfeExpectedSuboptimalityInitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
               rw [hDecomp, Real.exp_add]
-      _ = (S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
+      _ = (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
       _ = (A / a) * Real.exp (-u) := by rw [hExpStar]
   calc
     S.fWExpectedSuboptimalityProxySL1Token ηStar batchSize N β
@@ -861,7 +862,7 @@ private theorem closedForm_fixedToken_lt_of_ne
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize N η : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hNe : η ≠ S.etaStarFixedMomentumClosedForm N β batchSize) :
     S.fWExpectedSuboptimalityProxySL1Token (S.etaStarFixedMomentumClosedForm N β batchSize) batchSize N β
@@ -882,22 +883,22 @@ private theorem closedForm_fixedToken_lt_of_ne
     · exact (ne_of_gt (div_pos (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hN) hBatch))
     · exact sub_ne_zero.mpr hNe
   have hArgPos :
-      0 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize) := by
-    have hNum : 0 < (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda) * N := by
+      0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize) := by
+    have hNum : 0 < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda) * N := by
       exact mul_pos (mul_pos (mul_pos hGap S.muFW_pos) S.lambda_pos) hN
     exact div_pos (by simpa [mul_assoc] using hNum) (mul_pos hApos hBatch)
   have hExpStar :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar)) = A / a := by
-    have hMul : a * ηStar = Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar)) = A / a := by
+    have hMul : a * ηStar = Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize)) := by
       dsimp [a, ηStar, etaStarFixedMomentumClosedForm]
       field_simp [S.muFW_pos.ne', S.lambda_pos.ne', hN.ne', hBatch.ne']
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))
-          = S.frankWolfeExpectedSuboptimalityInitialGap
-              * Real.exp (-Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize))) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality
+              * Real.exp (-Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize))) := by
                 rw [hMul]
-      _ = S.frankWolfeExpectedSuboptimalityInitialGap / (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (A * batchSize)) := by
+      _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (A * batchSize)) := by
             rw [Real.exp_neg, Real.exp_log hArgPos]
             simp [div_eq_mul_inv]
       _ = A / a := by
@@ -918,16 +919,16 @@ private theorem closedForm_fixedToken_lt_of_ne
       _ < (A / a) * (Real.exp (-u) + u) := hMul
       _ = (A / a) * Real.exp (-u) + A * (η - ηStar) := by rw [mul_add, hU]
   have hExpEta :
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
         = (A / a) * Real.exp (-u) := by
     have hDecomp : -(a * η) = -(a * ηStar) + (-u) := by
       dsimp [u]
       ring
     calc
-      S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * η))
-          = S.frankWolfeExpectedSuboptimalityInitialGap * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
+      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * η))
+          = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (Real.exp (-(a * ηStar)) * Real.exp (-u)) := by
               rw [hDecomp, Real.exp_add]
-      _ = (S.frankWolfeExpectedSuboptimalityInitialGap * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
+      _ = (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * Real.exp (-(a * ηStar))) * Real.exp (-u) := by ring
       _ = (A / a) * Real.exp (-u) := by rw [hExpStar]
   calc
     S.fWExpectedSuboptimalityProxySL1Token ηStar batchSize N β
@@ -954,17 +955,17 @@ private theorem closedForm_fixedToken_lt_of_ne
 private theorem fixedStep_interior_of_isMinimizer
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize T ηStar : ℝ}
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hT : 0 < T)
     (hMin : S.IsFixedStepFWExpectedSuboptimalityProxyMinimizer ηStar batchSize T β) :
-    S.fWExpectedSuboptimalityProxyDriftCoeff β < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T := by
+    S.fWExpectedSuboptimalityProxyDriftCoeff β < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T := by
   have hIsMinOn : IsMinOn (fun η => S.fWExpectedSuboptimalityProxySL1 η batchSize T β) (Set.Ioi 0) ηStar := by
     intro η hη
     exact hMin.2 η hη
   have hLocalMin : IsLocalMin (fun η => S.fWExpectedSuboptimalityProxySL1 η batchSize T β) ηStar := by
     exact hIsMinOn.localize.isLocalMin (Ioi_mem_nhds hMin.1)
   have hDerivZero :
-      -(S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * ηStar * T)))
+      -(S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * ηStar * T)))
         + S.fWExpectedSuboptimalityProxyDriftCoeff β = 0 := by
     exact hLocalMin.hasDerivAt_eq_zero (S.hasDerivAt_fWExpectedSuboptimalityProxySL1 (η := ηStar))
   have hExpLtOne : Real.exp (-(S.muFW * S.lambda * ηStar * T)) < 1 := by
@@ -972,28 +973,28 @@ private theorem fixedStep_interior_of_isMinimizer
     have hArgPos : 0 < S.muFW * S.lambda * ηStar * T := by
       exact mul_pos (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hMin.1) hT
     linarith
-  have hScalePos : 0 < S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * T) := by
+  have hScalePos : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * T) := by
     exact mul_pos hGap (mul_pos (mul_pos S.muFW_pos S.lambda_pos) hT)
   calc
     S.fWExpectedSuboptimalityProxyDriftCoeff β
-      = S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * ηStar * T)) := by
+      = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * T) * Real.exp (-(S.muFW * S.lambda * ηStar * T)) := by
           linarith
-    _ < (S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * T)) * 1 := by
+    _ < (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * T)) * 1 := by
           exact mul_lt_mul_of_pos_left hExpLtOne hScalePos
-    _ = S.frankWolfeExpectedSuboptimalityInitialGap * (S.muFW * S.lambda * T) := by ring
-    _ = S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T := by ring
+    _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * (S.muFW * S.lambda * T) := by ring
+    _ = S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T := by ring
 
 /-- Any positive fixed-step SL1 minimizer is equal to the closed-form optimizer. -/
 private theorem etaStarFixedSteps_eq
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize T ηStar : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hT : 0 < T)
     (hMin : S.IsFixedStepFWExpectedSuboptimalityProxyMinimizer ηStar batchSize T β) :
     ηStar
       = (1 / (S.muFW * S.lambda * T))
-          * Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β) := by
+          * Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β) := by
   have hInterior := S.fixedStep_interior_of_isMinimizer hGap hT hMin
   by_contra hNe
   have hLt := S.closedForm_fixedStep_lt_of_ne (batchSize := batchSize) hβ0 hβ1 hGap hT <| by
@@ -1005,20 +1006,20 @@ private theorem etaStarFixedSteps_eq
 private theorem fixedStepClosedFormFamily_eq
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     {etaStepStar : ℝ → ℝ}
     (hMin : S.IsFixedStepFWExpectedSuboptimalityProxyMinimizerFamily β batchSize etaStepStar) :
     ∀ {T : ℝ}, 0 < T →
       etaStepStar T
         = (1 / (S.muFW * S.lambda * T))
-            * Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β) := by
+            * Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β) := by
   intro T hT
   exact S.etaStarFixedSteps_eq hβ0 hβ1 hGap hT (hMin hT)
 
 private theorem fixedStepIterationScalingBounds
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     {etaStepStar : ℝ → ℝ}
     (hMin : S.IsFixedStepFWExpectedSuboptimalityProxyMinimizerFamily β batchSize etaStepStar) :
     ∃ cLower cUpper T0,
@@ -1027,13 +1028,13 @@ private theorem fixedStepIterationScalingBounds
         cLower * (Real.log T / (S.muFW * S.lambda * T)) ≤ etaStepStar T ∧
         etaStepStar T ≤ cUpper * (Real.log T / (S.muFW * S.lambda * T)) := by
   let A := S.fWExpectedSuboptimalityProxyDriftCoeff β
-  let c : ℝ := Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda / A)
-  let T0 : ℝ := max (Real.exp 1) (max (Real.exp (2 * |c|)) (A / (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda) + 1))
+  let c : ℝ := Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda / A)
+  let T0 : ℝ := max (Real.exp 1) (max (Real.exp (2 * |c|)) (A / (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda) + 1))
   have hApos : 0 < A := by
     dsimp [A]
     exact S.fWExpectedSuboptimalityProxyDriftCoeff_pos hβ0 hβ1
-  have hCpos : 0 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda / A := by
-    have hNum : 0 < S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda := by
+  have hCpos : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda / A := by
+    have hNum : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda := by
       exact mul_pos (mul_pos hGap S.muFW_pos) S.lambda_pos
     exact div_pos hNum hApos
   have hT0pos : 0 < T0 := by
@@ -1045,7 +1046,7 @@ private theorem fixedStepIterationScalingBounds
   have hEqStar :
       etaStepStar T
         = (1 / (S.muFW * S.lambda * T))
-            * Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) := by
+            * Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) := by
     exact S.fixedStepClosedFormFamily_eq hβ0 hβ1 hGap hMin hTpos
   have hLogTpos : 0 < Real.log T := by
     unfold T0 at hT
@@ -1055,7 +1056,7 @@ private theorem fixedStepIterationScalingBounds
       unfold T0 at hT
       exact le_trans
         (le_trans
-          (le_max_left (Real.exp (2 * |c|)) (A / (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda) + 1))
+          (le_max_left (Real.exp (2 * |c|)) (A / (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda) + 1))
           (le_max_right (Real.exp 1) _))
         hT
     have hLogLe : 2 * |c| ≤ Real.log T := by
@@ -1063,18 +1064,18 @@ private theorem fixedStepIterationScalingBounds
       simpa using this
     linarith
   have hSplit :
-      Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) = Real.log T + c := by
+      Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) = Real.log T + c := by
     unfold c
     have hRewrite :
-        S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A
-          = T * (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda / A) := by
+        S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A
+          = T * (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda / A) := by
       field_simp [hApos.ne']
     rw [hRewrite, Real.log_mul hTpos.ne' hCpos.ne']
-  have hLowerLog : (Real.log T) / 2 ≤ Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) := by
+  have hLowerLog : (Real.log T) / 2 ≤ Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) := by
     rw [hSplit]
     have : -|c| ≤ c := by exact neg_abs_le c
     linarith
-  have hUpperLog : Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) ≤ 2 * Real.log T := by
+  have hUpperLog : Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) ≤ 2 * Real.log T := by
     rw [hSplit]
     have : c ≤ |c| := le_abs_self c
     linarith
@@ -1086,7 +1087,7 @@ private theorem fixedStepIterationScalingBounds
   · have hLowerScaled :
         (1 / (S.muFW * S.lambda * T)) * ((Real.log T) / 2)
           ≤ (1 / (S.muFW * S.lambda * T))
-              * Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A) := hScaled.1
+              * Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A) := hScaled.1
     have hRewrite :
         (1 / 2 : ℝ) * (Real.log T / (S.muFW * S.lambda * T))
           = (1 / (S.muFW * S.lambda * T)) * ((Real.log T) / 2) := by
@@ -1095,7 +1096,7 @@ private theorem fixedStepIterationScalingBounds
     simpa [A] using hLowerScaled
   · have hUpperScaled :
         (1 / (S.muFW * S.lambda * T))
-            * Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / A)
+            * Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / A)
           ≤ (1 / (S.muFW * S.lambda * T)) * (2 * Real.log T) := hScaled.2
     have hRewrite :
         (1 / (S.muFW * S.lambda * T)) * (2 * Real.log T)
@@ -1109,13 +1110,13 @@ private theorem etaStarFixedMomentum_eq
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize N ηStar : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hMin : S.IsFixedTokenBudgetFWExpectedSuboptimalityProxyMinimizer ηStar batchSize N β) :
     ηStar
       = (batchSize / (S.muFW * S.lambda * N))
           * Real.log
-              (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)) := by
+              (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)) := by
   have hInterior := S.fixedToken_interior_of_isMinimizer hGap hN hBatch hMin
   by_contra hNe
   have hLt := S.closedForm_fixedToken_lt_of_ne hβ0 hβ1 hGap hN hBatch <| by
@@ -1127,14 +1128,14 @@ private theorem etaStarFixedMomentum_eq
 private theorem fixedTokenClosedFormFamily_eq
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     {etaTokenStar : ℝ → ℝ → ℝ}
     (hMin : S.IsFixedTokenBudgetFWExpectedSuboptimalityProxyMinimizerFamily β etaTokenStar) :
     ∀ {N batchSize : ℝ}, 0 < N → 0 < batchSize →
       etaTokenStar N batchSize
         = (batchSize / (S.muFW * S.lambda * N))
             * Real.log
-                (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)) := by
+                (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize)) := by
   intro N batchSize hN hBatch
   exact S.etaStarFixedMomentum_eq hβ0 hβ1 hGap hN hBatch
     (hMin hN hBatch)
@@ -1142,7 +1143,7 @@ private theorem fixedTokenClosedFormFamily_eq
 private theorem fixedMomentumTokenBudgetScalingBounds
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hNoise : 0 < S.fWExpectedSuboptimalityProxyNoiseCoeff β)
     {batchSizeStar : ℝ → ℝ}
     (hBatchMin :
@@ -1315,7 +1316,7 @@ private theorem fixedMomentumTokenBudgetScalingBounds
         etaTokenStar N (batchSizeStar N)
           = (batchSizeStar N / (S.muFW * S.lambda * N))
               * Real.log
-                  (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N
+                  (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N
                     / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSizeStar N)) := by
       exact S.fixedTokenClosedFormFamily_eq hβ0 hβ1 hGap hMin hNpos hbPos
     have hEtaEq :
@@ -1327,7 +1328,7 @@ private theorem fixedMomentumTokenBudgetScalingBounds
             = S.etaStarFixedMomentumClosedForm N β (batchSizeStar N) := by
                 trans ((batchSizeStar N / (S.muFW * S.lambda * N))
                     * Real.log
-                        (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N
+                        (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N
                           / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSizeStar N)))
                 · exact hEtaEqClosed
                 · symm
@@ -1399,13 +1400,13 @@ Public Theorems
 theorem fWExpectedSuboptimalitySLTheorem1_1_iterationScaling
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap) :
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality) :
     ∀ {etaStepStar : ℝ → ℝ},
       S.IsFixedStepFWExpectedSuboptimalityProxyMinimizerFamily β batchSize etaStepStar →
       (∀ {T : ℝ}, 0 < T →
         etaStepStar T
           = (1 / (S.muFW * S.lambda * T))
-              * Real.log (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β)) ∧
+              * Real.log (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * T / S.fWExpectedSuboptimalityProxyDriftCoeff β)) ∧
       ∃ cLower cUpper T0,
         0 < cLower ∧ 0 < cUpper ∧ 0 < T0 ∧
         ∀ T ≥ T0,
@@ -1434,7 +1435,7 @@ theorem fWExpectedSuboptimalitySLTheorem1_1_iterationScaling
 theorem fWExpectedSuboptimalitySLTheorem1_2_tokenBudgetScaling
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hNoise : 0 < S.fWExpectedSuboptimalityProxyNoiseCoeff β)
     {batchSizeStar : ℝ → ℝ}
     (hBatchMin :
@@ -1445,7 +1446,7 @@ theorem fWExpectedSuboptimalitySLTheorem1_2_tokenBudgetScaling
         etaTokenStar N batchSize
           = (batchSize / (S.muFW * S.lambda * N))
               * Real.log
-                  (S.frankWolfeExpectedSuboptimalityInitialGap * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize))) ∧
+                  (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality * S.muFW * S.lambda * N / (S.fWExpectedSuboptimalityProxyDriftCoeff β * batchSize))) ∧
       ∃ cBatchLower cBatchUpper cEtaLower cEtaUpper N0,
         0 < cBatchLower ∧ 0 < cBatchUpper ∧ 0 < cEtaLower ∧ 0 < cEtaUpper ∧ 0 < N0 ∧
         ∀ N ≥ N0,
@@ -1494,7 +1495,7 @@ set_option maxHeartbeats 400000 in
 theorem fWExpectedSuboptimalitySLTheorem1_FixedMomentumLargeHorizonProxy
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.frankWolfeExpectedSuboptimalityInitialGap)
+    (hGap : 0 < S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
     (hNoise : 0 < S.fWExpectedSuboptimalityProxyNoiseCoeff β)
     {etaStepStar : ℝ → ℝ}
     (hStepMin : S.IsFixedStepFWExpectedSuboptimalityProxyMinimizerFamily β batchSize etaStepStar)
