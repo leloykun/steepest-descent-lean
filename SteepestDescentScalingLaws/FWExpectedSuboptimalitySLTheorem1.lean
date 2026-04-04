@@ -34,7 +34,7 @@ Public Definitions
 /-- Exact drift coefficient for the FW expected-suboptimality large-horizon proxy. -/
 def fWExpectedSuboptimalityProxyDriftCoeff (S : StochasticFrankWolfeKLGeometryContext Ω V) (β : ℝ) : ℝ :=
   (2 * S.L / (S.muFW * S.lambda)) * (1 + 2 * β ^ 2 / (1 - β))
-    + (2 * β / (1 - β)) * S.initialGradNorm
+    + (2 * β / (1 - β)) * S.initialExpectedMomentumError
 
 /-- Exact minibatch-noise coefficient for the FW expected-suboptimality large-horizon proxy. -/
 def fWExpectedSuboptimalityProxyNoiseCoeff (S : StochasticFrankWolfeKLGeometryContext Ω V) (β : ℝ) : ℝ :=
@@ -192,10 +192,10 @@ private theorem fWExpectedSuboptimalityProxyDriftCoeff_pos
     have hFrac : 0 ≤ 2 * β ^ 2 / (1 - β) := by
       exact div_nonneg (by positivity) hOneSub.le
     linarith
-  have hTerm2 : 0 ≤ (2 * β / (1 - β)) * S.initialGradNorm := by
+  have hTerm2 : 0 ≤ (2 * β / (1 - β)) * S.initialExpectedMomentumError := by
     have hFrac : 0 ≤ 2 * β / (1 - β) := by
       exact div_nonneg (by positivity) hOneSub.le
-    exact mul_nonneg hFrac (norm_nonneg _)
+    exact mul_nonneg hFrac S.initialExpectedMomentumError_nonneg
   exact add_pos_of_pos_of_nonneg hTerm1 hTerm2
 
 private theorem fWExpectedSuboptimalityProxyNoiseCoeff_nonneg

@@ -12,9 +12,15 @@ Deriving steepest descent convergence bounds and hyperparameter scaling laws fro
 
 > **NOTE:** In my blog post, Assumption 4 states the (local) smoothness of the map $X^\dagger \mapsto \frac{1}{2}\|X^\dagger\|^{\dagger 2}$, but in [Assumptions.lean](./SteepestDescentOptimizationBounds/Assumptions.lean) we use a proxy potential map and its corresponding (smooth) mirror map instead. This is intentional. The latter is more mathematically sound and also more general, perfect for the Lean code. The former, while less rigorous, produces a more digestible proof of Lemma 5 fitting the tone of the blog post. In practice, $D \approx 1$ either way.
 
-## Expected suboptimality bounds
+## Star-convex expected suboptimality bounds
 
-Let $\eta > 0$ be the learning rate, weight decay parameter $\lambda > 0$ (such that $\lambda\eta \leq 1$), Nesterov momentum parameter $\beta \in [0, 1)$, and initial momentum $M_0 = 0$. Then, under Assumptions 1 to 4 and Assumption 12 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), the bounded-weight conditions $\|W_0\| \leq \frac{1}{\lambda}$ and $\|W_*\| \leq \frac{1}{\lambda}$, and arbitrary norm pair $(\|\cdot\|, \|\cdot\|^{\dagger})$, we have
+Let $\eta > 0$ be the learning rate, weight decay parameter $\lambda > 0$ (such that $\lambda\eta \leq 1$), and Nesterov momentum parameter $\beta \in [0, 1)$. Write
+
+$$
+E_0^{\mathrm{mom}} := \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}.
+$$
+
+Then, under Assumptions 1 to 4 and Assumption 12 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), the bounded-weight conditions $\|W_0\| \leq \frac{1}{\lambda}$ and $\|W_*\| \leq \frac{1}{\lambda}$, and arbitrary norm pair $(\|\cdot\|, \|\cdot\|^{\dagger})$, we have
 
 $$
 \begin{aligned}
@@ -23,12 +29,14 @@ $$
     &\quad+ \frac{2}{\lambda}\left(\sqrt{\frac{1 - \beta}{1 + \beta}}\,\beta + (1 - \beta)\right) \frac{\sqrt{D}\,\sigma}{\sqrt{b}} \\
     &\quad+ \left[
         \frac{4L}{\lambda}\left(1 + \frac{\beta^2}{1 - \beta}\right)
-        + \frac{2\beta}{1 - \beta} G_0
+        + \frac{2\beta}{1 - \beta} E_0^{\mathrm{mom}}
     \right]\eta.
 \end{aligned}
 $$
 
-where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^{\dagger}$.
+where $\Delta_0 = f(W_0) - f(W_*)$, and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error.
+
+These star-convex expected-suboptimality results are formalized in [StarConvexExpectedSuboptimality.lean](./SteepestDescentOptimizationBounds/StarConvexExpectedSuboptimality.lean), [StarConvexExpectedSuboptimalityConvergence.lean](./SteepestDescentOptimizationBounds/StarConvexExpectedSuboptimalityConvergence.lean), [StarConvexScalingLawsTheorem1.lean](./SteepestDescentScalingLaws/StarConvexScalingLawsTheorem1.lean), and [StarConvexScalingLawsTheorem2.lean](./SteepestDescentScalingLaws/StarConvexScalingLawsTheorem2.lean).
 
 ### Hyperparameter scaling laws derivable from expected suboptimality bounds
 
@@ -76,13 +84,13 @@ $$
 \begin{aligned}
 \frac{1}{T}\sum_{t=0}^{T-1}\mathcal{G}(W_t)
     &\leq \frac{\Delta_0}{\lambda \eta T} \\
-    &\quad+ \frac{2 G_0 \beta}{(1 - \beta)\lambda T} \\
+    &\quad+ \frac{2 E_0^{\mathrm{mom}} \beta}{(1 - \beta)\lambda T} \\
     &\quad+ \frac{2\left(\sqrt{\frac{1 - \beta}{1 + \beta}}\,\beta + (1 - \beta)\right)}{\lambda} \frac{\sqrt{D}\sigma}{\sqrt{b}} \\
     &\quad+ \frac{2L}{\lambda}\left(1 + \frac{2\beta^2}{1 - \beta}\right)\eta,
 \end{aligned}
 $$
 
-where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^{\dagger}$.
+where $\Delta_0 = f(W_0) - f(W_*)$, and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error.
 
 Unlike the Expected Suboptimality layer above, this Frank-Wolfe expected-gap layer does not use the star-convexity assumption (Assumption 12).
 
@@ -132,11 +140,14 @@ Assume now the Frank-Wolfe KL condition along the iterates:
 
 $$
 \mathcal{G}(W_t) \ge \mu_{\mathrm{FW}} \bigl(f(W_t) - f(W_*)\bigr)
-\qquad \text{for all } t,
+\qquad \text{for all } t.
 $$
 
-with $\mu_{\mathrm{FW}} > 0$, together with $\mu_{\mathrm{FW}} \lambda \eta \le 1$.
-Then, under Assumptions 1 to 4 in [Ponder: Critical Batch Size for Steepest Descent Under Arbitrary Norms](https://leloykun.github.io/ponder/steepest-descent-crit-bz/), we have the expected-suboptimality bound,
+The basic FW-KL recurrence only needs $\mu_{\mathrm{FW}} > 0$. The closed-form
+geometric bound below additionally assumes $\mu_{\mathrm{FW}} \lambda \eta \le
+1$, so that $1 - \mu_{\mathrm{FW}} \lambda \eta$ is a nonnegative contraction
+factor. Under the standing stochastic source, smoothness, and bounded-weight
+assumptions, we then have the expected-suboptimality bound
 
 $$
 \begin{aligned}
@@ -146,22 +157,20 @@ $$
       \left(\sqrt{\frac{1 - \beta}{1 + \beta}}\,\beta + (1 - \beta)\right)
       \frac{\sqrt{D}\,\sigma}{\sqrt{b}} \\
     &\quad+ \left[
-      \frac{2\beta}{1 - \beta} G_0
+      \frac{2\beta}{1 - \beta} E_0^{\mathrm{mom}}
       + \frac{2L}{\mu_{\mathrm{FW}}\lambda}
         \left(1 + \frac{2\beta^2}{1 - \beta}\right)
     \right]\eta,
 \end{aligned}
 $$
 
-where $\Delta_0 = f(W_0) - f(W_*)$ and $G_0 = \|\nabla f(W_0)\|^\dagger$.
+where $\Delta_0 = f(W_0) - f(W_*)$, and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error.
 
-Unlike the star-convex expected-suboptimality layer, this result does not use
-the star-convexity assumption. It uses the Frank-Wolfe KL assumption instead.
+Unlike the star-convex expected-suboptimality layer, this result does not use the star-convexity assumption. It uses the Frank-Wolfe KL assumption instead.
 
 ### Hyperparameter scaling laws derivable from Frank-Wolfe expected suboptimality bounds
 
-The resulting large-horizon exponents match the star-convex expected-suboptimality
-family, but they are derived here from the Frank-Wolfe KL assumption.
+The resulting large-horizon exponents match the star-convex expected-suboptimality family, but they are derived here from the Frank-Wolfe KL assumption.
 
 **Theorem 1 (Fixed momentum, large horizon proxy).**
 

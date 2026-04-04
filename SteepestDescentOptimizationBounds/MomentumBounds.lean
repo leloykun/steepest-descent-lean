@@ -166,6 +166,11 @@ def expectedMomentumError
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) : ℝ :=
   ∫ ω, S.momentumErrorNorm t ω ∂S.μ
 
+/-- The initial expected momentum-error norm. -/
+def initialExpectedMomentumError
+    (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
+  S.expectedMomentumError 0
+
 end PublicDefinitions
 
 section PrivateDefinitions
@@ -1022,6 +1027,12 @@ lemma expectedMomentumError_nonneg
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     0 ≤ S.expectedMomentumError t := by
   exact integral_nonneg fun _ => norm_nonneg _
+
+/-- The initial expected momentum-error norm is nonnegative. -/
+lemma initialExpectedMomentumError_nonneg
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    0 ≤ S.initialExpectedMomentumError :=
+  S.expectedMomentumError_nonneg 0
 
 /-- The realized momentum-error norm is nonnegative. -/
 lemma momentumErrorNorm_nonneg

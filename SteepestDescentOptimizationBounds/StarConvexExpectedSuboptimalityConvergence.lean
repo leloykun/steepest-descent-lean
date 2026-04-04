@@ -217,17 +217,16 @@ variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual
 
 /-- The expected-suboptimality bound in the `θ = 1 - β` schedule form. -/
 theorem starConvexExpectedSuboptimality_bound_theta_form
-    (S : StochasticStarConvexGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (S : StochasticStarConvexGeometryContext Ω V) :
     ∀ T,
       (∫ ω, S.suboptimality T ω ∂S.μ) ≤
         (1 - S.lambda * S.eta) ^ T * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
           + (8 / (S.lambda * (1 - S.beta))) * S.L * S.eta
-          + (2 * S.eta / (1 - S.beta)) * S.initialGradNorm
+          + (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ := by
   intro T
-  have hBase := S.starConvexExpectedSuboptimality_bound hMomentum0 T
+  have hBase := S.starConvexExpectedSuboptimality_bound T
   have hDrift :
       ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))) * S.eta
         ≤ (8 / (S.lambda * (1 - S.beta))) * S.L * S.eta := by
@@ -246,24 +245,24 @@ theorem starConvexExpectedSuboptimality_bound_theta_form
             field_simp [S.lambda_pos.ne', S.one_sub_beta_ne_zero]
             ring
   have hInitialGrad :
-      ((2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta
-        ≤ (2 * S.eta / (1 - S.beta)) * S.initialGradNorm := by
+      ((2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta
+        ≤ (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError := by
     have hBetaLeOne : S.beta ≤ 1 := le_of_lt S.beta_lt_one
-    have hScaleNonneg : 0 ≤ ((2 * S.eta) / (1 - S.beta)) * S.initialGradNorm := by
+    have hScaleNonneg : 0 ≤ ((2 * S.eta) / (1 - S.beta)) * S.initialExpectedMomentumError := by
       have hNum : 0 ≤ 2 * S.eta := by nlinarith [S.eta_pos]
-      exact mul_nonneg (div_nonneg hNum S.one_sub_beta_pos.le) (norm_nonneg _)
+      exact mul_nonneg (div_nonneg hNum S.one_sub_beta_pos.le) S.initialExpectedMomentumError_nonneg
     have hMul := mul_le_mul_of_nonneg_right hBetaLeOne hScaleNonneg
     calc
-      ((2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta
-        = S.beta * (((2 * S.eta) / (1 - S.beta)) * S.initialGradNorm) := by
+      ((2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta
+        = S.beta * (((2 * S.eta) / (1 - S.beta)) * S.initialExpectedMomentumError) := by
             field_simp [S.one_sub_beta_ne_zero]
-      _ ≤ ((2 * S.eta) / (1 - S.beta)) * S.initialGradNorm := by
+      _ ≤ ((2 * S.eta) / (1 - S.beta)) * S.initialExpectedMomentumError := by
             simpa using hMul
   have hResidual :
       (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-          + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta)
+          + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta)
         ≤ (8 / (S.lambda * (1 - S.beta))) * S.L * S.eta
-            + (2 * S.eta / (1 - S.beta)) * S.initialGradNorm := by
+            + (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError := by
     nlinarith [hDrift, hInitialGrad]
   calc
     (∫ ω, S.suboptimality T ω ∂S.μ)
@@ -271,16 +270,16 @@ theorem starConvexExpectedSuboptimality_bound_theta_form
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-                + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta) := hBase
+                + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta) := hBase
     _ ≤ (1 - S.lambda * S.eta) ^ T * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + ((8 / (S.lambda * (1 - S.beta))) * S.L * S.eta
-              + (2 * S.eta / (1 - S.beta)) * S.initialGradNorm) := by
+              + (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError) := by
             gcongr
     _ = (1 - S.lambda * S.eta) ^ T * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
           + (8 / (S.lambda * (1 - S.beta))) * S.L * S.eta
-          + (2 * S.eta / (1 - S.beta)) * S.initialGradNorm
+          + (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ := by
             ring
@@ -288,25 +287,23 @@ theorem starConvexExpectedSuboptimality_bound_theta_form
 /-- Termwise-budget convergence criterion for expected suboptimality. -/
 theorem starConvexExpectedSuboptimality_le_epsilon_of_termwise_budget
     (S : StochasticStarConvexGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0)
     (ε : ℝ) (T : ℕ)
     (hContraction :
       (1 - S.lambda * S.eta) ^ T * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) ≤ ε / 4)
     (hDrift :
       (8 / (S.lambda * (1 - S.beta))) * S.L * S.eta ≤ ε / 4)
     (hInitialGrad :
-      (2 * S.eta / (1 - S.beta)) * S.initialGradNorm ≤ ε / 4)
+      (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError ≤ ε / 4)
     (hNoise :
       ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
         / Real.sqrt S.batchSizeℝ ≤ ε / 4) :
     (∫ ω, S.suboptimality T ω ∂S.μ) ≤ ε := by
-  have hBound := S.starConvexExpectedSuboptimality_bound_theta_form hMomentum0 T
+  have hBound := S.starConvexExpectedSuboptimality_bound_theta_form T
   nlinarith
 
 /-- Exact schedule criterion for expected suboptimality. -/
 theorem starConvexExpectedSuboptimality_le_epsilon_of_schedule
     (S : StochasticStarConvexGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0)
     (ε : ℝ) (T : ℕ)
     (hε : 0 < ε)
     (hTheta :
@@ -314,7 +311,7 @@ theorem starConvexExpectedSuboptimality_le_epsilon_of_schedule
     (hEtaDrift :
       S.eta ≤ S.lambda * (1 - S.beta) * ε / (32 * S.L))
     (hEtaGrad :
-      S.eta ≤ (1 - S.beta) * ε / (8 * S.initialGradNorm))
+      S.eta ≤ (1 - S.beta) * ε / (8 * S.initialExpectedMomentumError))
     (hT :
       Real.log (4 * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / ε) / (S.lambda * S.eta) ≤ (T : ℝ)) :
     (∫ ω, S.suboptimality T ω ∂S.μ) ≤ ε := by
@@ -335,20 +332,20 @@ theorem starConvexExpectedSuboptimality_le_epsilon_of_schedule
             field_simp [S.lambda_pos.ne', S.one_sub_beta_ne_zero, S.L_pos.ne']
             ring
   have hInitialGrad :
-      (2 * S.eta / (1 - S.beta)) * S.initialGradNorm ≤ ε / 4 := by
-    by_cases hGradZero : S.initialGradNorm = 0
+      (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError ≤ ε / 4 := by
+    by_cases hGradZero : S.initialExpectedMomentumError = 0
     · have hQuarterNonneg : 0 ≤ ε / 4 := by positivity
       simpa [hGradZero] using hQuarterNonneg
-    · have hScaleNonneg : 0 ≤ (2 * S.initialGradNorm) / (1 - S.beta) := by
-        have hNum : 0 ≤ 2 * S.initialGradNorm := by
-          exact mul_nonneg (by norm_num) (norm_nonneg _)
+    · have hScaleNonneg : 0 ≤ (2 * S.initialExpectedMomentumError) / (1 - S.beta) := by
+        have hNum : 0 ≤ 2 * S.initialExpectedMomentumError := by
+          exact mul_nonneg (by norm_num) S.initialExpectedMomentumError_nonneg
         exact div_nonneg hNum S.one_sub_beta_pos.le
       have hMul := mul_le_mul_of_nonneg_left hEtaGrad hScaleNonneg
       calc
-        (2 * S.eta / (1 - S.beta)) * S.initialGradNorm
-          = ((2 * S.initialGradNorm) / (1 - S.beta)) * S.eta := by ring
-        _ ≤ ((2 * S.initialGradNorm) / (1 - S.beta))
-              * ((1 - S.beta) * ε / (8 * S.initialGradNorm)) := hMul
+        (2 * S.eta / (1 - S.beta)) * S.initialExpectedMomentumError
+          = ((2 * S.initialExpectedMomentumError) / (1 - S.beta)) * S.eta := by ring
+        _ ≤ ((2 * S.initialExpectedMomentumError) / (1 - S.beta))
+              * ((1 - S.beta) * ε / (8 * S.initialExpectedMomentumError)) := hMul
         _ = ε / 4 := by
               field_simp [hGradZero, S.one_sub_beta_ne_zero]
               ring
@@ -440,12 +437,11 @@ theorem starConvexExpectedSuboptimality_le_epsilon_of_schedule
       simpa [mul_assoc, mul_left_comm, mul_comm, div_eq_mul_inv] using hMul
     exact le_trans hBoundExact hThetaNoise
   exact S.starConvexExpectedSuboptimality_le_epsilon_of_termwise_budget
-    hMomentum0 ε T hContraction hDrift hInitialGrad hNoise
+    ε T hContraction hDrift hInitialGrad hNoise
 
 /-- Practical min-form schedule criterion for expected suboptimality. -/
 theorem starConvexExpectedSuboptimality_le_epsilon_of_min_schedule
     (S : StochasticStarConvexGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0)
     (ε : ℝ) (T : ℕ)
     (hε : 0 < ε)
     (hTheta :
@@ -455,11 +451,11 @@ theorem starConvexExpectedSuboptimality_le_epsilon_of_min_schedule
       S.eta ≤
         min
           (S.lambda * (1 - S.beta) * ε / (32 * S.L))
-          ((1 - S.beta) * ε / (8 * S.initialGradNorm)))
+          ((1 - S.beta) * ε / (8 * S.initialExpectedMomentumError)))
     (hT :
       Real.log (4 * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / ε) / (S.lambda * S.eta) ≤ (T : ℝ)) :
     (∫ ω, S.suboptimality T ω ∂S.μ) ≤ ε := by
-  refine S.starConvexExpectedSuboptimality_le_epsilon_of_schedule hMomentum0 ε T hε ?_ ?_ ?_ hT
+  refine S.starConvexExpectedSuboptimality_le_epsilon_of_schedule ε T hε ?_ ?_ ?_ hT
   · exact le_trans hTheta (min_le_right _ _)
   · exact le_trans hEta (min_le_left _ _)
   · exact le_trans hEta (min_le_right _ _)

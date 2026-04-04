@@ -748,7 +748,6 @@ structure FrankWolfeKLPathGeometryContext
     extends FrankWolfePathGeometryContext V where
   muFW : ℝ
   muFW_pos : 0 < muFW
-  muFW_lambda_eta_le_one : muFW * lambda * eta ≤ 1
   assumptionFrankWolfeKL :
     AssumptionFrankWolfeKLAlongIterates V f fGrad WStar W muFW lambda
 
@@ -904,7 +903,6 @@ structure StochasticFrankWolfeKLGeometryContext
     extends StochasticFrankWolfeGeometryContext Ω V where
   muFW : ℝ
   muFW_pos : 0 < muFW
-  muFW_lambda_eta_le_one : muFW * lambda * eta ≤ 1
   assumptionFrankWolfeKL :
     ∀ t ω,
       muFW * (f (W t ω) - f WStar) ≤
@@ -1000,12 +998,6 @@ lemma mirrorMap_norm_le_of_mem_noiseRadius
 /-- The pathwise suboptimality gap. -/
 def suboptimality (S : SteepestDescentPathGeometryContext V) (t : ℕ) : ℝ :=
   S.f (S.W t) - S.f S.WStar
-
-/-- The minibatch-gradient compatibility formula for the search dual. -/
-@[simp] lemma C_eq
-    (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
-    S.C t = S.beta • S.momentum t + (1 - S.beta) • S.minibatchGradient t :=
-  S.C_spec t
 
 /-- The initial true-gradient norm at the deterministic reference point. -/
 def initialGradNorm (S : SteepestDescentPathGeometryContext V) : ℝ :=
@@ -1337,12 +1329,6 @@ theorem initialExpectedSuboptimality_eq_initialSuboptimality
   letI := S.prob
   simp [initialExpectedSuboptimality, expectedSuboptimality, initialSuboptimality, suboptimality, S.W_zero]
 
-/-- The minibatch-gradient compatibility formula for the search dual. -/
-@[simp] lemma C_eq
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    S.C t ω = S.beta • S.momentum t ω + (1 - S.beta) • S.minibatchGradient t ω :=
-  S.C_spec t ω
-
 /-- The deterministic initial true-gradient norm at `W_0`. -/
 def initialGradNorm (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
   ‖S.fGrad S.W0‖
@@ -1458,7 +1444,6 @@ def path (S : StochasticFrankWolfeKLGeometryContext Ω V) (ω : Ω) :
     S.toStochasticFrankWolfeGeometryContext.path ω
   muFW := S.muFW
   muFW_pos := S.muFW_pos
-  muFW_lambda_eta_le_one := S.muFW_lambda_eta_le_one
   assumptionFrankWolfeKL := {
     gap_lower_bound := by
       intro t

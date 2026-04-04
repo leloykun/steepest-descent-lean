@@ -34,7 +34,7 @@ Public Definitions
 /-- The leading fixed-batch drift constant as `β → 1`. -/
 def fixedBatchFWExpectedSuboptimalityLeadDriftConst
     (S : StochasticFrankWolfeKLGeometryContext Ω V) : ℝ :=
-  4 * S.L / (S.muFW * S.lambda) + 2 * S.initialGradNorm
+  4 * S.L / (S.muFW * S.lambda) + 2 * S.initialExpectedMomentumError
 
 /-- The leading fixed-batch noise constant as `β → 1`. -/
 def fixedBatchFWExpectedSuboptimalityLeadNoiseConst
@@ -129,10 +129,8 @@ private theorem fixedBatchFWExpectedSuboptimalityLeadDriftConst_pos
   unfold fixedBatchFWExpectedSuboptimalityLeadDriftConst
   have hMain : 0 < 4 * S.L / (S.muFW * S.lambda) := by
     exact div_pos (mul_pos (by norm_num) S.L_pos) (mul_pos S.muFW_pos S.lambda_pos)
-  have hGrad : 0 ≤ S.initialGradNorm := by
-    unfold StochasticSteepestDescentGeometryContext.initialGradNorm
-    exact norm_nonneg _
-  have hRest : 0 ≤ 2 * S.initialGradNorm := by nlinarith
+  have hGrad : 0 ≤ S.initialExpectedMomentumError := S.initialExpectedMomentumError_nonneg
+  have hRest : 0 ≤ 2 * S.initialExpectedMomentumError := by nlinarith
   linarith
 
 private theorem etaStarFixedBatchClosedForm_eq

@@ -34,7 +34,7 @@ Public Definitions
 Frank-Wolfe-gap proxy. -/
 def fwGapProxyInitCoeff
     (S : StochasticFrankWolfeGeometryContext Ω V) (β : ℝ) : ℝ :=
-  (2 * β / (S.lambda * (1 - β))) * S.initialGradNorm
+  (2 * β / (S.lambda * (1 - β))) * S.initialExpectedMomentumError
 
 /-- The large-horizon drift coefficient for the fixed-momentum
 Frank-Wolfe-gap proxy. -/
@@ -228,7 +228,7 @@ private theorem fwGapProxyInitCoeff_nonneg
     exact mul_nonneg S.lambda_pos.le (sub_nonneg.mpr hβ1.le)
   have hFrac : 0 ≤ 2 * β / (S.lambda * (1 - β)) := by
     exact div_nonneg (by positivity) hDen
-  exact mul_nonneg hFrac (norm_nonneg _)
+  exact mul_nonneg hFrac S.initialExpectedMomentumError_nonneg
 
 private theorem fwGapProxyDriftCoeff_pos
     (S : StochasticFrankWolfeGeometryContext Ω V)

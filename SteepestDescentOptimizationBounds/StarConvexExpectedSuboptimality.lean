@@ -109,7 +109,7 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
     (hCor11 :
       ∀ t,
         S.expectedNesterovError t ≤
-          S.beta ^ (t + 1) * S.initialGradNorm
+          S.beta ^ (t + 1) * S.initialExpectedMomentumError
             + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
             + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ) :
     ∀ T,
@@ -118,13 +118,13 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-                + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta) := by
+                + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta) := by
   intro T
   let a : ℝ := 1 - S.lambda * S.eta
   let k : ℝ :=
     (4 * (1 + S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta ^ 2)
       + ((2 * S.eta * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ)
-  let d : ℝ := 2 * S.eta * S.initialGradNorm
+  let d : ℝ := 2 * S.eta * S.initialExpectedMomentumError
   have haNonneg : 0 ≤ a := by
     dsimp [a]
     nlinarith [S.lambda_eta_le_one]
@@ -156,8 +156,8 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
       exact mul_nonneg hFirstNonneg (sq_nonneg S.eta)
     linarith
   have hdNonneg : 0 ≤ d := by
-    dsimp [d, StochasticSteepestDescentGeometryContext.initialGradNorm]
-    exact mul_nonneg (by nlinarith [S.eta_pos]) (norm_nonneg _)
+    dsimp [d, StochasticSteepestDescentGeometryContext.initialExpectedMomentumError]
+    exact mul_nonneg (by nlinarith [S.eta_pos]) S.initialExpectedMomentumError_nonneg
   have hRec :
       ∀ t,
         S.expectedSuboptimality (t + 1) ≤
@@ -223,7 +223,7 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
     have hScaledErr :
         2 * S.eta * S.expectedNesterovError t ≤
           2 * S.eta *
-            (S.beta ^ (t + 1) * S.initialGradNorm
+            (S.beta ^ (t + 1) * S.initialExpectedMomentumError
               + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
               + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ) := by
       exact mul_le_mul_of_nonneg_left (hCor11 t) (by nlinarith [S.eta_pos])
@@ -266,7 +266,7 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-                + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta) := by
+                + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta) := by
             dsimp [a, k, d,
               StochasticSteepestDescentGeometryContext.momentumNoisePrefactor]
             rw [hOneMinusA]
@@ -280,20 +280,20 @@ private theorem starConvexExpectedSuboptimality_existsConstants_of_corollary11
     (hCor11 :
       ∀ t,
         S.expectedNesterovError t ≤
-          S.beta ^ (t + 1) * S.initialGradNorm
+          S.beta ^ (t + 1) * S.initialExpectedMomentumError
             + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
             + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ) :
     ∃ X Y Z : ℝ,
       X = S.initialSuboptimality ∧
       Y = (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma ∧
       Z = ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-            + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta ∧
+            + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta ∧
       ∀ T,
         S.expectedSuboptimality T ≤ (1 - S.lambda * S.eta) ^ T * X + Y / Real.sqrt S.batchSizeℝ + Z := by
   refine ⟨S.initialSuboptimality,
     (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma,
     ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-      + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta, rfl, rfl, rfl, ?_⟩
+      + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta, rfl, rfl, rfl, ?_⟩
   intro T
   simpa using starConvexExpectedSuboptimality_bound_of_corollary11 S hCor11 T
 
@@ -308,31 +308,21 @@ variable [MeasurableSpace V] [BorelSpace V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-- Direct expected star-convex suboptimality bound specialized to zero momentum start. -/
+/-- Direct expected star-convex suboptimality bound with arbitrary initial momentum residual. -/
 theorem starConvexExpectedSuboptimality_bound
-    (S : StochasticStarConvexGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (S : StochasticStarConvexGeometryContext Ω V) :
     ∀ T,
       S.expectedSuboptimality T ≤
         (1 - S.lambda * S.eta) ^ T * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-                + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta) := by
-  have hBase :
-      S.toStochasticSteepestDescentGeometryContext.expectedMomentumError 0 =
-        S.toStochasticSteepestDescentGeometryContext.initialGradNorm := by
-    letI := S.toStochasticSteepestDescentGeometryContext.prob
-    simp [StochasticSteepestDescentGeometryContext.expectedMomentumError,
-      StochasticSteepestDescentGeometryContext.momentumErrorNorm,
-      StochasticSteepestDescentGeometryContext.momentumError,
-      StochasticSteepestDescentGeometryContext.initialGradNorm,
-      StochasticSteepestDescentGeometryContext.grad, S.W_zero, hMomentum0]
+                + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta) := by
   have hCor11 :
       ∀ t,
         S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t ≤
           S.toStochasticSteepestDescentGeometryContext.beta ^ (t + 1)
-            * S.toStochasticSteepestDescentGeometryContext.initialGradNorm
+            * S.toStochasticSteepestDescentGeometryContext.initialExpectedMomentumError
           + (2 * S.toStochasticSteepestDescentGeometryContext.beta ^ 2
               / (1 - S.toStochasticSteepestDescentGeometryContext.beta))
               * S.toStochasticSteepestDescentGeometryContext.L
@@ -342,36 +332,26 @@ theorem starConvexExpectedSuboptimality_bound
               * S.toStochasticSteepestDescentGeometryContext.sigma)
               / Real.sqrt S.toStochasticSteepestDescentGeometryContext.batchSizeℝ := by
     intro t
-    simpa [hBase] using
+    simpa [StochasticSteepestDescentGeometryContext.initialExpectedMomentumError] using
       (StochasticSteepestDescentGeometryContext.Corollary11PointwiseNesterovErrorBound
         S.toStochasticSteepestDescentGeometryContext t)
   exact starConvexExpectedSuboptimality_bound_of_corollary11 S hCor11
 
 /-- Existential-constants form of the expected star-convex bound. -/
 theorem starConvexExpectedSuboptimality_existsConstants
-    (S : StochasticStarConvexGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (S : StochasticStarConvexGeometryContext Ω V) :
     ∃ X Y Z : ℝ,
       X = S.toStochasticSteepestDescentGeometryContext.initialSuboptimality ∧
       Y = (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma ∧
       Z = ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-            + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta ∧
+            + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta ∧
       ∀ T,
         S.expectedSuboptimality T ≤ (1 - S.lambda * S.eta) ^ T * X + Y / Real.sqrt S.batchSizeℝ + Z := by
   exact starConvexExpectedSuboptimality_existsConstants_of_corollary11
     S
     (by
-      have hBase :
-          S.toStochasticSteepestDescentGeometryContext.expectedMomentumError 0 =
-            S.toStochasticSteepestDescentGeometryContext.initialGradNorm := by
-        letI := S.toStochasticSteepestDescentGeometryContext.prob
-        simp [StochasticSteepestDescentGeometryContext.expectedMomentumError,
-          StochasticSteepestDescentGeometryContext.momentumErrorNorm,
-          StochasticSteepestDescentGeometryContext.momentumError,
-          StochasticSteepestDescentGeometryContext.initialGradNorm,
-          StochasticSteepestDescentGeometryContext.grad, S.W_zero, hMomentum0]
       intro t
-      simpa [hBase] using
+      simpa [StochasticSteepestDescentGeometryContext.initialExpectedMomentumError] using
         (StochasticSteepestDescentGeometryContext.Corollary11PointwiseNesterovErrorBound
           S.toStochasticSteepestDescentGeometryContext t))
 

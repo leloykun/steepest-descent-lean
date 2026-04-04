@@ -40,7 +40,7 @@ def fixedBatchFwGapLeadNoiseConst
 
 def fixedBatchFwGapLeadInitConst
     (S : StochasticFrankWolfeGeometryContext Ω V) : ℝ :=
-  2 * S.initialGradNorm / S.lambda
+  2 * S.initialExpectedMomentumError / S.lambda
 
 def fixedBatchFwGapInitialGap
     (S : StochasticFrankWolfeGeometryContext Ω V) : ℝ :=
@@ -389,7 +389,7 @@ private theorem fixedBatchFrankWolfeGapTokenBudgetScalingBounds
   have hApos : 0 < A := S.fixedBatchFwGapLeadDriftConst_pos
   have hCnonneg : 0 ≤ C := by
     dsimp [C, fixedBatchFwGapLeadInitConst]
-    exact div_nonneg (mul_nonneg (by norm_num) (norm_nonneg _)) S.lambda_pos.le
+    exact div_nonneg (mul_nonneg (by norm_num) S.initialExpectedMomentumError_nonneg) S.lambda_pos.le
   have hSqrtBatchPos : 0 < Real.sqrt batchSize := Real.sqrt_pos.2 hBatch
   have hKpos : 0 < K := by
     dsimp [K]

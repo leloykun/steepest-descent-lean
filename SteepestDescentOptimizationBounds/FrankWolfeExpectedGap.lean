@@ -52,27 +52,18 @@ variable [MeasurableSpace V] [BorelSpace V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-- Averaged Frank-Wolfe expected-gap theorem specialized to zero momentum start. -/
+/-- Averaged Frank-Wolfe expected-gap theorem with arbitrary initial momentum residual. -/
 theorem avg_frankWolfeExpectedGap_nesterov_wd
-    (S : StochasticFrankWolfeGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (S : StochasticFrankWolfeGeometryContext Ω V) :
     ∀ T, 0 < T →
       (Finset.sum (Finset.range T) fun t => S.expectedFrankWolfeGap t) / (T : ℝ) ≤
         (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
-          + (2 * S.initialGradNorm * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
+          + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
           + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
               (S.lambda * Real.sqrt S.batchSizeℝ)
           + (2 * S.L * S.eta / S.lambda) * (1 + 2 * S.beta ^ 2 / (1 - S.beta)) := by
   intro T hT
   letI := S.toStochasticSteepestDescentGeometryContext.prob
-  have hBase :
-      S.toStochasticSteepestDescentGeometryContext.expectedMomentumError 0 =
-        S.toStochasticSteepestDescentGeometryContext.initialGradNorm := by
-    simp [StochasticSteepestDescentGeometryContext.expectedMomentumError,
-      StochasticSteepestDescentGeometryContext.momentumErrorNorm,
-      StochasticSteepestDescentGeometryContext.momentumError,
-      StochasticSteepestDescentGeometryContext.initialGradNorm,
-      StochasticSteepestDescentGeometryContext.grad, S.W_zero, hMomentum0]
   let lhs : Ω → ℝ :=
     fun ω => (Finset.sum (Finset.range T) fun t => S.frankWolfeGap t ω) / (T : ℝ)
   let rhs : Ω → ℝ :=
@@ -228,10 +219,10 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
   have hAvgNesterov :
       (Finset.sum (Finset.range T)
           (fun t => S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t)) / (T : ℝ) ≤
-        (S.initialGradNorm * shiftedGeometricPrefix S.beta T) / (T : ℝ)
+        (S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (T : ℝ)
           + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
           + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ := by
-    simpa [hBase] using
+    simpa [StochasticSteepestDescentGeometryContext.initialExpectedMomentumError] using
       (StochasticSteepestDescentGeometryContext.corollary11_average_nesterovError_bound
         S.toStochasticSteepestDescentGeometryContext T hT)
   have hScaledAvgNesterov :
@@ -240,7 +231,7 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
               (fun t => S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t)) / (T : ℝ))
         ≤
         (2 / S.lambda)
-          * ((S.initialGradNorm * shiftedGeometricPrefix S.beta T) / (T : ℝ)
+          * ((S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (T : ℝ)
               + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
               + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ) := by
     have hScaleNonneg : 0 ≤ 2 / S.lambda := by
@@ -274,13 +265,13 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
           + 2 * S.L * S.eta / S.lambda := hMain
     _ ≤ S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
           + (2 / S.lambda)
-              * ((S.initialGradNorm * shiftedGeometricPrefix S.beta T) / (T : ℝ)
+              * ((S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (T : ℝ)
                   + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
                   + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ)
           + 2 * S.L * S.eta / S.lambda := by
             gcongr
     _ = (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
-          + (2 * S.initialGradNorm * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
+          + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
           + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
               (S.lambda * Real.sqrt S.batchSizeℝ)
           + (2 * S.L * S.eta / S.lambda) * (1 + 2 * S.beta ^ 2 / (1 - S.beta)) := by
@@ -290,24 +281,23 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
 
 /-- Lean-friendly best-iterate corollary for the expected Frank-Wolfe gap. -/
 theorem best_iterate_frankWolfeExpectedGap_nesterov_wd
-    (S : StochasticFrankWolfeGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (S : StochasticFrankWolfeGeometryContext Ω V) :
     ∀ T, 0 < T →
       ∃ t < T,
         S.expectedFrankWolfeGap t ≤
           (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
-            + (2 * S.initialGradNorm * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
+            + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
             + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
                 (S.lambda * Real.sqrt S.batchSizeℝ)
             + (2 * S.L * S.eta / S.lambda) * (1 + 2 * S.beta ^ 2 / (1 - S.beta)) := by
   intro T hT
   let rhs : ℝ :=
     (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
-      + (2 * S.initialGradNorm * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
+      + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
       + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
           (S.lambda * Real.sqrt S.batchSizeℝ)
       + (2 * S.L * S.eta / S.lambda) * (1 + 2 * S.beta ^ 2 / (1 - S.beta))
-  have hAvg := S.avg_frankWolfeExpectedGap_nesterov_wd hMomentum0 T hT
+  have hAvg := S.avg_frankWolfeExpectedGap_nesterov_wd T hT
   have hT' : 0 < (T : ℝ) := by
     exact_mod_cast hT
   have hSum :

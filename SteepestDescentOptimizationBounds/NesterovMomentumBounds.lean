@@ -76,8 +76,8 @@ lemma nesterovError_split
     (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
     S.nesterovError t =
       S.beta • S.momentumError t + (1 - S.beta) • S.minibatchNoise t := by
-  simp [SteepestDescentPathGeometryContext.nesterovError,
-    SteepestDescentPathGeometryContext.momentumError,
+  rw [SteepestDescentPathGeometryContext.nesterovError, S.C_spec t]
+  simp [SteepestDescentPathGeometryContext.momentumError,
     SteepestDescentPathGeometryContext.minibatchNoise,
     sub_eq_add_neg, smul_add, add_smul, add_assoc, add_left_comm, add_comm]
 

@@ -97,7 +97,7 @@ private lemma quadratic_two_eta_bound
 private lemma grad_split_apply
     (S : FrankWolfePathGeometryContext V) (t : ℕ) (v : V) :
     (S.grad t) v = (S.C t) v + S.nesterovError t v := by
-  rw [SteepestDescentPathGeometryContext.nesterovError]
+  rw [SteepestDescentPathGeometryContext.nesterovError, S.C_spec t]
   simp [SteepestDescentPathGeometryContext.grad, sub_eq_add_neg]
   ring
 
@@ -691,8 +691,10 @@ lemma muFW_lambda_eta_ne_zero (S : StochasticFrankWolfeKLGeometryContext Ω V) :
 
 /-- The recurrence factor `1 - μ_FW * λ * η` is nonnegative. -/
 lemma one_sub_muFW_lambda_eta_nonneg (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    S.muFW * S.lambda * S.eta ≤ 1 →
     0 ≤ 1 - S.muFW * S.lambda * S.eta := by
-  nlinarith [S.muFW_lambda_eta_le_one]
+  intro hContraction
+  nlinarith [hContraction]
 
 /-- The recurrence factor `1 - μ_FW * λ * η` is at most `1`. -/
 lemma one_sub_muFW_lambda_eta_le_one (S : StochasticFrankWolfeKLGeometryContext Ω V) :

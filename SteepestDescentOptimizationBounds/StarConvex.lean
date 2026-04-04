@@ -73,7 +73,7 @@ variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual
 private lemma grad_split_apply
     (S : StarConvexPathGeometryContext V) (t : ℕ) (v : V) :
     S.gradientLinear t v = (S.C t) v + S.nesterovError t v := by
-  rw [gradientLinear, SteepestDescentPathGeometryContext.nesterovError]
+  rw [gradientLinear, SteepestDescentPathGeometryContext.nesterovError, S.C_spec t]
   simp [SteepestDescentPathGeometryContext.grad, sub_eq_add_neg]
   ring
 
@@ -394,7 +394,7 @@ def starConvexExpectedSuboptimalityNoiseFloor
 def starConvexExpectedSuboptimalityResidualFloor
     (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
   ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-      + (2 * S.beta / (1 - S.beta)) * S.initialGradNorm) * S.eta
+      + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta
 
 end PublicDefinitions
 

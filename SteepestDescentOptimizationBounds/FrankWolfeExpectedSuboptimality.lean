@@ -51,7 +51,7 @@ def frankWolfeExpectedSuboptimalityNoiseFloor
 /-- The residual floor in the loose FW-KL expected-suboptimality bound. -/
 def frankWolfeExpectedSuboptimalityResidualFloor
     (S : StochasticFrankWolfeKLGeometryContext Ω V) : ℝ :=
-  ((2 * S.beta / (1 - S.beta)) * S.initialGradNorm
+  ((2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError
     + (2 * S.L / (S.muFW * S.lambda)) * (1 + 2 * S.beta ^ 2 / (1 - S.beta))) * S.eta
 
 section PrivateTheorems
@@ -141,21 +141,6 @@ private theorem suboptimality_integrable
         ‖S.suboptimality (t + 1) ω‖ = S.suboptimality (t + 1) ω := by
           exact Real.norm_of_nonneg hNonneg
         _ ≤ S.suboptimality t ω + 2 * S.eta * S.nesterovErrorNorm t ω + 2 * S.L * S.eta ^ 2 := hRec
-
-private theorem expectedMomentumError_zero_eq_initialGradNorm
-    (S : StochasticFrankWolfeKLGeometryContext Ω V)
-    (hMomentum0 :
-      ∀ ω, S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
-    S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.expectedMomentumError 0 =
-      S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.initialGradNorm := by
-  letI := S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.prob
-  simp [StochasticSteepestDescentGeometryContext.expectedMomentumError,
-    StochasticSteepestDescentGeometryContext.momentumErrorNorm,
-    StochasticSteepestDescentGeometryContext.momentumError,
-    StochasticSteepestDescentGeometryContext.initialGradNorm,
-    StochasticSteepestDescentGeometryContext.grad,
-    S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.W_zero,
-    hMomentum0]
 
 private theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound_base
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
@@ -263,7 +248,7 @@ private theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound_bas
 
 private theorem frankWolfeExpectedSuboptimality_bound_base
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (hContraction : S.muFW * S.lambda * S.eta ≤ 1) :
     ∀ T,
       S.expectedSuboptimality T ≤
         (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialSuboptimality
@@ -276,10 +261,10 @@ private theorem frankWolfeExpectedSuboptimality_bound_base
       * ((2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
           + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ)
       + 2 * S.L * S.eta ^ 2
-  let d : ℝ := 2 * S.eta * S.initialGradNorm
+  let d : ℝ := 2 * S.eta * S.initialExpectedMomentumError
   have haNonneg : 0 ≤ a := by
     dsimp [a]
-    exact S.one_sub_muFW_lambda_eta_nonneg
+    exact one_sub_muFW_lambda_eta_nonneg (S := S) hContraction
   have haLeOne : a ≤ 1 := by
     dsimp [a]
     exact S.one_sub_muFW_lambda_eta_le_one
@@ -308,16 +293,15 @@ private theorem frankWolfeExpectedSuboptimality_bound_base
     exact add_nonneg hLeadingNonneg hTailNonneg
   have hdNonneg : 0 ≤ d := by
     dsimp [d]
-    exact mul_nonneg (by nlinarith [S.eta_pos]) (norm_nonneg _)
-  have hBase := expectedMomentumError_zero_eq_initialGradNorm S hMomentum0
+    exact mul_nonneg (by nlinarith [S.eta_pos]) S.initialExpectedMomentumError_nonneg
   have hCor11 :
       ∀ t,
         S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.expectedNesterovError t ≤
-          S.beta ^ (t + 1) * S.initialGradNorm
+          S.beta ^ (t + 1) * S.initialExpectedMomentumError
             + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
             + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ := by
     intro t
-    simpa [hBase] using
+    simpa [StochasticSteepestDescentGeometryContext.initialExpectedMomentumError] using
       (StochasticSteepestDescentGeometryContext.Corollary11PointwiseNesterovErrorBound
         S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext t)
   have hRec :
@@ -337,7 +321,7 @@ private theorem frankWolfeExpectedSuboptimality_bound_base
             * S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.expectedNesterovError t
           ≤
           2 * S.eta
-            * (S.beta ^ (t + 1) * S.initialGradNorm
+            * (S.beta ^ (t + 1) * S.initialExpectedMomentumError
                 + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
                 + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ) := by
       exact mul_le_mul_of_nonneg_left (hCor11 t) (by nlinarith [S.eta_pos])
@@ -449,18 +433,18 @@ theorem frankWolfeSuboptimality_recurrence_step
 /-- Loose FW-KL expected-suboptimality bound with explicit coefficient floors. -/
 theorem frankWolfeExpectedSuboptimality_bound
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (hContraction : S.muFW * S.lambda * S.eta ≤ 1) :
     ∀ T,
       S.expectedSuboptimality T ≤
         (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialSuboptimality
           + S.frankWolfeExpectedSuboptimalityMinibatchCoefficient / Real.sqrt S.batchSizeℝ
           + S.frankWolfeExpectedSuboptimalityResidualFloor := by
-  exact frankWolfeExpectedSuboptimality_bound_base S hMomentum0
+  exact frankWolfeExpectedSuboptimality_bound_base S hContraction
 
 /-- Existential-constants form of the loose FW-KL expected-suboptimality bound. -/
 theorem frankWolfeExpectedSuboptimality_existsConstants
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
-    (hMomentum0 : ∀ ω, S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.momentum 0 ω = 0) :
+    (hContraction : S.muFW * S.lambda * S.eta ≤ 1) :
     ∃ X Y Z : ℝ,
       X = S.initialSuboptimality ∧
       Y = S.frankWolfeExpectedSuboptimalityMinibatchCoefficient ∧
@@ -471,7 +455,7 @@ theorem frankWolfeExpectedSuboptimality_existsConstants
   refine ⟨S.initialSuboptimality, S.frankWolfeExpectedSuboptimalityMinibatchCoefficient,
     S.frankWolfeExpectedSuboptimalityResidualFloor, rfl, rfl, rfl, ?_⟩
   intro T
-  simpa using S.frankWolfeExpectedSuboptimality_bound hMomentum0 T
+  simpa using S.frankWolfeExpectedSuboptimality_bound hContraction T
 
 end PublicTheorems
 
