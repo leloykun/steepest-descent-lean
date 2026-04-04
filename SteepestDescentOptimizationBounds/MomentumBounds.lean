@@ -137,6 +137,35 @@ lemma recurrence_unroll
                 simp [shiftedGeometricPrefix, geometricPrefix, Finset.sum_range_succ]
                 ring
 
+/--
+Averaging helper: if `u t ≤ g t + k` pointwise and the finite sum of `g`
+collapses to `main T`, then the time average of `u` is bounded by the average
+of `main` plus the constant offset `k`.
+-/
+lemma average_bound_of_pointwise_const
+    {u g : ℕ → ℝ} {main : ℕ → ℝ} {k : ℝ}
+    (hPoint : ∀ t, u t ≤ g t + k)
+    (hMain : ∀ T, Finset.sum (Finset.range T) g = main T) :
+    ∀ T, 0 < T →
+      (Finset.sum (Finset.range T) u) / (T : ℝ) ≤ main T / (T : ℝ) + k := by
+  intro T hT
+  have hT' : (0 : ℝ) < T := by exact_mod_cast hT
+  have hSum :
+      Finset.sum (Finset.range T) u ≤ Finset.sum (Finset.range T) (fun t => g t + k) := by
+    refine Finset.sum_le_sum ?_
+    intro t ht
+    exact hPoint t
+  have hConst : Finset.sum (Finset.range T) (fun _ => k) = (T : ℝ) * k := by
+    simp
+  have hDiv := div_le_div_of_nonneg_right hSum hT'.le
+  calc
+    (Finset.sum (Finset.range T) u) / (T : ℝ)
+      ≤ (Finset.sum (Finset.range T) (fun t => g t + k)) / (T : ℝ) := hDiv
+    _ = (main T + (T : ℝ) * k) / (T : ℝ) := by
+          rw [Finset.sum_add_distrib, hMain T, hConst]
+    _ = main T / (T : ℝ) + k := by
+          field_simp [show (T : ℝ) ≠ 0 by positivity]
+
 end ScalarLemmas
 
 namespace StochasticSteepestDescentGeometryContext
@@ -311,6 +340,14 @@ private theorem last_block_flatSampleSlot
   apply Fin.ext
   simp [flatSampleSlot, S.last_block_mod t i hi]
 
+private theorem flatCoeff_last_block
+    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (t i : ℕ) (hi : i < S.batchSize) :
+    S.flatCoeff (t + 1) (t * S.batchSize + i) = (1 - S.beta) / S.batchSizeℝ := by
+  dsimp [flatCoeff]
+  rw [S.last_block_div t i hi]
+  norm_num
+
 private theorem flatSample_eval
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) :
     flatSample S.batchSize_pos S.stochasticGradientSample
@@ -478,6 +515,18 @@ private theorem flatCoeff_nonneg
     exact pow_nonneg S.beta_nonneg _
   exact div_nonneg (mul_nonneg hOneSubNonneg hPowNonneg) S.batchSizeℝ_pos.le
 
+private theorem flatCoeff_succ_eq_beta_mul
+    (S : StochasticSteepestDescentGeometryContext Ω V)
+    {t m : ℕ} (hm : m < t * S.batchSize) :
+    S.flatCoeff (t + 1) m = S.beta * S.flatCoeff t m := by
+  have hDivLt : m / S.batchSize < t := by
+    exact (Nat.div_lt_iff_lt_mul S.batchSize_pos).2 hm
+  have hExp : t - m / S.batchSize = (t - 1 - m / S.batchSize) + 1 := by
+    omega
+  dsimp [flatCoeff]
+  rw [hExp, pow_succ']
+  field_simp [S.batchSizeℝ_ne_zero]
+
 private theorem flatCoeff_sum_eq
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,
@@ -501,17 +550,7 @@ private theorem flatCoeff_sum_eq
         rw [Finset.mul_sum]
         refine Finset.sum_congr rfl ?_
         intro m hm
-        have hmLt : m < t * S.batchSize := Finset.mem_range.mp hm
-        have hDivLt : m / S.batchSize < t := by
-          exact (Nat.div_lt_iff_lt_mul S.batchSize_pos).2 hmLt
-        have hExp : t - m / S.batchSize = (t - 1 - m / S.batchSize) + 1 := by
-          omega
-        have hScalar :
-            S.flatCoeff (t + 1) m = S.beta * S.flatCoeff t m := by
-          dsimp [flatCoeff]
-          rw [hExp, pow_succ']
-          field_simp [S.batchSizeℝ_ne_zero]
-        rw [hScalar]
+        rw [S.flatCoeff_succ_eq_beta_mul (Finset.mem_range.mp hm)]
       have hLast :
           Finset.sum (Finset.range S.batchSize)
               (fun i => S.flatCoeff (t + 1) (t * S.batchSize + i)) =
@@ -523,10 +562,7 @@ private theorem flatCoeff_sum_eq
                 (fun _ => (1 - S.beta) / S.batchSizeℝ) := by
                   refine Finset.sum_congr rfl ?_
                   intro i hi
-                  have hiLt : i < S.batchSize := Finset.mem_range.mp hi
-                  dsimp [flatCoeff]
-                  rw [S.last_block_div t i hiLt]
-                  norm_num
+                  exact S.flatCoeff_last_block t i (Finset.mem_range.mp hi)
           _ = S.batchSizeℝ * ((1 - S.beta) / S.batchSizeℝ) := by
                 simp [StochasticSteepestDescentParameters.batchSizeℝ]
           _ = 1 - S.beta := by
@@ -579,16 +615,7 @@ private theorem momentumNoiseProcess_eq_flatPartialSum
         rw [flatPartialSum, weightedPartialSum, Finset.smul_sum]
         refine Finset.sum_congr rfl ?_
         intro m hm
-        have hmLt : m < t * S.batchSize := Finset.mem_range.mp hm
-        have hDivLt : m / S.batchSize < t := by
-          exact (Nat.div_lt_iff_lt_mul S.batchSize_pos).2 hmLt
-        have hExp : t - m / S.batchSize = (t - 1 - m / S.batchSize) + 1 := by
-          omega
-        have hScalar : S.flatCoeff (t + 1) m = S.beta * S.flatCoeff t m := by
-          dsimp [flatCoeff]
-          rw [hExp, pow_succ']
-          field_simp [S.batchSizeℝ_ne_zero]
-        rw [hScalar, smul_smul]
+        rw [S.flatCoeff_succ_eq_beta_mul (Finset.mem_range.mp hm), smul_smul]
       have hLast :
           Finset.sum (Finset.range S.batchSize)
               (fun i =>
@@ -611,9 +638,7 @@ private theorem momentumNoiseProcess_eq_flatPartialSum
                     have hScalar :
                         S.flatCoeff (t + 1) (t * S.batchSize + i) =
                           (1 - S.beta) / S.batchSizeℝ := by
-                      dsimp [flatCoeff]
-                      rw [S.last_block_div t i hiLt]
-                      norm_num
+                      exact S.flatCoeff_last_block t i hiLt
                     have hNoise :
                         S.flatNoise (t * S.batchSize + i) ω = S.ξ (t + 1) ⟨i, hiLt⟩ ω := by
                       simp [flatNoise, S.last_block_flatTimeIndex t i hiLt,
@@ -644,51 +669,7 @@ private theorem momentumNoiseProcess_eq_flatPartialSum
                             uniformBatchWeight S.batchSize •
                               (if hi : i < S.batchSize then S.ξ (t + 1) ⟨i, hi⟩ ω else 0)))
           _ = (1 - S.beta) • S.minibatchNoise (t + 1) ω := by
-                let w : ℝ := uniformBatchWeight S.batchSize
-                have hConst :
-                    Finset.sum Finset.univ
-                        (fun _ : Fin S.batchSize => w • S.grad (t + 1) ω) =
-                      S.grad (t + 1) ω := by
-                  have hWeight : w * (S.batchSize : ℝ) = 1 := by
-                    simpa [w, uniformBatchWeight, StochasticSteepestDescentParameters.batchSizeℝ] using
-                      (one_div_mul_cancel S.batchSizeℝ_ne_zero :
-                        (1 / (S.batchSize : ℝ)) * (S.batchSize : ℝ) = 1)
-                  have hNatReal :
-                      (S.batchSize : ℕ) • S.grad (t + 1) ω =
-                        ((S.batchSize : ℝ)) • S.grad (t + 1) ω := by
-                    simpa using (Nat.cast_smul_eq_nsmul ℝ S.batchSize (S.grad (t + 1) ω)).symm
-                  calc
-                    Finset.sum Finset.univ (fun _ : Fin S.batchSize => w • S.grad (t + 1) ω)
-                      = w • ∑ _ : Fin S.batchSize, S.grad (t + 1) ω := by
-                          rw [Finset.smul_sum]
-                    _ = w • ((S.batchSize : ℕ) • S.grad (t + 1) ω) := by simp
-                    _ = (w * (S.batchSize : ℝ)) • S.grad (t + 1) ω := by
-                          rw [hNatReal]
-                          rw [smul_smul]
-                    _ = (1 : ℝ) • S.grad (t + 1) ω := by rw [hWeight]
-                    _ = S.grad (t + 1) ω := by simp
-                unfold StochasticSteepestDescentGeometryContext.minibatchNoise
-                rw [S.minibatchGradient_spec]
-                have hNoiseSum :
-                    S.grad (t + 1) ω - ∑ i, w • S.stochasticGradientSample (t + 1) i ω
-                      = ∑ i : Fin S.batchSize, w • S.ξ (t + 1) i ω := by
-                  calc
-                    S.grad (t + 1) ω - ∑ i, w • S.stochasticGradientSample (t + 1) i ω
-                      = (∑ _ : Fin S.batchSize, w • S.grad (t + 1) ω)
-                          - ∑ i, w • S.stochasticGradientSample (t + 1) i ω := by
-                            rw [hConst]
-                    _ = ∑ i : Fin S.batchSize,
-                          (w • S.grad (t + 1) ω - w • S.stochasticGradientSample (t + 1) i ω) := by
-                            rw [Finset.sum_sub_distrib]
-                    _ = ∑ i : Fin S.batchSize,
-                          w • (S.grad (t + 1) ω - S.stochasticGradientSample (t + 1) i ω) := by
-                            refine Finset.sum_congr rfl ?_
-                            intro i hi
-                            rw [smul_sub]
-                    _ = ∑ i : Fin S.batchSize,
-                          w • S.ξ (t + 1) i ω := by
-                            simp [w, StochasticSteepestDescentGeometryContext.ξ]
-                rw [hNoiseSum]
+                rw [S.minibatchNoise_eq_sum_range (t + 1) ω]
       calc
         S.momentumNoiseProcess (t + 1) ω
           = S.beta • S.momentumNoiseProcess t ω
@@ -700,37 +681,61 @@ private theorem momentumNoiseProcess_eq_flatPartialSum
         _ = S.flatPartialSum (t + 1) ((t + 1) * S.batchSize) ω := by
                 rw [hSplit, hFirst, hLast]
 
+private theorem flatWeightedNoise_analysis
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    Integrable (fun ω => ‖S.flatPartialSum t (t * S.batchSize) ω‖) S.μ ∧
+      ∫ ω, ‖S.flatPartialSum t (t * S.batchSize) ω‖ ∂S.μ ≤
+        Real.sqrt
+          (S.D * S.sigma ^ 2
+            * Finset.sum (Finset.range (t * S.batchSize))
+                (fun m => (S.flatCoeff t m) ^ 2)) := by
+  letI := S.prob
+  refine ⟨?_, ?_⟩
+  · exact
+      weighted_noise_norm_integrable
+        S.pairing S.assumption4_localProxyPotential
+        (μ := S.μ)
+        (sigma := S.sigma)
+        (ξ := S.flatNoise)
+        (α := S.flatCoeff t)
+        (n := t * S.batchSize)
+        (pastSigma := S.flatPastSigma)
+        (pastSigma_le := S.flatPastSigma_le)
+        (coeff_nonneg := by intro i hi; exact S.flatCoeff_nonneg t i)
+        (coeff_sum_le_one := S.flatCoeff_sum_le_one t)
+        (sample_stronglyMeasurable := fun i => S.flatNoise_stronglyMeasurable i)
+        (sample_integrable := by intro i hi; exact S.flatNoise_integrable i)
+        (coeff_measurable := by intro i hi; exact S.flatCoeff_measurable t i hi)
+        (cond_zero := by intro i hi; exact S.flatNoise_condexp_zero i)
+        (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.flatNoise_norm_le_noiseRadius_ae i)
+        (second_moment_bound := by intro i hi; exact S.flatNoise_second_moment_bound i)
+  · exact
+      weighted_noise_first_moment_bound
+        S.pairing S.assumption4_localProxyPotential
+        (μ := S.μ)
+        (sigma := S.sigma)
+        (ξ := S.flatNoise)
+        (α := S.flatCoeff t)
+        (n := t * S.batchSize)
+        (pastSigma := S.flatPastSigma)
+        (pastSigma_le := S.flatPastSigma_le)
+        (coeff_nonneg := by intro i hi; exact S.flatCoeff_nonneg t i)
+        (coeff_sum_le_one := S.flatCoeff_sum_le_one t)
+        (sample_stronglyMeasurable := fun i => S.flatNoise_stronglyMeasurable i)
+        (sample_integrable := by intro i hi; exact S.flatNoise_integrable i)
+        (coeff_measurable := by intro i hi; exact S.flatCoeff_measurable t i hi)
+        (cond_zero := by intro i hi; exact S.flatNoise_condexp_zero i)
+        (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.flatNoise_norm_le_noiseRadius_ae i)
+        (second_moment_bound := by intro i hi; exact S.flatNoise_second_moment_bound i)
+
 private theorem momentumNoiseProcess_norm_integrable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t, Integrable (fun ω => ‖S.momentumNoiseProcess t ω‖) S.μ := by
   intro t
-  letI := S.prob
-  have hInt :=
-    weighted_noise_norm_integrable
-      S.pairing S.assumption4_localProxyPotential
-      (μ := S.μ)
-      (sigma := S.sigma)
-      (ξ := S.flatNoise)
-      (α := S.flatCoeff t)
-      (n := t * S.batchSize)
-      (pastSigma := S.flatPastSigma)
-      (pastSigma_le := S.flatPastSigma_le)
-      (coeff_nonneg := by intro i hi; exact S.flatCoeff_nonneg t i)
-      (coeff_sum_le_one := S.flatCoeff_sum_le_one t)
-      (sample_stronglyMeasurable := fun i => S.flatNoise_stronglyMeasurable i)
-      (sample_integrable := by intro i hi; exact S.flatNoise_integrable i)
-      (coeff_measurable := by intro i hi; exact S.flatCoeff_measurable t i hi)
-      (cond_zero := by intro i hi; exact S.flatNoise_condexp_zero i)
-      (sample_norm_le_noiseRadius_ae := by
-        intro i hi
-        exact S.flatNoise_norm_le_noiseRadius_ae i)
-      (second_moment_bound := by
-        intro i hi
-        exact S.flatNoise_second_moment_bound i)
+  have hInt := (S.flatWeightedNoise_analysis t).1
   refine hInt.congr ?_
   filter_upwards with ω
   rw [S.momentumNoiseProcess_eq_flatPartialSum t]
-  rfl
 
 private theorem flatCoeff_sq_sum_bound
     (S : StochasticSteepestDescentGeometryContext Ω V) :
@@ -761,16 +766,7 @@ private theorem flatCoeff_sq_sum_bound
         rw [Finset.mul_sum]
         refine Finset.sum_congr rfl ?_
         intro m hm
-        have hmLt : m < t * S.batchSize := Finset.mem_range.mp hm
-        have hDivLt : m / S.batchSize < t := by
-          exact (Nat.div_lt_iff_lt_mul S.batchSize_pos).2 hmLt
-        have hExp : t - m / S.batchSize = (t - 1 - m / S.batchSize) + 1 := by
-          omega
-        have hScalar : S.flatCoeff (t + 1) m = S.beta * S.flatCoeff t m := by
-          dsimp [flatCoeff]
-          rw [hExp, pow_succ']
-          field_simp [S.batchSizeℝ_ne_zero]
-        rw [hScalar]
+        rw [S.flatCoeff_succ_eq_beta_mul (Finset.mem_range.mp hm)]
         ring
       have hLast :
           Finset.sum (Finset.range S.batchSize)
@@ -783,10 +779,7 @@ private theorem flatCoeff_sq_sum_bound
                 (fun _ => (((1 - S.beta) / S.batchSizeℝ) ^ 2)) := by
                   refine Finset.sum_congr rfl ?_
                   intro i hi
-                  have hiLt : i < S.batchSize := Finset.mem_range.mp hi
-                  dsimp [flatCoeff]
-                  rw [S.last_block_div t i hiLt]
-                  norm_num
+                  rw [S.flatCoeff_last_block t i (Finset.mem_range.mp hi)]
           _ = S.batchSizeℝ * (((1 - S.beta) / S.batchSizeℝ) ^ 2) := by
                 simp [StochasticSteepestDescentParameters.batchSizeℝ]
           _ = (1 - S.beta) ^ 2 / S.batchSizeℝ := by
@@ -825,29 +818,7 @@ private theorem expectedNoise_bound
         Real.sqrt ((1 - S.beta) / (1 + S.beta))
           * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
   intro t
-  letI := S.prob
-  have hFirst :=
-    weighted_noise_first_moment_bound
-      S.pairing S.assumption4_localProxyPotential
-      (μ := S.μ)
-      (sigma := S.sigma)
-      (ξ := S.flatNoise)
-      (α := S.flatCoeff t)
-      (n := t * S.batchSize)
-      (pastSigma := S.flatPastSigma)
-      (pastSigma_le := S.flatPastSigma_le)
-      (coeff_nonneg := by intro i hi; exact S.flatCoeff_nonneg t i)
-      (coeff_sum_le_one := S.flatCoeff_sum_le_one t)
-      (sample_stronglyMeasurable := fun i => S.flatNoise_stronglyMeasurable i)
-      (sample_integrable := by intro i hi; exact S.flatNoise_integrable i)
-      (coeff_measurable := by intro i hi; exact S.flatCoeff_measurable t i hi)
-      (cond_zero := by intro i hi; exact S.flatNoise_condexp_zero i)
-      (sample_norm_le_noiseRadius_ae := by
-        intro i hi
-        exact S.flatNoise_norm_le_noiseRadius_ae i)
-      (second_moment_bound := by
-        intro i hi
-        exact S.flatNoise_second_moment_bound i)
+  have hFirst := (S.flatWeightedNoise_analysis t).2
   have hInside :
       S.D * S.sigma ^ 2 *
           Finset.sum (Finset.range (t * S.batchSize))
@@ -966,48 +937,34 @@ private theorem average_momentumError_bound_of_pointwise
       (Finset.sum (Finset.range T) fun t => S.expectedMomentumError t) / (T : ℝ) ≤
         (S.expectedMomentumError 0 * geometricPrefix S.beta T) / (T : ℝ)
           + (2 * S.beta / (1 - S.beta)) * S.L * S.eta
-          + Real.sqrt ((1 - S.beta) / (1 + S.beta))
-              * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
-  intro T hT
-  have hT' : (0 : ℝ) < T := by exact_mod_cast hT
+          + Real.sqrt ((1 - S.beta) / (1 + S.beta)) * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
   let k : ℝ :=
     (2 * S.beta / (1 - S.beta)) * S.L * S.eta
-      + Real.sqrt ((1 - S.beta) / (1 + S.beta))
-          * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ
-  have hSum :
-    Finset.sum (Finset.range T) (fun t => S.expectedMomentumError t) ≤
-        Finset.sum (Finset.range T) (fun t =>
-          S.beta ^ t * S.expectedMomentumError 0 + k) := by
-    refine Finset.sum_le_sum ?_
-    intro t ht
-    have hPoint := hCor10 t
+      + Real.sqrt ((1 - S.beta) / (1 + S.beta)) * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ
+  have hPoint :
+      ∀ t,
+        S.expectedMomentumError t ≤
+          (S.beta ^ t * S.expectedMomentumError 0) + k := by
+    intro t
     have hk : k =
         (2 * S.beta / (1 - S.beta)) * S.L * S.eta
-          + Real.sqrt ((1 - S.beta) / (1 + S.beta))
-              * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := rfl
-    linarith
-  have hConst :
-      Finset.sum (Finset.range T) (fun _ => k) = (T : ℝ) * k := by
-    simp
-  have hGeom :
-      Finset.sum (Finset.range T) (fun t => S.beta ^ t * S.expectedMomentumError 0) =
-        geometricPrefix S.beta T * S.expectedMomentumError 0 := by
-    simp [geometricPrefix, Finset.sum_mul]
-  have hDiv := div_le_div_of_nonneg_right hSum hT'.le
+          + Real.sqrt ((1 - S.beta) / (1 + S.beta)) * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := rfl
+    linarith [hCor10 t]
+  have hAvg :=
+    average_bound_of_pointwise_const
+      (u := S.expectedMomentumError)
+      (g := fun t => S.beta ^ t * S.expectedMomentumError 0)
+      (main := fun T => geometricPrefix S.beta T * S.expectedMomentumError 0)
+      (k := k)
+      hPoint
+      (by intro T; simp [geometricPrefix, Finset.sum_mul])
+  intro T hT
   calc
     (Finset.sum (Finset.range T) fun t => S.expectedMomentumError t) / (T : ℝ)
-      ≤ (Finset.sum (Finset.range T) fun t =>
-          S.beta ^ t * S.expectedMomentumError 0 + k) / (T : ℝ) :=
-        hDiv
-    _ = ((geometricPrefix S.beta T * S.expectedMomentumError 0)
-            + (T : ℝ) * k) / (T : ℝ) := by
-            rw [Finset.sum_add_distrib, hGeom, hConst]
-    _ = (geometricPrefix S.beta T * S.expectedMomentumError 0) / (T : ℝ) + k := by
-          field_simp [show (T : ℝ) ≠ 0 by positivity]
+      ≤ (geometricPrefix S.beta T * S.expectedMomentumError 0) / (T : ℝ) + k := hAvg T hT
     _ = (S.expectedMomentumError 0 * geometricPrefix S.beta T) / (T : ℝ)
           + (2 * S.beta / (1 - S.beta)) * S.L * S.eta
-          + Real.sqrt ((1 - S.beta) / (1 + S.beta))
-              * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
+          + Real.sqrt ((1 - S.beta) / (1 + S.beta)) * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
           simp [k]
           ring
 
@@ -1023,7 +980,7 @@ variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
 /-- The expected momentum-error norm is nonnegative. -/
-lemma expectedMomentumError_nonneg
+private lemma expectedMomentumError_nonneg
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     0 ≤ S.expectedMomentumError t := by
   exact integral_nonneg fun _ => norm_nonneg _
@@ -1035,7 +992,7 @@ lemma initialExpectedMomentumError_nonneg
   S.expectedMomentumError_nonneg 0
 
 /-- The realized momentum-error norm is nonnegative. -/
-lemma momentumErrorNorm_nonneg
+private lemma momentumErrorNorm_nonneg
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
     0 ≤ S.momentumErrorNorm t ω :=
   norm_nonneg _
@@ -1090,7 +1047,7 @@ lemma momentumErrorNorm_integrable
     Real.norm_of_nonneg hUpperNonneg] using hPoint
 
 /-- Proposition-6 / Corollary-10 expected momentum-error bound. -/
-theorem momentum_expectedErrorBound
+private theorem momentum_expectedErrorBound
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,
       S.expectedMomentumError t ≤
@@ -1188,17 +1145,6 @@ theorem Corollary10PointwiseMomentumErrorBound
           + Real.sqrt ((1 - S.beta) / (1 + S.beta))
               * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
   exact S.momentum_expectedErrorBound
-
-/-- Averaged expected momentum-residual bound over a finite horizon. -/
-theorem corollary10_average_momentumError_bound
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ T, 0 < T →
-      (Finset.sum (Finset.range T) fun t => S.expectedMomentumError t) / (T : ℝ) ≤
-        (S.expectedMomentumError 0 * geometricPrefix S.beta T) / (T : ℝ)
-          + (2 * S.beta / (1 - S.beta)) * S.L * S.eta
-          + Real.sqrt ((1 - S.beta) / (1 + S.beta))
-              * Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
-  exact average_momentumError_bound_of_pointwise S (Corollary10PointwiseMomentumErrorBound S)
 
 end PublicTheorems
 

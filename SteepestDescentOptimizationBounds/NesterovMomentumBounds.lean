@@ -22,6 +22,14 @@ Downstream use:
 
 noncomputable section
 
+private lemma momentumNoisePrefactor_nonneg_of_beta
+    {β : ℝ} (hβNonneg : 0 ≤ β) (hβLtOne : β < 1) :
+    0 ≤ Real.sqrt ((1 - β) / (1 + β)) * β + (1 - β) := by
+  have hSqrtNonneg : 0 ≤ Real.sqrt ((1 - β) / (1 + β)) := Real.sqrt_nonneg _
+  have hTerm1 : 0 ≤ Real.sqrt ((1 - β) / (1 + β)) * β := mul_nonneg hSqrtNonneg hβNonneg
+  have hTerm2 : 0 ≤ 1 - β := sub_nonneg.mpr (le_of_lt hβLtOne)
+  exact add_nonneg hTerm1 hTerm2
+
 namespace SteepestDescentPathGeometryContext
 
 section PublicDefinitions
@@ -58,10 +66,6 @@ def nesterovError (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
 def nesterovErrorNorm (S : SteepestDescentPathGeometryContext V) (t : ℕ) : ℝ :=
   ‖S.nesterovError t‖
 
-/-- The Corollary-11 momentum-noise prefactor. -/
-def momentumNoisePrefactor (S : SteepestDescentPathGeometryContext V) : ℝ :=
-  Real.sqrt ((1 - S.beta) / (1 + S.beta)) * S.beta + (1 - S.beta)
-
 end PublicDefinitions
 
 section PublicTheorems
@@ -92,16 +96,6 @@ lemma nesterovError_apply_le
     |S.nesterovError t v| ≤ S.nesterovErrorNorm t * ‖v‖ := by
   simpa [SteepestDescentPathGeometryContext.nesterovErrorNorm] using
     (ContinuousLinearMap.le_opNorm (S.nesterovError t) v)
-
-/-- The Corollary-11 prefactor is nonnegative. -/
-lemma momentumNoisePrefactor_nonneg (S : SteepestDescentPathGeometryContext V) :
-    0 ≤ S.momentumNoisePrefactor := by
-  have hSqrtNonneg : 0 ≤ Real.sqrt ((1 - S.beta) / (1 + S.beta)) :=
-    Real.sqrt_nonneg _
-  have hTerm1 : 0 ≤ Real.sqrt ((1 - S.beta) / (1 + S.beta)) * S.beta :=
-    mul_nonneg hSqrtNonneg S.beta_nonneg
-  have hTerm2 : 0 ≤ 1 - S.beta := sub_nonneg.mpr (le_of_lt S.beta_lt_one)
-  exact add_nonneg hTerm1 hTerm2
 
 end PublicTheorems
 
@@ -149,6 +143,30 @@ variable [MeasurableSpace V] [BorelSpace V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
+private theorem nesterovErrorNorm_le_split
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
+    S.nesterovErrorNorm t ω ≤
+      S.beta * S.momentumErrorNorm t ω + (1 - S.beta) * S.minibatchNoiseNorm t ω := by
+  have hSplit :
+      S.nesterovError t ω =
+        S.beta • S.momentumError t ω + (1 - S.beta) • S.minibatchNoise t ω := by
+    rw [StochasticSteepestDescentGeometryContext.nesterovError]
+    rw [S.C_spec t ω]
+    simp [StochasticSteepestDescentGeometryContext.momentumError,
+      StochasticSteepestDescentGeometryContext.minibatchNoise,
+      sub_eq_add_neg, smul_add, add_smul, add_assoc, add_left_comm, add_comm]
+  calc
+    S.nesterovErrorNorm t ω = ‖S.nesterovError t ω‖ := rfl
+    _ = ‖S.beta • S.momentumError t ω + (1 - S.beta) • S.minibatchNoise t ω‖ := by
+          rw [hSplit]
+    _ ≤ ‖S.beta • S.momentumError t ω‖ + ‖(1 - S.beta) • S.minibatchNoise t ω‖ :=
+          norm_add_le _ _
+    _ = S.beta * S.momentumErrorNorm t ω + (1 - S.beta) * S.minibatchNoiseNorm t ω := by
+          simp [StochasticSteepestDescentGeometryContext.momentumErrorNorm,
+            StochasticSteepestDescentGeometryContext.minibatchNoiseNorm,
+            norm_smul, Real.norm_of_nonneg S.beta_nonneg,
+            Real.norm_of_nonneg S.one_sub_beta_pos.le]
+
 private theorem average_nesterovError_bound_of_pointwise
     (S : StochasticSteepestDescentGeometryContext Ω V)
     (hCor11 :
@@ -162,40 +180,28 @@ private theorem average_nesterovError_bound_of_pointwise
         (S.expectedMomentumError 0 * shiftedGeometricPrefix S.beta T) / (T : ℝ)
           + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
           + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ := by
-  intro T hT
-  have hT' : (0 : ℝ) < T := by exact_mod_cast hT
   let k : ℝ :=
     (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
       + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ
-  have hSum :
-    Finset.sum (Finset.range T) (fun t => S.expectedNesterovError t) ≤
-        Finset.sum (Finset.range T) (fun t =>
-          S.beta ^ (t + 1) * S.expectedMomentumError 0 + k) := by
-    refine Finset.sum_le_sum ?_
-    intro t ht
-    have hPoint := hCor11 t
+  have hPoint :
+      ∀ t, S.expectedNesterovError t ≤ S.beta ^ (t + 1) * S.expectedMomentumError 0 + k := by
+    intro t
     have hk : k =
         (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
           + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ := rfl
-    linarith
-  have hConst :
-      Finset.sum (Finset.range T) (fun _ => k) = (T : ℝ) * k := by
-    simp
-  have hGeom :
-      Finset.sum (Finset.range T) (fun t => S.beta ^ (t + 1) * S.expectedMomentumError 0) =
-        shiftedGeometricPrefix S.beta T * S.expectedMomentumError 0 := by
-    simp [shiftedGeometricPrefix, Finset.sum_mul]
-  have hDiv := div_le_div_of_nonneg_right hSum hT'.le
+    linarith [hCor11 t]
+  have hAvg :=
+    average_bound_of_pointwise_const
+      (u := S.expectedNesterovError)
+      (g := fun t => S.beta ^ (t + 1) * S.expectedMomentumError 0)
+      (main := fun T => shiftedGeometricPrefix S.beta T * S.expectedMomentumError 0)
+      (k := k)
+      hPoint
+      (by intro T; simp [shiftedGeometricPrefix, Finset.sum_mul])
+  intro T hT
   calc
     (Finset.sum (Finset.range T) fun t => S.expectedNesterovError t) / (T : ℝ)
-      ≤ (Finset.sum (Finset.range T) fun t =>
-          S.beta ^ (t + 1) * S.expectedMomentumError 0 + k) / (T : ℝ) :=
-        hDiv
-    _ = ((shiftedGeometricPrefix S.beta T * S.expectedMomentumError 0)
-            + (T : ℝ) * k) / (T : ℝ) := by
-            rw [Finset.sum_add_distrib, hGeom, hConst]
-    _ = ((shiftedGeometricPrefix S.beta T * S.expectedMomentumError 0) / (T : ℝ)) + k := by
-          field_simp [show (T : ℝ) ≠ 0 by positivity]
+      ≤ (shiftedGeometricPrefix S.beta T * S.expectedMomentumError 0) / (T : ℝ) + k := hAvg T hT
     _ = (S.expectedMomentumError 0 * shiftedGeometricPrefix S.beta T) / (T : ℝ)
           + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
           + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ := by
@@ -235,12 +241,7 @@ lemma nesterovError_apply_le
 /-- The Corollary-11 prefactor is nonnegative. -/
 lemma momentumNoisePrefactor_nonneg (S : StochasticSteepestDescentGeometryContext Ω V) :
     0 ≤ S.momentumNoisePrefactor := by
-  have hSqrtNonneg : 0 ≤ Real.sqrt ((1 - S.beta) / (1 + S.beta)) :=
-    Real.sqrt_nonneg _
-  have hTerm1 : 0 ≤ Real.sqrt ((1 - S.beta) / (1 + S.beta)) * S.beta :=
-    mul_nonneg hSqrtNonneg S.beta_nonneg
-  have hTerm2 : 0 ≤ 1 - S.beta := sub_nonneg.mpr (le_of_lt S.beta_lt_one)
-  exact add_nonneg hTerm1 hTerm2
+  exact momentumNoisePrefactor_nonneg_of_beta S.beta_nonneg S.beta_lt_one
 
 /-- Integrability bridge for the realized Nesterov-residual norm. -/
 theorem nesterovErrorNorm_integrable
@@ -264,20 +265,7 @@ theorem nesterovErrorNorm_integrable
         ((S.C_measurable t).stronglyMeasurable)).norm.aestronglyMeasurable)
   refine Integrable.mono' hUpper hMeas ?_
   filter_upwards with ω
-  have hPoint :
-      S.nesterovErrorNorm t ω ≤
-        S.beta * S.momentumErrorNorm t ω + (1 - S.beta) * S.minibatchNoiseNorm t ω := by
-    calc
-      S.nesterovErrorNorm t ω = ‖S.nesterovError t ω‖ := rfl
-      _ = ‖S.beta • S.momentumError t ω + (1 - S.beta) • S.minibatchNoise t ω‖ := by
-            rw [S.nesterovError_split t ω]
-      _ ≤ ‖S.beta • S.momentumError t ω‖ + ‖(1 - S.beta) • S.minibatchNoise t ω‖ :=
-            norm_add_le _ _
-      _ = S.beta * S.momentumErrorNorm t ω + (1 - S.beta) * S.minibatchNoiseNorm t ω := by
-            simp [StochasticSteepestDescentGeometryContext.momentumErrorNorm,
-              StochasticSteepestDescentGeometryContext.minibatchNoiseNorm,
-              norm_smul, Real.norm_of_nonneg S.beta_nonneg,
-              Real.norm_of_nonneg S.one_sub_beta_pos.le]
+  have hPoint := S.nesterovErrorNorm_le_split t ω
   have hUpperNonneg :
       0 ≤ S.beta * S.momentumErrorNorm t ω + (1 - S.beta) * S.minibatchNoiseNorm t ω := by
     have hMomNonneg : 0 ≤ S.beta * S.momentumErrorNorm t ω := by
@@ -289,7 +277,7 @@ theorem nesterovErrorNorm_integrable
     Real.norm_of_nonneg hUpperNonneg] using hPoint
 
 /-- Derived expected Nesterov-residual bound. -/
-theorem nesterov_expectedErrorBound
+private theorem nesterov_expectedErrorBound
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t,
       S.expectedNesterovError t ≤
@@ -323,17 +311,7 @@ theorem nesterov_expectedErrorBound
               + (1 - S.beta) * S.minibatchNoiseNorm t ω) ∂S.μ := by
             refine MeasureTheory.integral_mono_ae hLower hUpper ?_
             filter_upwards with ω
-            calc
-              S.nesterovErrorNorm t ω = ‖S.nesterovError t ω‖ := rfl
-              _ = ‖S.beta • S.momentumError t ω + (1 - S.beta) • S.minibatchNoise t ω‖ := by
-                    rw [S.nesterovError_split t ω]
-              _ ≤ ‖S.beta • S.momentumError t ω‖ + ‖(1 - S.beta) • S.minibatchNoise t ω‖ :=
-                    norm_add_le _ _
-              _ = S.beta * S.momentumErrorNorm t ω + (1 - S.beta) * S.minibatchNoiseNorm t ω := by
-                    simp [StochasticSteepestDescentGeometryContext.momentumErrorNorm,
-                      StochasticSteepestDescentGeometryContext.minibatchNoiseNorm,
-                      norm_smul, Real.norm_of_nonneg S.beta_nonneg,
-                      Real.norm_of_nonneg S.one_sub_beta_pos.le]
+            exact S.nesterovErrorNorm_le_split t ω
       _ = ∫ ω, S.beta * S.momentumErrorNorm t ω ∂S.μ
             + ∫ ω, (1 - S.beta) * S.minibatchNoiseNorm t ω ∂S.μ := by
               exact MeasureTheory.integral_add hMomScaled hNoiseScaled
@@ -364,7 +342,7 @@ theorem nesterov_expectedErrorBound
     exact mul_le_mul_of_nonneg_left hCor10' S.beta_nonneg
   have hNoiseBound :
       (1 - S.beta) * S.expectedMinibatchNoise t ≤ (1 - S.beta) * baseNoise := by
-    exact mul_le_mul_of_nonneg_left (S.expectedMinibatchNoise_bound t) S.one_sub_beta_pos.le
+    exact mul_le_mul_of_nonneg_left (S.minibatch_expectedNormBound t) S.one_sub_beta_pos.le
   calc
     S.expectedNesterovError t
       ≤ S.beta * S.expectedMomentumError t + (1 - S.beta) * S.expectedMinibatchNoise t := hStep

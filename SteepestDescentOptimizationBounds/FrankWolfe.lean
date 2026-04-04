@@ -62,15 +62,6 @@ variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-- Canonical pairing context for the continuous dual. -/
-private def continuousDualPairing :
-    ContinuousDualPairingContext V (StrongDual ℝ V) where
-  toLinear := by
-    simpa using (ContinuousLinearMap.id ℝ (StrongDual ℝ V))
-  opNorm_le := by
-    intro xDual
-    simp
-
 end PrivateDefinitions
 
 section PrivateLemmas
@@ -79,19 +70,6 @@ variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-
-/-- Controls an `L / 2 * n^2` term whenever `n ≤ 2η`. -/
-private lemma quadratic_two_eta_bound
-    (L η n : ℝ)
-    (hL : 0 ≤ L) (hn : 0 ≤ n) (h : n ≤ 2 * η) :
-    (L / 2) * n ^ 2 ≤ 2 * L * η ^ 2 := by
-  have hSquare : n ^ 2 ≤ (2 * η) ^ 2 := by
-    nlinarith
-  calc
-    (L / 2) * n ^ 2 ≤ (L / 2) * (2 * η) ^ 2 := by
-      gcongr
-    _ = 2 * L * η ^ 2 := by
-      ring
 
 /-- Unpacks `∇f(W_t) = C_t + error_t` on a concrete vector. -/
 private lemma grad_split_apply
@@ -235,7 +213,7 @@ variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
 /-- The scaled LMO point lies in the radius-`1 / λ` ball and minimizes `C_t` there. -/
-theorem lmo_scaled_properties
+private theorem path_lmo_scaled_properties
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
     ‖S.scaledLMOPoint t‖ ≤ 1 / S.lambda ∧
       ∀ V ∈ S.constraintBall, (S.C t) (S.scaledLMOPoint t) ≤ (S.C t) V := by
@@ -282,12 +260,12 @@ theorem fwGap_ball_formula
               ring
 
 /-- Approximate-LMO Frank-Wolfe inequality controlled by the Nesterov residual. -/
-theorem approx_lmo_fwGap_inner_bound
+private theorem path_approx_lmo_fwGap_inner_bound
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
     (S.grad t) (S.scaledLMOPoint t - S.W t) ≤
       -S.frankWolfeGap t + (2 / S.lambda) * S.nesterovErrorNorm t := by
   let c : ℝ := (2 / S.lambda) * S.nesterovErrorNorm t
-  have hScaledOpt := (S.lmo_scaled_properties t).2
+  have hScaledOpt := (S.path_lmo_scaled_properties t).2
   have hLower :
       ∀ a ∈ ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall),
         (S.grad t) (S.scaledLMOPoint t - S.W t) - c ≤ a := by
@@ -365,20 +343,28 @@ theorem approx_lmo_fwGap_inner_bound
   linarith
 
 /-- Pathwise one-step Frank-Wolfe-gap descent theorem. -/
-theorem one_step_descent_fwGap
+theorem path_one_step_descent_fwGap
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
     S.f (S.W (t + 1)) ≤
       S.f (S.W t)
         - S.lambda * S.eta * S.frankWolfeGap t
         + 2 * S.eta * S.nesterovErrorNorm t
         + 2 * S.L * S.eta ^ 2 := by
-  have hProp9 := S.proposition9_weight_and_update_bounds t
-  rcases hProp9 with ⟨hWeight, hUpdateBound⟩
+  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda :=
+    S.weight_bound_from_feasible_step t
   have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda :=
     S.weight_bound_from_feasible_step (t + 1)
+  have hUpdateBound : ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta :=
+    (S.proposition9_weight_and_update_bounds t).2
+  let pairing : ContinuousDualPairingContext V (StrongDual ℝ V) := {
+    toLinear := by simpa using (ContinuousLinearMap.id ℝ (StrongDual ℝ V))
+    opNorm_le := by
+      intro xDual
+      simp
+  }
   have hTaylor :=
     taylor_bound_of_LSmoothOnClosedBallUnderPair
-      (continuousDualPairing (V := V))
+      pairing
       (f := S.f)
       (grad := S.fGrad)
       (L := S.L)
@@ -387,10 +373,6 @@ theorem one_step_descent_fwGap
       S.assumption3_fLocalSmoothness.local_lipschitz
       hWeight
       hNextWeight
-  have hQuad :=
-    quadratic_two_eta_bound
-      S.L S.eta ‖S.W (t + 1) - S.W t‖
-      S.assumption3_fLocalSmoothness.nonneg (norm_nonneg _) hUpdateBound
   have hStepRightRaw := (abs_le.mp hTaylor).2
   have hLinearNext :
       (S.grad t) (S.W (t + 1) - S.W t) =
@@ -410,8 +392,16 @@ theorem one_step_descent_fwGap
               (S.f (S.W t)
                 + ((S.fGrad (S.W t)) (S.W (t + 1)) - (S.fGrad (S.W t)) (S.W t))) ≤
             S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
-        simpa [continuousDualPairing, SteepestDescentPathGeometryContext.grad] using hStepRightRaw
+        simpa [pairing, SteepestDescentPathGeometryContext.grad] using hStepRightRaw
       linarith
+    have hQuad :
+        S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤ 2 * S.L * S.eta ^ 2 := by
+      have hLnonneg : 0 ≤ S.L / 2 := by
+        exact div_nonneg S.assumption3_fLocalSmoothness.nonneg (by positivity)
+      calc
+        S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤ S.L / 2 * (2 * S.eta) ^ 2 := by
+          gcongr
+        _ = 2 * S.L * S.eta ^ 2 := by ring
     linarith
   have hStepVec := S.scaledLMOPoint_sub_weight_eq t
   have hGradStep :
@@ -419,7 +409,7 @@ theorem one_step_descent_fwGap
         (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t) := by
     rw [hStepVec, ContinuousLinearMap.map_smul]
     simp [smul_eq_mul]
-  have hApprox := S.approx_lmo_fwGap_inner_bound t
+  have hApprox := S.path_approx_lmo_fwGap_inner_bound t
   calc
     S.f (S.W (t + 1))
         ≤ S.f (S.W t) + (S.grad t) (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := hSmoothStep
@@ -439,7 +429,7 @@ theorem one_step_descent_fwGap
             ring
 
 /-- Pathwise averaged Frank-Wolfe-gap bound under a pointwise tracking envelope. -/
-theorem avg_frankWolfeGap_bound_of_tracking_bound
+theorem path_avg_frankWolfeGap_bound_of_tracking_bound
     (S : FrankWolfePathGeometryContext V)
     (fInf : ℝ)
     (err : ℕ → ℝ)
@@ -467,7 +457,7 @@ theorem avg_frankWolfeGap_bound_of_tracking_bound
             (fun t => (S.f (S.W t) - S.f (S.W (t + 1))) + 2 * S.eta * err t + 2 * S.L * S.eta ^ 2) := by
               refine Finset.sum_le_sum ?_
               intro t ht
-              have hOne := S.one_step_descent_fwGap t
+              have hOne := S.path_one_step_descent_fwGap t
               have hScaledErr : 2 * S.eta * S.nesterovErrorNorm t ≤ 2 * S.eta * err t := by
                 exact mul_le_mul_of_nonneg_left (hErr t) (by nlinarith [S.eta_pos])
               linarith [hOne, hScaledErr]
@@ -590,11 +580,11 @@ variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
 /-- Pathwise properties of the realized scaled LMO point. -/
-theorem lmo_scaled_properties
+private theorem lmo_scaled_properties
     (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) (ω : Ω) :
     ‖S.scaledLMOPoint t ω‖ ≤ 1 / S.lambda ∧
       ∀ V ∈ S.constraintBall, (S.C t ω) (S.scaledLMOPoint t ω) ≤ (S.C t ω) V := by
-  rcases (S.path ω).lmo_scaled_properties t with ⟨hNorm, hOpt⟩
+  rcases (S.path ω).path_lmo_scaled_properties t with ⟨hNorm, hOpt⟩
   refine ⟨?_, ?_⟩
   · simpa [scaledLMOPoint, FrankWolfePathGeometryContext.scaledLMOPoint] using hNorm
   · intro V hV
@@ -603,7 +593,7 @@ theorem lmo_scaled_properties
       hOpt V (by simpa [constraintBall, FrankWolfePathGeometryContext.constraintBall] using hV)
 
 /-- Pathwise approximate-LMO inequality for the realized iterate. -/
-theorem approx_lmo_fwGap_inner_bound
+private theorem approx_lmo_fwGap_inner_bound
     (S : StochasticFrankWolfeGeometryContext Ω V) :
     ∀ t ω,
       (S.grad t ω) (S.scaledLMOPoint t ω - S.W t ω) ≤
@@ -613,7 +603,7 @@ theorem approx_lmo_fwGap_inner_bound
     FrankWolfePathGeometryContext.scaledLMOPoint, FrankWolfePathGeometryContext.frankWolfeGap,
     FrankWolfePathGeometryContext.frankWolfeGapAt, FrankWolfePathGeometryContext.constraintBall,
     SteepestDescentPathGeometryContext.grad, StochasticSteepestDescentGeometryContext.grad] using
-    (S.path ω).approx_lmo_fwGap_inner_bound t
+    (S.path ω).path_approx_lmo_fwGap_inner_bound t
 
 /-- Pathwise one-step Frank-Wolfe-gap descent for the realized iterate process. -/
 theorem one_step_descent_fwGap
@@ -629,10 +619,10 @@ theorem one_step_descent_fwGap
     FrankWolfePathGeometryContext.frankWolfeGap, FrankWolfePathGeometryContext.frankWolfeGapAt,
     FrankWolfePathGeometryContext.constraintBall, SteepestDescentPathGeometryContext.grad,
     StochasticSteepestDescentGeometryContext.grad] using
-    (S.path ω).one_step_descent_fwGap t
+    (S.path ω).path_one_step_descent_fwGap t
 
 /-- Pathwise averaged Frank-Wolfe-gap bound under a realized tracking envelope. -/
-theorem avg_frankWolfeGap_bound_of_tracking_bound
+theorem frankWolfeGap_bound_of_tracking_bound
     (S : StochasticFrankWolfeGeometryContext Ω V)
     (fInf : ℝ)
     (err : ℕ → Ω → ℝ)
@@ -648,7 +638,7 @@ theorem avg_frankWolfeGap_bound_of_tracking_bound
     FrankWolfePathGeometryContext.frankWolfeGap, FrankWolfePathGeometryContext.frankWolfeGapAt,
     FrankWolfePathGeometryContext.constraintBall, SteepestDescentPathGeometryContext.grad,
     StochasticSteepestDescentGeometryContext.grad] using
-    (S.path ω).avg_frankWolfeGap_bound_of_tracking_bound
+    (S.path ω).path_avg_frankWolfeGap_bound_of_tracking_bound
       (fInf := fInf)
       (err := fun t => err t ω)
       (hInf := fun t => hInf t ω)

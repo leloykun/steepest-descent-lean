@@ -161,32 +161,6 @@ end StochasticSteepestDescentParameters
 def uniformBatchWeight (b : ℕ) : ℝ :=
   1 / (b : ℝ)
 
-lemma uniformBatchWeight_nonneg {b : ℕ} : 0 ≤ uniformBatchWeight b := by
-  unfold uniformBatchWeight
-  positivity
-
-lemma uniformBatchWeight_sum_eq_one {b : ℕ} (hb : 0 < b) :
-    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b) = 1 := by
-  have hbnz : (b : ℝ) ≠ 0 := by positivity
-  calc
-    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b)
-      = (b : ℝ) * uniformBatchWeight b := by simp [uniformBatchWeight]
-    _ = (b : ℝ) * (1 / (b : ℝ)) := by simp [uniformBatchWeight]
-    _ = 1 := by field_simp [hbnz]
-
-lemma uniformBatchWeight_sum_le_one {b : ℕ} (hb : 0 < b) :
-    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b) ≤ 1 := by
-  simp [uniformBatchWeight_sum_eq_one hb]
-
-lemma uniformBatchWeight_sq_sum_eq {b : ℕ} (hb : 0 < b) :
-    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b ^ 2) = 1 / (b : ℝ) := by
-  have hbnz : (b : ℝ) ≠ 0 := by positivity
-  calc
-    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b ^ 2)
-      = (b : ℝ) * uniformBatchWeight b ^ 2 := by simp [uniformBatchWeight]
-    _ = (b : ℝ) * (1 / (b : ℝ)) ^ 2 := by simp [uniformBatchWeight]
-    _ = 1 / (b : ℝ) := by field_simp [hbnz]
-
 /--
 Stochastic gradient oracle `g(x; ζ)`.
 
@@ -394,72 +368,6 @@ structure Assumption2_PerSampleGradientNoiseSecondMomentBound
           MeasurableSpace.comap (W t) inferInstance] ≤ᵐ[μ] fun _ => sigma ^ 2
 
 /--
-Weighted sums of vectors in the radius-`R` ball remain in that ball whenever
-the coefficients are nonnegative and sum to at most `1`.
-
-This is the convexity fact needed to use the local smooth proxy potential on
-partial sums of noise variables.
--/
-lemma norm_sum_range_smul_le_of_nonneg_of_sum_le_one
-    {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
-    {n : ℕ} {α : ℕ → ℝ} {x : ℕ → E} {R : ℝ}
-    (hα_nonneg : ∀ i < n, 0 ≤ α i)
-    (hα_sum : Finset.sum (Finset.range n) α ≤ 1)
-    (hx : ∀ i < n, ‖x i‖ ≤ R)
-    (hR_nonneg : 0 ≤ R) :
-    ‖Finset.sum (Finset.range n) (fun i => α i • x i)‖ ≤ R := by
-  calc
-    ‖Finset.sum (Finset.range n) (fun i => α i • x i)‖
-      ≤ Finset.sum (Finset.range n) (fun i => ‖α i • x i‖) := norm_sum_le _ _
-    _ = Finset.sum (Finset.range n) (fun i => α i * ‖x i‖) := by
-          refine Finset.sum_congr rfl ?_
-          intro i hi
-          rw [norm_smul, Real.norm_of_nonneg (hα_nonneg i (Finset.mem_range.mp hi))]
-    _ ≤ Finset.sum (Finset.range n) (fun i => α i * R) := by
-          refine Finset.sum_le_sum ?_
-          intro i hi
-          exact mul_le_mul_of_nonneg_left (hx i (Finset.mem_range.mp hi))
-            (hα_nonneg i (Finset.mem_range.mp hi))
-    _ = (Finset.sum (Finset.range n) α) * R := by
-          rw [Finset.sum_mul]
-    _ ≤ 1 * R := by
-          exact mul_le_mul_of_nonneg_right hα_sum hR_nonneg
-    _ = R := by ring
-
-/--
-Prefix sums inherit the same radius bound from a larger nonnegative
-coefficient family whose total mass is at most `1`.
--/
-lemma norm_sum_range_smul_le_of_nonneg_prefix
-    {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
-    {n k : ℕ} {α : ℕ → ℝ} {x : ℕ → E} {R : ℝ}
-    (hk : k ≤ n)
-    (hα_nonneg : ∀ i < n, 0 ≤ α i)
-    (hα_sum : Finset.sum (Finset.range n) α ≤ 1)
-    (hx : ∀ i < n, ‖x i‖ ≤ R)
-    (hR_nonneg : 0 ≤ R) :
-    ‖Finset.sum (Finset.range k) (fun i => α i • x i)‖ ≤ R := by
-  have hα_nonneg_k : ∀ i < k, 0 ≤ α i := by
-    intro i hi
-    exact hα_nonneg i (lt_of_lt_of_le hi hk)
-  have hα_sum_k : Finset.sum (Finset.range k) α ≤ 1 := by
-    have hSubset : Finset.range k ⊆ Finset.range n := by
-      intro i hi
-      exact Finset.mem_range.mpr (lt_of_lt_of_le (Finset.mem_range.mp hi) hk)
-    have hLe :
-        Finset.sum (Finset.range k) α ≤ Finset.sum (Finset.range n) α := by
-      refine Finset.sum_le_sum_of_subset_of_nonneg hSubset ?_
-      intro i hiN hiK
-      exact hα_nonneg i (Finset.mem_range.mp hiN)
-    linarith
-  have hx_k : ∀ i < k, ‖x i‖ ≤ R := by
-    intro i hi
-    exact hx i (lt_of_lt_of_le hi hk)
-  exact
-    norm_sum_range_smul_le_of_nonneg_of_sum_le_one
-      hα_nonneg_k hα_sum_k hx_k hR_nonneg
-
-/--
 Global Lipschitz continuity of a map under the chosen domain and codomain norms.
 -/
 def GlobalLipschitzUnderNormPair
@@ -616,23 +524,6 @@ lemma potential_continuous
   refine continuous_iff_continuousAt.mpr ?_
   intro x
   exact (P.potential_fderiv_eq x).continuousAt
-
-lemma potential_nonneg_of_mem_noiseRadius
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) (x : VDual)
-    (hx : ‖x‖ ≤ P.noiseRadius) :
-    0 ≤ P.potential x := by
-  have h := P.norm_sq_le_two_potential_on_ball x hx
-  nlinarith [sq_nonneg ‖x‖]
-
-lemma mirrorMap_norm_le_of_mem_noiseRadius
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) (x : VDual)
-    (hx : ‖x‖ ≤ P.noiseRadius) :
-    ‖P.mirrorMap x‖ ≤ P.D * ‖x‖ := by
-  have h :=
-    P.mirrorMap_local_lipschitz.bound
-      (show ‖(0 : VDual)‖ ≤ P.noiseRadius by simpa using P.noiseRadius_nonneg)
-      hx
-  simpa [P.mirrorMap_zero] using h
 
 end Assumption4_LocalSmoothProxyPotential
 
@@ -981,27 +872,9 @@ lemma norm_sq_le_two_potential_of_mem_noiseRadius
     ‖x‖ ^ 2 ≤ 2 * S.potential x :=
   S.assumption4_localProxyPotential.norm_sq_le_two_potential_on_ball x hx
 
-lemma potential_nonneg_of_mem_noiseRadius
-    (S : SteepestDescentPathGeometryContext V) (x : StrongDual ℝ V)
-    (hx : ‖x‖ ≤ S.noiseRadius) :
-    0 ≤ S.potential x :=
-  Assumption4_LocalSmoothProxyPotential.potential_nonneg_of_mem_noiseRadius
-    S.assumption4_localProxyPotential x hx
-
-lemma mirrorMap_norm_le_of_mem_noiseRadius
-    (S : SteepestDescentPathGeometryContext V) (x : StrongDual ℝ V)
-    (hx : ‖x‖ ≤ S.noiseRadius) :
-    ‖S.mirrorMap x‖ ≤ S.D * ‖x‖ :=
-  Assumption4_LocalSmoothProxyPotential.mirrorMap_norm_le_of_mem_noiseRadius
-    S.assumption4_localProxyPotential x hx
-
 /-- The pathwise suboptimality gap. -/
 def suboptimality (S : SteepestDescentPathGeometryContext V) (t : ℕ) : ℝ :=
   S.f (S.W t) - S.f S.WStar
-
-/-- The initial true-gradient norm at the deterministic reference point. -/
-def initialGradNorm (S : SteepestDescentPathGeometryContext V) : ℝ :=
-  ‖S.grad 0‖
 
 end SteepestDescentPathGeometryContext
 
@@ -1103,20 +976,6 @@ lemma norm_sq_le_two_potential_of_mem_noiseRadius
     (hx : ‖x‖ ≤ S.noiseRadius) :
     ‖x‖ ^ 2 ≤ 2 * S.potential x :=
   S.assumption4_localProxyPotential.norm_sq_le_two_potential_on_ball x hx
-
-lemma potential_nonneg_of_mem_noiseRadius
-    (S : StochasticSteepestDescentGeometryContext Ω V) (x : StrongDual ℝ V)
-    (hx : ‖x‖ ≤ S.noiseRadius) :
-    0 ≤ S.potential x :=
-  Assumption4_LocalSmoothProxyPotential.potential_nonneg_of_mem_noiseRadius
-    S.assumption4_localProxyPotential x hx
-
-lemma mirrorMap_norm_le_of_mem_noiseRadius
-    (S : StochasticSteepestDescentGeometryContext Ω V) (x : StrongDual ℝ V)
-    (hx : ‖x‖ ≤ S.noiseRadius) :
-    ‖S.mirrorMap x‖ ≤ S.D * ‖x‖ :=
-  Assumption4_LocalSmoothProxyPotential.mirrorMap_norm_le_of_mem_noiseRadius
-    S.assumption4_localProxyPotential x hx
 
 lemma sample_integrable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
@@ -1328,10 +1187,6 @@ theorem initialExpectedSuboptimality_eq_initialSuboptimality
     S.initialExpectedSuboptimality = S.initialSuboptimality := by
   letI := S.prob
   simp [initialExpectedSuboptimality, expectedSuboptimality, initialSuboptimality, suboptimality, S.W_zero]
-
-/-- The deterministic initial true-gradient norm at `W_0`. -/
-def initialGradNorm (S : StochasticSteepestDescentGeometryContext Ω V) : ℝ :=
-  ‖S.fGrad S.W0‖
 
 /-- Deterministic sample-path view used by the analytic files. -/
 def path (S : StochasticSteepestDescentGeometryContext Ω V) (ω : Ω) :

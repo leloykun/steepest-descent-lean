@@ -102,7 +102,8 @@ private theorem suboptimality_integrable
       have hNonneg : 0 ≤ S.suboptimality (t + 1) ω := by
         dsimp [StochasticSteepestDescentGeometryContext.suboptimality]
         linarith [S.WStar_optimality (S.W (t + 1) ω)]
-      have hOne := S.toStochasticFrankWolfeGeometryContext.one_step_descent_fwGap t ω
+      have hOne :=
+        S.toStochasticFrankWolfeGeometryContext.one_step_descent_fwGap t ω
       have hSuboptNonneg : 0 ≤ S.suboptimality t ω := by
         dsimp [StochasticSteepestDescentGeometryContext.suboptimality]
         linarith [S.WStar_optimality (S.W t ω)]
@@ -127,14 +128,19 @@ private theorem suboptimality_integrable
                 - S.lambda * S.eta * S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω
                 + 2 * S.eta * S.nesterovErrorNorm t ω
                 + 2 * S.L * S.eta ^ 2 := by
-                  linarith [hOne]
+                  linarith [sub_le_sub_right hOne (S.f S.WStar)]
           _ ≤ S.f (S.W t ω) - S.f S.WStar
                 + 2 * S.eta * S.nesterovErrorNorm t ω
                 + 2 * S.L * S.eta ^ 2 := by
                   have hNegGap :
                       -(S.lambda * S.eta * S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω) ≤ 0 := by
                     exact neg_nonpos.mpr (mul_nonneg (mul_nonneg S.lambda_pos.le S.eta_pos.le) hGapNonneg)
-                  linarith
+                  have hDrop :=
+                    add_le_add_left
+                      (add_le_add_right hNegGap
+                        (2 * S.eta * S.nesterovErrorNorm t ω + 2 * S.L * S.eta ^ 2))
+                      (S.f (S.W t ω) - S.f S.WStar)
+                  simpa [sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using hDrop
           _ = S.suboptimality t ω + 2 * S.eta * S.nesterovErrorNorm t ω + 2 * S.L * S.eta ^ 2 := by
                 rfl
       calc
@@ -159,7 +165,8 @@ private theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound_bas
         S.suboptimality (t + 1) ω ≤
           a * S.suboptimality t ω + 2 * S.eta * err t ω + 2 * S.L * S.eta ^ 2 := by
     intro ω
-    have hOne := S.toStochasticFrankWolfeGeometryContext.one_step_descent_fwGap t ω
+    have hOne :=
+      S.toStochasticFrankWolfeGeometryContext.one_step_descent_fwGap t ω
     have hGap : S.muFW * S.suboptimality t ω ≤ S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
       simpa [StochasticSteepestDescentGeometryContext.suboptimality,
         StochasticFrankWolfeGeometryContext.frankWolfeGap,
@@ -180,12 +187,23 @@ private theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound_bas
             - (S.lambda * S.eta) * S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω
             + 2 * S.eta * S.nesterovErrorNorm t ω
             + 2 * S.L * S.eta ^ 2 := by
-              linarith [hOne]
+              linarith [sub_le_sub_right hOne (S.f S.WStar)]
       _ ≤ S.f (S.W t ω) - S.f S.WStar
             - (S.lambda * S.eta) * (S.muFW * S.suboptimality t ω)
             + 2 * S.eta * err t ω
             + 2 * S.L * S.eta ^ 2 := by
-              linarith [hScaledGap, hScaledErr]
+              have hCore :
+                  -(S.lambda * S.eta) * S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω
+                    + 2 * S.eta * S.nesterovErrorNorm t ω
+                    ≤
+                  -(S.lambda * S.eta) * (S.muFW * S.suboptimality t ω)
+                    + 2 * S.eta * err t ω := by
+                exact add_le_add hScaledGap hScaledErr
+              have hAdd :=
+                add_le_add_left
+                  (add_le_add_right hCore (2 * S.L * S.eta ^ 2))
+                  (S.f (S.W t ω) - S.f S.WStar)
+              simpa [sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using hAdd
       _ = a * S.suboptimality t ω + 2 * S.eta * err t ω + 2 * S.L * S.eta ^ 2 := by
             dsimp [a, StochasticSteepestDescentGeometryContext.suboptimality]
             ring

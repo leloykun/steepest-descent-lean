@@ -95,14 +95,6 @@ private theorem suboptimality_integrable
         _ ≤ a * S.suboptimality t ω + 4 * S.L * S.eta ^ 2 + 2 * S.eta * S.nesterovErrorNorm t ω :=
           hRec
 
-/-- Expected suboptimality is nonnegative because `W_*` is globally optimal. -/
-private theorem expectedSuboptimality_nonneg
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
-    0 ≤ S.expectedSuboptimality t := by
-  exact MeasureTheory.integral_nonneg fun ω => by
-    dsimp [StochasticSteepestDescentGeometryContext.suboptimality]
-    linarith [S.WStar_optimality (S.W t ω)]
-
 /-- Expected star-convex suboptimality bound under the derived residual estimate. -/
 private theorem starConvexExpectedSuboptimality_bound_of_corollary11
     (S : StochasticStarConvexGeometryContext Ω V)

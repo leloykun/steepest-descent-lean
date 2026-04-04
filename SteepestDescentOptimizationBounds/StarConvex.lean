@@ -19,37 +19,11 @@ Upstream dependencies:
 Downstream use:
 
 - `StarConvexExpectedSuboptimality.lean` integrates the pathwise recurrence.
-- the scaling-law layer reuses the deterministic coefficient definitions on the
-  stochastic wrapper namespace.
+- the scaling-law layer reuses the deterministic coefficient definitions from
+  the `StochasticStarConvexGeometryContext` namespace.
 -/
 
 namespace StarConvexPathGeometryContext
-
-section PublicDefinitions
-
-variable {V : Type*}
-variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-
-/-- Canonical pairing context for the continuous dual. -/
-def continuousDualPairing :
-    ContinuousDualPairingContext V (StrongDual ℝ V) where
-  toLinear := by
-    simpa using (ContinuousLinearMap.id ℝ (StrongDual ℝ V))
-  opNorm_le := by
-    intro xDual
-    simp
-
-/-- The linear functional induced by the current true gradient. -/
-def gradientLinear (S : StarConvexPathGeometryContext V) (t : ℕ) : V →ₗ[ℝ] ℝ :=
-  (S.grad t).toLinearMap
-
-/-- The interpolation point `X_t = (1 - λη) W_t + λη W_*`. -/
-def interpolatedPoint (S : StarConvexPathGeometryContext V) (t : ℕ) : V :=
-  S.stepCenter t + (S.lambda * S.eta) • S.WStar
-
-end PublicDefinitions
 
 section PrivateDefinitions
 
@@ -58,7 +32,24 @@ variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
--- No private definitions are introduced in this file.
+/-- Canonical pairing context for the continuous dual. -/
+private def continuousDualPairing :
+    ContinuousDualPairingContext V (StrongDual ℝ V) where
+  toLinear := by
+    simpa using (ContinuousLinearMap.id ℝ (StrongDual ℝ V))
+  opNorm_le := by
+    intro xDual
+    simp
+
+/-- The linear functional induced by the current true gradient. -/
+private def gradientLinear (S : StarConvexPathGeometryContext V) (t : ℕ) : V →ₗ[ℝ] ℝ :=
+  (S.grad t).toLinearMap
+
+/-- The interpolation point `X_t = (1 - λη) W_t + λη W_*`. -/
+private def interpolatedPoint (S : StarConvexPathGeometryContext V) (t : ℕ) : V :=
+  S.stepCenter t + (S.lambda * S.eta) • S.WStar
+
+-- No additional private definitions are needed beyond the helper geometry above.
 
 end PrivateDefinitions
 
@@ -108,13 +99,13 @@ variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
 /-- Rewrites the displacement from the step center to `X_t`. -/
-lemma interpolatedPoint_sub_stepCenter
+private lemma interpolatedPoint_sub_stepCenter
     (S : StarConvexPathGeometryContext V) (t : ℕ) :
     S.interpolatedPoint t - S.stepCenter t = (S.lambda * S.eta) • S.WStar := by
   simp [interpolatedPoint]
 
 /-- The interpolation point is feasible for the linearized update ball. -/
-lemma interpolatedPoint_feasible
+private lemma interpolatedPoint_feasible
     (S : StarConvexPathGeometryContext V) (t : ℕ) :
     ‖S.interpolatedPoint t - S.stepCenter t‖ ≤ S.eta := by
   calc
@@ -123,7 +114,7 @@ lemma interpolatedPoint_feasible
     _ ≤ S.eta := S.scaled_norm_le_eta S.WStar_bound
 
 /-- The interpolation point also stays in the primal radius-`1 / λ` ball. -/
-lemma interpolatedPoint_bound
+private lemma interpolatedPoint_bound
     (S : StarConvexPathGeometryContext V) (t : ℕ) :
     ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda := by
   have hWeight := S.weight_bound_from_feasible_step t
@@ -151,7 +142,7 @@ lemma interpolatedPoint_bound
           ring
 
 /-- Geometry package for the interpolation point used in the one-step proof. -/
-theorem lemma13_interpolatedPoint_geometry
+private theorem lemma13_interpolatedPoint_geometry
     (S : StarConvexPathGeometryContext V) (t : ℕ) :
     ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda ∧
       (S.C t) (S.W (t + 1) - S.interpolatedPoint t) ≤ 0 ∧
@@ -362,8 +353,6 @@ end StarConvexPathGeometryContext
 
 namespace StochasticStarConvexGeometryContext
 
-section PublicDefinitions
-
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
@@ -371,9 +360,8 @@ variable [MeasurableSpace V] [BorelSpace V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-- The pathwise interpolation point `X_t(ω)`. -/
-def interpolatedPoint (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) : V :=
-  (S.path ω).interpolatedPoint t
+/-! Public definitions. -/
+section PublicDefinitions
 
 /-- The batch-size-dependent `1 / sqrt(b)` coefficient in the star-convex bound. -/
 def starConvexExpectedSuboptimalityMinibatchCoefficient
@@ -396,80 +384,8 @@ def starConvexExpectedSuboptimalityResidualFloor
   ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
       + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta
 
-end PublicDefinitions
-
-section PrivateDefinitions
-
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
-variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-
--- No private definitions are introduced in this wrapper layer.
-
-end PrivateDefinitions
-
-section PrivateLemmas
-
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
-variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-
--- No private lemmas are needed beyond the pathwise wrappers.
-
-end PrivateLemmas
-
+/-! Public lemmas/theorems. -/
 section PublicTheorems
-
-variable {Ω V : Type*}
-variable [MeasurableSpace Ω]
-variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-
-/-- Pathwise displacement from the step center to `X_t(ω)`. -/
-lemma interpolatedPoint_sub_stepCenter
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    S.interpolatedPoint t ω - S.stepCenter t ω = (S.lambda * S.eta) • S.WStar := by
-  simpa [interpolatedPoint, StochasticSteepestDescentGeometryContext.stepCenter] using
-    (S.path ω).interpolatedPoint_sub_stepCenter t
-
-/-- Pathwise feasibility of the interpolation point. -/
-lemma interpolatedPoint_feasible
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    ‖S.interpolatedPoint t ω - S.stepCenter t ω‖ ≤ S.eta := by
-  simpa [interpolatedPoint, StochasticSteepestDescentGeometryContext.stepCenter] using
-    (S.path ω).interpolatedPoint_feasible t
-
-/-- Pathwise radius-`1 / λ` bound for the interpolation point. -/
-lemma interpolatedPoint_bound
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    ‖S.interpolatedPoint t ω‖ ≤ 1 / S.lambda := by
-  simpa [interpolatedPoint] using (S.path ω).interpolatedPoint_bound t
-
-/-- Pathwise packaging of the interpolation geometry used in the descent proof. -/
-theorem lemma13_interpolatedPoint_geometry
-    (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    ‖S.interpolatedPoint t ω‖ ≤ 1 / S.lambda ∧
-      (S.C t ω) (S.W (t + 1) ω - S.interpolatedPoint t ω) ≤ 0 ∧
-      ‖S.interpolatedPoint t ω - S.W t ω‖ ≤ 2 * S.eta ∧
-      ‖S.W (t + 1) ω - S.interpolatedPoint t ω‖ ≤ 2 * S.eta := by
-  simpa [interpolatedPoint] using (S.path ω).lemma13_interpolatedPoint_geometry t
-
-/-- Pathwise one-step star-convex descent bound. -/
-theorem one_step_descent_bound
-    (S : StochasticStarConvexGeometryContext Ω V) :
-    ∀ t ω,
-      S.f (S.W (t + 1) ω) ≤
-        S.f (S.interpolatedPoint t ω) + 4 * S.L * S.eta ^ 2 + 2 * S.eta * S.nesterovErrorNorm t ω := by
-  intro t ω
-  simpa [interpolatedPoint] using (S.path ω).one_step_descent_bound t
 
 /-- Pathwise scalar star-convex recurrence. -/
 theorem suboptimality_recurrence_step
@@ -485,6 +401,8 @@ theorem suboptimality_recurrence_step
     StochasticSteepestDescentGeometryContext.suboptimality] using h
 
 end PublicTheorems
+
+end PublicDefinitions
 
 end StochasticStarConvexGeometryContext
 

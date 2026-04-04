@@ -74,7 +74,7 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
   have hPointwise : ∀ ω, lhs ω ≤ rhs ω := by
     intro ω
     have hPath :=
-      S.avg_frankWolfeGap_bound_of_tracking_bound
+      S.frankWolfeGap_bound_of_tracking_bound
         (fInf := S.f S.WStar)
         (err := fun t ω => S.nesterovErrorNorm t ω)
         (hInf := fun t ω => by

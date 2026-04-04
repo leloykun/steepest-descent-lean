@@ -27,6 +27,120 @@ open ProbabilityTheory
 
 noncomputable section
 
+section PrivateHelpers
+
+private lemma uniformBatchWeight_nonneg {b : ℕ} : 0 ≤ uniformBatchWeight b := by
+  unfold uniformBatchWeight
+  positivity
+
+private lemma uniformBatchWeight_sum_eq_one {b : ℕ} (hb : 0 < b) :
+    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b) = 1 := by
+  have hbnz : (b : ℝ) ≠ 0 := by positivity
+  calc
+    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b)
+      = (b : ℝ) * uniformBatchWeight b := by simp [uniformBatchWeight]
+    _ = (b : ℝ) * (1 / (b : ℝ)) := by simp [uniformBatchWeight]
+    _ = 1 := by field_simp [hbnz]
+
+private lemma uniformBatchWeight_sum_le_one {b : ℕ} (hb : 0 < b) :
+    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b) ≤ 1 := by
+  simp [uniformBatchWeight_sum_eq_one hb]
+
+private lemma uniformBatchWeight_sq_sum_eq {b : ℕ} (hb : 0 < b) :
+    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b ^ 2) = 1 / (b : ℝ) := by
+  have hbnz : (b : ℝ) ≠ 0 := by positivity
+  calc
+    Finset.sum (Finset.range b) (fun _ => uniformBatchWeight b ^ 2)
+      = (b : ℝ) * uniformBatchWeight b ^ 2 := by simp [uniformBatchWeight]
+    _ = (b : ℝ) * (1 / (b : ℝ)) ^ 2 := by simp [uniformBatchWeight]
+    _ = 1 / (b : ℝ) := by field_simp [hbnz]
+
+private lemma norm_sum_range_smul_le_of_nonneg_of_sum_le_one
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    {n : ℕ} {α : ℕ → ℝ} {x : ℕ → E} {R : ℝ}
+    (hα_nonneg : ∀ i < n, 0 ≤ α i)
+    (hα_sum : Finset.sum (Finset.range n) α ≤ 1)
+    (hx : ∀ i < n, ‖x i‖ ≤ R)
+    (hR_nonneg : 0 ≤ R) :
+    ‖Finset.sum (Finset.range n) (fun i => α i • x i)‖ ≤ R := by
+  calc
+    ‖Finset.sum (Finset.range n) (fun i => α i • x i)‖
+      ≤ Finset.sum (Finset.range n) (fun i => ‖α i • x i‖) := norm_sum_le _ _
+    _ = Finset.sum (Finset.range n) (fun i => α i * ‖x i‖) := by
+          refine Finset.sum_congr rfl ?_
+          intro i hi
+          rw [norm_smul, Real.norm_of_nonneg (hα_nonneg i (Finset.mem_range.mp hi))]
+    _ ≤ Finset.sum (Finset.range n) (fun i => α i * R) := by
+          refine Finset.sum_le_sum ?_
+          intro i hi
+          exact
+            mul_le_mul_of_nonneg_left
+              (hx i (Finset.mem_range.mp hi))
+              (hα_nonneg i (Finset.mem_range.mp hi))
+    _ = (Finset.sum (Finset.range n) α) * R := by
+          rw [Finset.sum_mul]
+    _ ≤ 1 * R := by
+          exact mul_le_mul_of_nonneg_right hα_sum hR_nonneg
+    _ = R := by ring
+
+private lemma norm_sum_range_smul_le_of_nonneg_prefix
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    {n k : ℕ} {α : ℕ → ℝ} {x : ℕ → E} {R : ℝ}
+    (hk : k ≤ n)
+    (hα_nonneg : ∀ i < n, 0 ≤ α i)
+    (hα_sum : Finset.sum (Finset.range n) α ≤ 1)
+    (hx : ∀ i < n, ‖x i‖ ≤ R)
+    (hR_nonneg : 0 ≤ R) :
+    ‖Finset.sum (Finset.range k) (fun i => α i • x i)‖ ≤ R := by
+  have hα_nonneg_k : ∀ i < k, 0 ≤ α i := by
+    intro i hi
+    exact hα_nonneg i (lt_of_lt_of_le hi hk)
+  have hα_sum_k : Finset.sum (Finset.range k) α ≤ 1 := by
+    have hSubset : Finset.range k ⊆ Finset.range n := by
+      intro i hi
+      exact Finset.mem_range.mpr (lt_of_lt_of_le (Finset.mem_range.mp hi) hk)
+    have hLe :
+        Finset.sum (Finset.range k) α ≤ Finset.sum (Finset.range n) α := by
+      refine Finset.sum_le_sum_of_subset_of_nonneg hSubset ?_
+      intro i hiN _hiK
+      exact hα_nonneg i (Finset.mem_range.mp hiN)
+    linarith
+  have hx_k : ∀ i < k, ‖x i‖ ≤ R := by
+    intro i hi
+    exact hx i (lt_of_lt_of_le hi hk)
+  exact norm_sum_range_smul_le_of_nonneg_of_sum_le_one hα_nonneg_k hα_sum_k hx_k hR_nonneg
+
+namespace Assumption4_LocalSmoothProxyPotential
+
+private lemma potential_nonneg_of_mem_noiseRadius
+    {V VDual : Type*}
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
+    {pairing : ContinuousDualPairingContext VDual V}
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) (x : VDual)
+    (hx : ‖x‖ ≤ P.noiseRadius) :
+    0 ≤ P.potential x := by
+  have h := P.norm_sq_le_two_potential_on_ball x hx
+  nlinarith [sq_nonneg ‖x‖]
+
+private lemma mirrorMap_norm_le_of_mem_noiseRadius
+    {V VDual : Type*}
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
+    {pairing : ContinuousDualPairingContext VDual V}
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) (x : VDual)
+    (hx : ‖x‖ ≤ P.noiseRadius) :
+    ‖P.mirrorMap x‖ ≤ P.D * ‖x‖ := by
+  have h :=
+    P.mirrorMap_local_lipschitz.bound
+      (show ‖(0 : VDual)‖ ≤ P.noiseRadius by simpa using P.noiseRadius_nonneg)
+      hx
+  simpa [P.mirrorMap_zero] using h
+
+end Assumption4_LocalSmoothProxyPotential
+
+end PrivateHelpers
+
 section GenericWeightedNoise
 
 variable {Ω V VDual : Type*}
@@ -302,6 +416,23 @@ private theorem integrable_norm_mul_of_sq_integrable
   have hRightNonneg : 0 ≤ (‖f ω‖ ^ 2 + ‖g ω‖ ^ 2) / 2 := by
     positivity
   simpa [Real.norm_of_nonneg hLeftNonneg, Real.norm_of_nonneg hRightNonneg] using hYoung
+
+omit [NormedSpace ℝ VDual] [MeasurableSpace VDual] [BorelSpace VDual]
+  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+private theorem integrable_norm_of_sq_integrable
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → VDual}
+    (hf : StronglyMeasurable f)
+    (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ) :
+    Integrable (fun ω => ‖f ω‖) μ := by
+  have hConst : Integrable (fun _ : Ω => (1 : ℝ)) μ := integrable_const 1
+  refine Integrable.mono' ((hf_sq.add hConst).const_mul (1 / 2 : ℝ))
+    hf.norm.aestronglyMeasurable ?_
+  filter_upwards with ω
+  have hYoung : ‖f ω‖ ≤ (‖f ω‖ ^ 2 + 1) / 2 := by
+    nlinarith [sq_nonneg (‖f ω‖ - 1)]
+  have hRightNonneg : 0 ≤ (‖f ω‖ ^ 2 + 1) / 2 := by positivity
+  simpa [div_eq_mul_inv, mul_comm, Real.norm_of_nonneg (norm_nonneg _),
+    Real.norm_of_nonneg hRightNonneg] using hYoung
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
@@ -772,22 +903,13 @@ theorem weighted_noise_norm_integrable
         Integrable (fun ω => ‖ξ i ω‖ ^ 2) μ ∧
           ∫ ω, ‖ξ i ω‖ ^ 2 ∂μ ≤ sigma ^ 2) :
     Integrable (fun ω => ‖weightedPartialSum α ξ n ω‖) μ := by
-  let hSq :=
-    weighted_noise_sq_integrable
-      P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
-      sample_integrable coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
-      second_moment_bound
-  have hConst : Integrable (fun _ : Ω => (1 : ℝ)) μ := by
-    exact integrable_const 1
-  refine Integrable.mono' ((hSq.add hConst).const_mul (1 / 2 : ℝ))
-    ((weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable n).norm.aestronglyMeasurable) ?_
-  filter_upwards with ω
-  have hYoung : ‖weightedPartialSum α ξ n ω‖ ≤ (‖weightedPartialSum α ξ n ω‖ ^ 2 + 1) / 2 := by
-    nlinarith [sq_nonneg (‖weightedPartialSum α ξ n ω‖ - 1)]
-  have hRightNonneg : 0 ≤ (‖weightedPartialSum α ξ n ω‖ ^ 2 + 1) / 2 := by positivity
-  simpa [div_eq_mul_inv, mul_comm, Real.norm_of_nonneg (norm_nonneg _),
-    Real.norm_of_nonneg hRightNonneg]
-    using hYoung
+  exact
+    integrable_norm_of_sq_integrable
+      (weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable n)
+      (weighted_noise_sq_integrable
+        P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
+        sample_integrable coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
+        second_moment_bound)
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] in
@@ -938,32 +1060,39 @@ private theorem fixedTimeNoise_stronglyMeasurable
     simp [hi]
     exact (stronglyMeasurable_const : StronglyMeasurable (fun _ : Ω => (0 : StrongDual ℝ V)))
 
+private theorem fixedTimeNoise_eq_xi
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
+    S.fixedTimeNoise t i = S.ξ t ⟨i, hi⟩ := by
+  funext ω
+  simp [fixedTimeNoise, hi]
+
+private theorem fixedTimePastSigma_eq
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
+    S.fixedTimePastSigma t i = samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t ⟨i, hi⟩ := by
+  simp [fixedTimePastSigma, hi]
+
 private theorem fixedTimeNoise_integrable
     (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
     Integrable (S.fixedTimeNoise t i) S.μ := by
-  unfold fixedTimeNoise
-  simp [hi, StochasticSteepestDescentGeometryContext.ξ]
-  simpa using
+  simpa [S.fixedTimeNoise_eq_xi t i hi] using
     (S.grad_integrable t).sub (S.sample_integrable t ⟨i, hi⟩)
 
 private theorem fixedTimeNoise_condexp_zero
     (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
     S.μ[S.fixedTimeNoise t i | S.fixedTimePastSigma t i] =ᵐ[S.μ] 0 := by
-  unfold fixedTimePastSigma fixedTimeNoise
-  simp [hi]
-  simpa using
+  simpa [S.fixedTimeNoise_eq_xi t i hi, S.fixedTimePastSigma_eq t i hi] using
     (S.ξ_condexp_eq_zero_of_prefix t ⟨i, hi⟩)
 
 private theorem fixedTimeNoise_norm_le_noiseRadius_ae
     (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
     ∀ᵐ ω ∂S.μ, ‖S.fixedTimeNoise t i ω‖ ≤ S.noiseRadius := by
-  simpa [fixedTimeNoise, hi] using S.sample_norm_le_noiseRadius_ae t ⟨i, hi⟩
+  simpa [S.fixedTimeNoise_eq_xi t i hi] using S.sample_norm_le_noiseRadius_ae t ⟨i, hi⟩
 
 private theorem fixedTimeNoise_second_moment_bound
     (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
     Integrable (fun ω => ‖S.fixedTimeNoise t i ω‖ ^ 2) S.μ ∧
       ∫ ω, ‖S.fixedTimeNoise t i ω‖ ^ 2 ∂S.μ ≤ S.sigma ^ 2 := by
-  simpa [fixedTimeNoise, hi] using S.second_moment_bound t ⟨i, hi⟩
+  simpa [S.fixedTimeNoise_eq_xi t i hi] using S.second_moment_bound t ⟨i, hi⟩
 
 private theorem fixedTimeSample_measurable_before
     (S : StochasticSteepestDescentGeometryContext Ω V)
@@ -1116,45 +1245,62 @@ private theorem minibatchNoise_eq_weightedPartialSum
           (S.fixedTimeNoise t) S.batchSize ω := by
             simp [weightedPartialSum, fixedTimeNoise]
 
-private theorem minibatchNoise_sq_integrable
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ t, Integrable (fun ω => ‖S.minibatchNoise t ω‖ ^ 2) S.μ := by
-  intro t
+private theorem fixedTimeWeightedNoise_analysis
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    Integrable
+        (fun ω =>
+          ‖weightedPartialSum
+              (fun _ => uniformBatchWeight S.batchSize)
+              (S.fixedTimeNoise t)
+              S.batchSize ω‖) S.μ ∧
+      ∫ ω,
+          ‖weightedPartialSum
+              (fun _ => uniformBatchWeight S.batchSize)
+              (S.fixedTimeNoise t)
+              S.batchSize ω‖ ∂S.μ
+        ≤
+          Real.sqrt
+            (S.D * S.sigma ^ 2
+              * Finset.sum (Finset.range S.batchSize)
+                  (fun _ => (uniformBatchWeight S.batchSize) ^ 2)) := by
   letI := S.prob
-  have hSq :=
-    weighted_noise_sq_integrable
-      S.pairing S.assumption4_localProxyPotential
-      (μ := S.μ)
-      (sigma := S.sigma)
-      (ξ := S.fixedTimeNoise t)
-      (α := fun _ => uniformBatchWeight S.batchSize)
-      (n := S.batchSize)
-      (pastSigma := S.fixedTimePastSigma t)
-      (pastSigma_le := S.fixedTimePastSigma_le t)
-      (coeff_nonneg := by
-        intro i hi
-        exact uniformBatchWeight_nonneg)
-      (coeff_sum_le_one := by
-        simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
-      (sample_stronglyMeasurable := fun i => S.fixedTimeNoise_stronglyMeasurable t i)
-      (sample_integrable := by
-        intro i hi
-        exact S.fixedTimeNoise_integrable t i hi)
-      (coeff_measurable := by
-        intro i hi
-        exact S.fixedTimeCoeff_measurable t i hi)
-      (cond_zero := by
-        intro i hi
-        exact S.fixedTimeNoise_condexp_zero t i hi)
-      (sample_norm_le_noiseRadius_ae := by
-        intro i hi
-        exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
-      (second_moment_bound := by
-        intro i hi
-        exact S.fixedTimeNoise_second_moment_bound t i hi)
-  refine hSq.congr ?_
-  filter_upwards with ω
-  simp [S.minibatchNoise_eq_weightedPartialSum t ω]
+  refine ⟨?_, ?_⟩
+  · exact
+      weighted_noise_norm_integrable
+        S.pairing S.assumption4_localProxyPotential
+        (μ := S.μ)
+        (sigma := S.sigma)
+        (ξ := S.fixedTimeNoise t)
+        (α := fun _ => uniformBatchWeight S.batchSize)
+        (n := S.batchSize)
+        (pastSigma := S.fixedTimePastSigma t)
+        (pastSigma_le := S.fixedTimePastSigma_le t)
+        (coeff_nonneg := by intro i hi; exact uniformBatchWeight_nonneg)
+        (coeff_sum_le_one := by simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
+        (sample_stronglyMeasurable := fun i => S.fixedTimeNoise_stronglyMeasurable t i)
+        (sample_integrable := by intro i hi; exact S.fixedTimeNoise_integrable t i hi)
+        (coeff_measurable := by intro i hi; exact S.fixedTimeCoeff_measurable t i hi)
+        (cond_zero := by intro i hi; exact S.fixedTimeNoise_condexp_zero t i hi)
+        (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
+        (second_moment_bound := by intro i hi; exact S.fixedTimeNoise_second_moment_bound t i hi)
+  · exact
+      weighted_noise_first_moment_bound
+        S.pairing S.assumption4_localProxyPotential
+        (μ := S.μ)
+        (sigma := S.sigma)
+        (ξ := S.fixedTimeNoise t)
+        (α := fun _ => uniformBatchWeight S.batchSize)
+        (n := S.batchSize)
+        (pastSigma := S.fixedTimePastSigma t)
+        (pastSigma_le := S.fixedTimePastSigma_le t)
+        (coeff_nonneg := by intro i hi; exact uniformBatchWeight_nonneg)
+        (coeff_sum_le_one := by simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
+        (sample_stronglyMeasurable := fun i => S.fixedTimeNoise_stronglyMeasurable t i)
+        (sample_integrable := by intro i hi; exact S.fixedTimeNoise_integrable t i hi)
+        (coeff_measurable := by intro i hi; exact S.fixedTimeCoeff_measurable t i hi)
+        (cond_zero := by intro i hi; exact S.fixedTimeNoise_condexp_zero t i hi)
+        (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
+        (second_moment_bound := by intro i hi; exact S.fixedTimeNoise_second_moment_bound t i hi)
 
 end PrivateLemmas
 
@@ -1183,69 +1329,49 @@ theorem minibatchNoise_eq_sum_range
       Finset.sum Finset.univ
         (fun i : Fin S.batchSize =>
           uniformBatchWeight S.batchSize • S.ξ t i ω) := by
-  unfold StochasticSteepestDescentGeometryContext.minibatchNoise
-  rw [S.minibatchGradient_spec]
-  let w : ℝ := uniformBatchWeight S.batchSize
   have hConst :
-      Finset.sum Finset.univ
-          (fun _ : Fin S.batchSize => w • S.grad t ω) = S.grad t ω := by
-    have hWeight : w * (S.batchSize : ℝ) = 1 := by
-      simpa [w, uniformBatchWeight, StochasticSteepestDescentParameters.batchSizeℝ] using
-        (one_div_mul_cancel S.batchSizeℝ_ne_zero :
-          (1 / (S.batchSize : ℝ)) * (S.batchSize : ℝ) = 1)
-    have hNatReal :
-        (S.batchSize : ℕ) • S.grad t ω = ((S.batchSize : ℝ)) • S.grad t ω := by
-      simpa using (Nat.cast_smul_eq_nsmul ℝ S.batchSize (S.grad t ω)).symm
+      weightedPartialSum
+          (fun _ => uniformBatchWeight S.batchSize)
+          (S.fixedTimeNoise t)
+          S.batchSize ω =
+        Finset.sum Finset.univ
+          (fun i : Fin S.batchSize =>
+            uniformBatchWeight S.batchSize • S.ξ t i ω) := by
     calc
-      Finset.sum Finset.univ (fun _ : Fin S.batchSize => w • S.grad t ω)
-        = w • ∑ _ : Fin S.batchSize, S.grad t ω := by
-            rw [Finset.smul_sum]
-      _ = w • ((S.batchSize : ℕ) • S.grad t ω) := by simp
-      _ = (w * (S.batchSize : ℝ)) • S.grad t ω := by
-            rw [hNatReal]
-            rw [smul_smul]
-      _ = (1 : ℝ) • S.grad t ω := by rw [hWeight]
-      _ = S.grad t ω := by simp
+      weightedPartialSum
+          (fun _ => uniformBatchWeight S.batchSize)
+          (S.fixedTimeNoise t)
+          S.batchSize ω
+        = Finset.sum (Finset.range S.batchSize)
+            (fun i =>
+              uniformBatchWeight S.batchSize •
+                (if hi : i < S.batchSize then S.ξ t ⟨i, hi⟩ ω else 0)) := by
+            simp [weightedPartialSum, fixedTimeNoise]
+      _ = Finset.sum Finset.univ
+            (fun i : Fin S.batchSize =>
+              uniformBatchWeight S.batchSize • S.ξ t i ω) := by
+            symm
+            simpa using
+              (Fin.sum_univ_eq_sum_range (n := S.batchSize)
+                (fun i =>
+                  uniformBatchWeight S.batchSize •
+                    (if hi : i < S.batchSize then S.ξ t ⟨i, hi⟩ ω else 0)))
   calc
-    S.grad t ω - ∑ i, w • S.stochasticGradientSample t i ω
-      = (∑ _ : Fin S.batchSize, w • S.grad t ω)
-          - ∑ i, w • S.stochasticGradientSample t i ω := by rw [hConst]
-    _ = ∑ i : Fin S.batchSize,
-          (w • S.grad t ω - w • S.stochasticGradientSample t i ω) := by
-            rw [Finset.sum_sub_distrib]
-    _ = ∑ i : Fin S.batchSize,
-          w • (S.grad t ω - S.stochasticGradientSample t i ω) := by
-            refine Finset.sum_congr rfl ?_
-            intro i hi
-            rw [smul_sub]
+    S.minibatchNoise t ω
+      = weightedPartialSum
+          (fun _ => uniformBatchWeight S.batchSize)
+          (S.fixedTimeNoise t)
+          S.batchSize ω := S.minibatchNoise_eq_weightedPartialSum t ω
     _ = Finset.sum Finset.univ
-          (fun i : Fin S.batchSize => w • S.ξ t i ω) := by
-            simp [w, StochasticSteepestDescentGeometryContext.ξ]
+          (fun i : Fin S.batchSize =>
+            uniformBatchWeight S.batchSize • S.ξ t i ω) := hConst
 
 /-- The minibatch-noise norm is integrable under Assumptions 1, 2, and 4. -/
 theorem minibatchNoiseNorm_integrable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t, Integrable (fun ω => S.minibatchNoiseNorm t ω) S.μ := by
   intro t
-  letI := S.prob
-  have hInt :=
-    weighted_noise_norm_integrable
-      S.pairing S.assumption4_localProxyPotential
-      (μ := S.μ)
-      (sigma := S.sigma)
-      (ξ := S.fixedTimeNoise t)
-      (α := fun _ => uniformBatchWeight S.batchSize)
-      (n := S.batchSize)
-      (pastSigma := S.fixedTimePastSigma t)
-      (pastSigma_le := S.fixedTimePastSigma_le t)
-      (coeff_nonneg := by intro i hi; exact uniformBatchWeight_nonneg)
-      (coeff_sum_le_one := by simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
-      (sample_stronglyMeasurable := fun i => S.fixedTimeNoise_stronglyMeasurable t i)
-      (sample_integrable := by intro i hi; exact S.fixedTimeNoise_integrable t i hi)
-      (coeff_measurable := by intro i hi; exact S.fixedTimeCoeff_measurable t i hi)
-      (cond_zero := by intro i hi; exact S.fixedTimeNoise_condexp_zero t i hi)
-      (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
-      (second_moment_bound := by intro i hi; exact S.fixedTimeNoise_second_moment_bound t i hi)
+  have hInt := (S.fixedTimeWeightedNoise_analysis t).1
   refine hInt.congr ?_
   filter_upwards with ω
   simp [StochasticSteepestDescentGeometryContext.minibatchNoiseNorm,
@@ -1257,25 +1383,7 @@ theorem minibatch_expectedNormBound
     ∀ t,
       S.expectedMinibatchNoise t ≤ Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ := by
   intro t
-  letI := S.prob
-  have hBound :=
-    weighted_noise_first_moment_bound
-      S.pairing S.assumption4_localProxyPotential
-      (μ := S.μ)
-      (sigma := S.sigma)
-      (ξ := S.fixedTimeNoise t)
-      (α := fun _ => uniformBatchWeight S.batchSize)
-      (n := S.batchSize)
-      (pastSigma := S.fixedTimePastSigma t)
-      (pastSigma_le := S.fixedTimePastSigma_le t)
-      (coeff_nonneg := by intro i hi; exact uniformBatchWeight_nonneg)
-      (coeff_sum_le_one := by simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
-      (sample_stronglyMeasurable := fun i => S.fixedTimeNoise_stronglyMeasurable t i)
-      (sample_integrable := by intro i hi; exact S.fixedTimeNoise_integrable t i hi)
-      (coeff_measurable := by intro i hi; exact S.fixedTimeCoeff_measurable t i hi)
-      (cond_zero := by intro i hi; exact S.fixedTimeNoise_condexp_zero t i hi)
-      (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
-      (second_moment_bound := by intro i hi; exact S.fixedTimeNoise_second_moment_bound t i hi)
+  have hBound := (S.fixedTimeWeightedNoise_analysis t).2
   have hSqWeights :
       Finset.sum (Finset.range S.batchSize)
         (fun i => (uniformBatchWeight S.batchSize) ^ 2)
@@ -1314,13 +1422,6 @@ theorem minibatch_expectedNormBound
           rw [Real.sqrt_sq_eq_abs, abs_of_nonneg S.sigma_nonneg]
           rw [hSqrtInv]
           ring
-
-/-- Alias exposing the minibatch expected-norm theorem under the older name. -/
-theorem expectedMinibatchNoise_bound
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ t,
-      S.expectedMinibatchNoise t ≤ Real.sqrt S.D * S.sigma / Real.sqrt S.batchSizeℝ :=
-  S.minibatch_expectedNormBound
 
 end PublicTheorems
 
