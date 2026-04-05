@@ -991,7 +991,7 @@ section PublicDefinitions
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -1018,7 +1018,7 @@ section PrivateDefinitions
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -1043,7 +1043,7 @@ section PrivateLemmas
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -1068,7 +1068,8 @@ private theorem fixedTimeNoise_eq_xi
 
 private theorem fixedTimePastSigma_eq
     (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
-    S.fixedTimePastSigma t i = samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t ⟨i, hi⟩ := by
+    S.fixedTimePastSigma t i =
+      samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t ⟨i, hi⟩ := by
   simp [fixedTimePastSigma, hi]
 
 private theorem fixedTimeNoise_integrable
@@ -1109,35 +1110,15 @@ private theorem fixedTimeSample_measurable_before
     simpa [fixedTimePastSigma, hi] using
       (flatSample_measurable_of_lt
         S.batchSize_pos S.W S.stochasticGradientSample (t := t) (i := ⟨i, hi⟩) hlt)
-  have hEq :
-      flatSample S.batchSize_pos S.stochasticGradientSample
-          (flatSampleIndex t ⟨j, lt_trans hji hi⟩) =
-        fun ω => S.stochasticGradientSample t ⟨j, lt_trans hji hi⟩ ω := by
-    have hDiv :
-        flatSampleIndex t ⟨j, lt_trans hji hi⟩ / S.batchSize = t := by
-      unfold flatSampleIndex
-      rw [Nat.mul_comm, Nat.add_comm, Nat.add_mul_div_left _ _ S.batchSize_pos]
-      simp [Nat.div_eq_of_lt (lt_trans hji hi)]
-    have hMod :
-        flatSampleIndex t ⟨j, lt_trans hji hi⟩ % S.batchSize = j := by
-      unfold flatSampleIndex
-      rw [Nat.mul_comm, Nat.add_comm, Nat.add_mul_mod_self_left]
-      exact Nat.mod_eq_of_lt (lt_trans hji hi)
-    funext ω
-    simp [flatSample, hDiv, hMod]
-  simpa [hEq, S.batchSize_pos] using hFlat
+  simpa [flatSample_at_flatSampleIndex
+      S.batchSize_pos S.stochasticGradientSample t ⟨j, lt_trans hji hi⟩] using hFlat
 
 private theorem fixedTimePastSigma_le
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
     ∀ i, S.fixedTimePastSigma t i ≤ inferInstanceAs (MeasurableSpace Ω) := by
   intro i
   by_cases hi : i < S.batchSize
-  · let tuple := flatSamplePrefixTuple S.batchSize_pos S.stochasticGradientSample t ⟨i, hi⟩
-    have hTupleMeasurable : Measurable tuple := by
-      exact measurable_pi_lambda tuple <| fun j =>
-        flatSample_measurable S.batchSize_pos S.stochasticGradientSample S.sample_measurable j
-    simpa [fixedTimePastSigma, hi, samplePrefixSigma, tuple] using
-      sup_le (S.W_measurable t).comap_le hTupleMeasurable.comap_le
+  · simpa [fixedTimePastSigma, hi] using S.samplePrefixSigma_le t ⟨i, hi⟩
   · simp [fixedTimePastSigma, hi]
 
 private theorem fixedTimePartialSum_stronglyMeasurable_at
@@ -1309,9 +1290,28 @@ section PublicTheorems
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+/-- The realized minibatch gradient is integrable at each time. -/
+lemma minibatchGradient_integrable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t, Integrable (S.minibatchGradient t) S.μ := by
+  intro t
+  have hEq :
+      S.minibatchGradient t =
+        fun ω =>
+          Finset.sum Finset.univ
+            (fun i : Fin S.batchSize =>
+              uniformBatchWeight S.batchSize • S.stochasticGradientSample t i ω) := by
+    funext ω
+    exact S.minibatchGradient_spec t ω
+  simpa [hEq] using
+    (MeasureTheory.integrable_finset_sum Finset.univ fun i _ =>
+      MeasureTheory.Integrable.smul
+        (uniformBatchWeight S.batchSize) (S.sample_integrable t i)
+    )
 
 /-- The realized minibatch-noise norm is nonnegative. -/
 lemma minibatchNoiseNorm_nonneg

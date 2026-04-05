@@ -175,7 +175,7 @@ section PublicDefinitions
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -207,7 +207,7 @@ section PrivateDefinitions
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -262,7 +262,7 @@ section PrivateLemmas
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -354,40 +354,15 @@ private theorem flatSample_eval
       (SteepestDescentOptimizationBounds.flatSampleIndex
         (S.flatTimeIndex m) (S.flatSampleSlot m))
       = fun ω => S.stochasticGradientSample (S.flatTimeIndex m) (S.flatSampleSlot m) ω := by
-  funext ω
-  have hDiv :
-      SteepestDescentOptimizationBounds.flatSampleIndex
-          (S.flatTimeIndex m) (S.flatSampleSlot m) / S.batchSize
-        = S.flatTimeIndex m := by
-    unfold SteepestDescentOptimizationBounds.flatSampleIndex flatTimeIndex flatSampleSlot
-    rw [Nat.add_comm, Nat.add_mul_div_right _ _ S.batchSize_pos]
-    rw [Nat.div_eq_of_lt (Nat.mod_lt _ S.batchSize_pos)]
-    simp
-  have hMod :
-      SteepestDescentOptimizationBounds.flatSampleIndex
-          (S.flatTimeIndex m) (S.flatSampleSlot m) % S.batchSize
-        = (S.flatSampleSlot m).1 := by
-    calc
-      SteepestDescentOptimizationBounds.flatSampleIndex
-          (S.flatTimeIndex m) (S.flatSampleSlot m) % S.batchSize
-        = (m + S.batchSize) % S.batchSize := by rw [S.flatActualIndex_eq m]
-      _ = (m + 1 * S.batchSize) % S.batchSize := by simp
-      _ = m % S.batchSize := by rw [Nat.add_mul_mod_self_right]
-      _ = (S.flatSampleSlot m).1 := by
-            simp [flatSampleSlot]
-  simp [flatSample, hDiv, hMod]
+  exact flatSample_at_flatSampleIndex
+    S.batchSize_pos S.stochasticGradientSample
+    (S.flatTimeIndex m) (S.flatSampleSlot m)
 
 private theorem flatPastSigma_le
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) :
     S.flatPastSigma m ≤ inferInstanceAs (MeasurableSpace Ω) := by
-  let tuple :=
-    flatSamplePrefixTuple S.batchSize_pos S.stochasticGradientSample
-      (S.flatTimeIndex m) (S.flatSampleSlot m)
-  have hTupleMeasurable : Measurable tuple := by
-    exact measurable_pi_lambda tuple <| fun j =>
-      flatSample_measurable S.batchSize_pos S.stochasticGradientSample S.sample_measurable j
-  simpa [flatPastSigma, samplePrefixSigma, tuple] using
-    sup_le (S.W_measurable (S.flatTimeIndex m)).comap_le hTupleMeasurable.comap_le
+  simpa [flatPastSigma] using
+    S.samplePrefixSigma_le (S.flatTimeIndex m) (S.flatSampleSlot m)
 
 private theorem flatSample_measurable_before
     (S : StochasticSteepestDescentGeometryContext Ω V)
@@ -975,9 +950,62 @@ section PublicTheorems
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+/-- The initial momentum is globally measurable. -/
+lemma momentum_zero_measurable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    Measurable (S.momentum 0) := by
+  rcases S.momentum_zero_eq_zero_or_minibatchGradient with hZero | hBatch
+  · have hEq : S.momentum 0 = fun _ : Ω => (0 : StrongDual ℝ V) := by
+      funext ω
+      simp [hZero ω]
+    rw [hEq]
+    exact measurable_const
+  · have hEq : S.momentum 0 = S.minibatchGradient 0 := by
+      funext ω
+      exact hBatch ω
+    rw [hEq]
+    exact S.minibatchGradient_measurable 0
+
+/-- The momentum process is measurable at each time. -/
+lemma momentum_measurable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t, Measurable (S.momentum t) := by
+  intro t
+  induction t with
+  | zero =>
+      simpa using S.momentum_zero_measurable
+  | succ t ih =>
+      have hEq :
+          S.momentum (t + 1) =
+            fun ω =>
+              S.beta • S.momentum t ω + (1 - S.beta) • S.minibatchGradient (t + 1) ω := by
+        funext ω
+        simpa using S.momentum_succ t ω
+      rw [hEq]
+      exact (ih.const_smul S.beta).add
+        ((S.minibatchGradient_measurable (t + 1)).const_smul (1 - S.beta))
+
+/-- The initialized momentum is integrable under the shared stochastic assumptions. -/
+lemma momentum_zero_integrable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    Integrable (S.momentum 0) S.μ := by
+  rcases S.momentum_zero_eq_zero_or_minibatchGradient with hZero | hBatch
+  · have hEq : S.momentum 0 = fun _ : Ω => (0 : StrongDual ℝ V) := by
+      funext ω
+      simp [hZero ω]
+    rw [hEq]
+    exact
+      (MeasureTheory.integrable_zero Ω (StrongDual ℝ V) S.μ :
+        Integrable (fun _ : Ω => (0 : StrongDual ℝ V)) S.μ)
+  · have hEq : S.momentum 0 = S.minibatchGradient 0 := by
+      funext ω
+      exact hBatch ω
+    rw [hEq]
+    exact S.minibatchGradient_integrable 0
 
 /-- The expected momentum-error norm is nonnegative. -/
 private lemma expectedMomentumError_nonneg

@@ -29,7 +29,7 @@ namespace StochasticStarConvexGeometryContext
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -38,7 +38,7 @@ section PrivateTheorems
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
@@ -296,7 +296,7 @@ section PublicTheorems
 variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace V] [BorelSpace V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
