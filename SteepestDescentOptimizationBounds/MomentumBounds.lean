@@ -348,16 +348,6 @@ private theorem flatCoeff_last_block
   rw [S.last_block_div t i hi]
   norm_num
 
-private theorem flatSample_eval
-    (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) :
-    flatSample S.batchSize_pos S.stochasticGradientSample
-      (SteepestDescentOptimizationBounds.flatSampleIndex
-        (S.flatTimeIndex m) (S.flatSampleSlot m))
-      = fun ω => S.stochasticGradientSample (S.flatTimeIndex m) (S.flatSampleSlot m) ω := by
-  exact flatSample_at_flatSampleIndex
-    S.batchSize_pos S.stochasticGradientSample
-    (S.flatTimeIndex m) (S.flatSampleSlot m)
-
 private theorem flatPastSigma_le
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) :
     S.flatPastSigma m ≤ inferInstanceAs (MeasurableSpace Ω) := by
@@ -386,7 +376,9 @@ private theorem flatSample_measurable_before
       (flatSample_measurable_of_lt
         S.batchSize_pos S.W S.stochasticGradientSample
         (t := S.flatTimeIndex m) (i := S.flatSampleSlot m) hActualLt)
-  simpa [S.flatSample_eval j] using hMeas
+  simpa [flatSample_at_flatSampleIndex
+      S.batchSize_pos S.stochasticGradientSample
+      (S.flatTimeIndex j) (S.flatSampleSlot j)] using hMeas
 
 private theorem flatNoise_stronglyMeasurable
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) :
@@ -970,7 +962,7 @@ variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
 /-- The initial momentum is globally measurable. -/
-lemma momentum_zero_measurable
+private lemma momentum_zero_measurable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     Measurable (S.momentum 0) := by
   rcases S.momentum_zero_eq_zero_or_minibatchGradient with hZero | hBatch
@@ -986,7 +978,7 @@ lemma momentum_zero_measurable
     exact S.minibatchGradient_measurable 0
 
 /-- The momentum process is measurable at each time. -/
-lemma momentum_measurable
+private lemma momentum_measurable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t, Measurable (S.momentum t) := by
   intro t
@@ -1005,7 +997,7 @@ lemma momentum_measurable
         ((S.minibatchGradient_measurable (t + 1)).const_smul (1 - S.beta))
 
 /-- The initialized momentum is integrable under the shared stochastic assumptions. -/
-lemma momentum_zero_integrable
+private lemma momentum_zero_integrable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     Integrable (S.momentum 0) S.μ := by
   rcases S.momentum_zero_eq_zero_or_minibatchGradient with hZero | hBatch

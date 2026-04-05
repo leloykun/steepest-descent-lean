@@ -20,8 +20,7 @@ Upstream dependencies:
 
 Downstream use:
 
-- the Frank-Wolfe scaling-law family reuses the deterministic coefficient
-  definitions from this file.
+- the Frank-Wolfe scaling-law family reuses the theorem layer proved here.
 -/
 
 namespace StochasticFrankWolfeKLGeometryContext
@@ -33,26 +32,20 @@ variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
+section PrivateDefinitions
+
 /-- The batch-size-dependent `1 / sqrt(b)` coefficient in the loose FW-KL bound. -/
-def frankWolfeExpectedSuboptimalityMinibatchCoefficient
+private def frankWolfeExpectedSuboptimalityMinibatchCoefficient
     (S : StochasticFrankWolfeKLGeometryContext Ω V) : ℝ :=
   (2 / (S.muFW * S.lambda)) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma
 
-/-- The drift floor in the loose FW-KL expected-suboptimality bound. -/
-def frankWolfeExpectedSuboptimalityDriftFloor
-    (S : StochasticFrankWolfeKLGeometryContext Ω V) : ℝ :=
-  2 * S.L * S.eta ^ 2 * (1 + 2 * S.beta ^ 2 / (1 - S.beta))
-
-/-- The minibatch-noise floor in the loose FW-KL expected-suboptimality bound. -/
-def frankWolfeExpectedSuboptimalityNoiseFloor
-    (S : StochasticFrankWolfeKLGeometryContext Ω V) : ℝ :=
-  (2 * S.eta * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ
-
 /-- The residual floor in the loose FW-KL expected-suboptimality bound. -/
-def frankWolfeExpectedSuboptimalityResidualFloor
+private def frankWolfeExpectedSuboptimalityResidualFloor
     (S : StochasticFrankWolfeKLGeometryContext Ω V) : ℝ :=
   ((2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError
     + (2 * S.L / (S.muFW * S.lambda)) * (1 + 2 * S.beta ^ 2 / (1 - S.beta))) * S.eta
+
+end PrivateDefinitions
 
 section PrivateTheorems
 

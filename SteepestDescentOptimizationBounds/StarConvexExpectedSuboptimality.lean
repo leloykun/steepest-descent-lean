@@ -127,8 +127,7 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
     dsimp [a]
     nlinarith [S.lambda_eta_pos]
   have hkNonneg : 0 ≤ k := by
-    dsimp [k, StochasticStarConvexGeometryContext.starConvexExpectedSuboptimalityDriftFloor,
-      StochasticStarConvexGeometryContext.starConvexExpectedSuboptimalityNoiseFloor]
+    dsimp [k]
     have hNoiseNonneg :
         0 ≤ (2 * S.eta * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ := by
       have hNumNonneg :
@@ -221,8 +220,7 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
       exact mul_le_mul_of_nonneg_left (hCor11 t) (by nlinarith [S.eta_pos])
     have hAux :
         4 * S.L * S.eta ^ 2 + 2 * S.eta * S.expectedNesterovError t ≤ k + d * S.beta ^ (t + 1) := by
-      dsimp [k, d, StochasticStarConvexGeometryContext.starConvexExpectedSuboptimalityDriftFloor,
-        StochasticStarConvexGeometryContext.starConvexExpectedSuboptimalityNoiseFloor]
+      dsimp [k, d]
       ring_nf at hScaledErr ⊢
       nlinarith [hScaledErr]
     dsimp [a]

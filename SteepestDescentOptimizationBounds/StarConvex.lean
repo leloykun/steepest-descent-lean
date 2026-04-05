@@ -360,30 +360,6 @@ variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
 variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
 
-/-! Public definitions. -/
-section PublicDefinitions
-
-/-- The batch-size-dependent `1 / sqrt(b)` coefficient in the star-convex bound. -/
-def starConvexExpectedSuboptimalityMinibatchCoefficient
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma
-
-/-- The batch-size-independent drift floor in the star-convex bound. -/
-def starConvexExpectedSuboptimalityDriftFloor
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  4 * (1 + S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta ^ 2
-
-/-- The batch-size-dependent noise floor in the star-convex bound. -/
-def starConvexExpectedSuboptimalityNoiseFloor
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  (2 * S.eta * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ
-
-/-- The residual floor used by the expected star-convex bounds. -/
-def starConvexExpectedSuboptimalityResidualFloor
-    (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
-  ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
-      + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta
-
 /-! Public lemmas/theorems. -/
 section PublicTheorems
 
@@ -401,8 +377,6 @@ theorem suboptimality_recurrence_step
     StochasticSteepestDescentGeometryContext.suboptimality] using h
 
 end PublicTheorems
-
-end PublicDefinitions
 
 end StochasticStarConvexGeometryContext
 

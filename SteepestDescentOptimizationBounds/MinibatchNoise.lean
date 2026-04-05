@@ -258,6 +258,7 @@ private theorem weightedPartialSum_norm_le_noiseRadius_of_mem
 
 omit [MeasurableSpace Ω] [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weighted_smooth_step
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
@@ -332,6 +333,7 @@ private theorem sample_norm_le_noiseRadius_all_ae
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 theorem weightedPartialSum_norm_le_noiseRadius_ae
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
@@ -353,6 +355,7 @@ theorem weightedPartialSum_norm_le_noiseRadius_ae
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weighted_smooth_step_ae
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
@@ -875,7 +878,8 @@ private theorem weighted_partial_potential_sq_integrable_and_bound
     exact ⟨hNextPotInt, hNextSqInt, hNextBound⟩
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] in
+  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 /-- Square-integrability of a weighted centered-noise sum on the noise ball. -/
 theorem weighted_noise_sq_integrable
     (P : ContinuousDualPairingContext VDual V)
@@ -910,7 +914,8 @@ theorem weighted_noise_sq_integrable
       second_moment_bound n le_rfl).2.1
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] in
+  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 /-- First-moment integrability of a weighted centered-noise sum. -/
 theorem weighted_noise_norm_integrable
     (P : ContinuousDualPairingContext VDual V)
@@ -947,7 +952,8 @@ theorem weighted_noise_norm_integrable
         second_moment_bound)
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] in
+  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 /-- First-moment bound for a weighted sum of centered noises on the noise ball. -/
 theorem weighted_noise_first_moment_bound
     (P : ContinuousDualPairingContext VDual V)
@@ -1271,7 +1277,8 @@ private theorem minibatchNoise_eq_weightedPartialSum
       = (∑ i : Fin S.batchSize, uniformBatchWeight S.batchSize • S.grad t ω)
           - ∑ i : Fin S.batchSize, uniformBatchWeight S.batchSize • S.stochasticGradientSample t i ω := by
             simp [StochasticSteepestDescentGeometryContext.minibatchNoise,
-              StochasticSteepestDescentGeometryContext.minibatchGradient_spec, hGradAvg]
+              StochasticSteepestDescentGeometryContext.minibatchGradient_spec,
+              StochasticSteepestDescentGeometryContext.stochasticGradientSample, hGradAvg]
     _ = Finset.sum Finset.univ
           (fun i : Fin S.batchSize =>
             uniformBatchWeight S.batchSize • S.ξ t i ω) := by

@@ -569,7 +569,7 @@ theorem fwGap_ball_formula
     (S.path ω).fwGap_ball_formula (S.W t ω)
 
 /-- The realized Frank-Wolfe gap is measurable at each time. -/
-lemma frankWolfeGap_measurable
+private lemma frankWolfeGap_measurable
     (S : StochasticFrankWolfeGeometryContext Ω V) :
     ∀ t, Measurable (S.frankWolfeGap t) := by
   intro t
