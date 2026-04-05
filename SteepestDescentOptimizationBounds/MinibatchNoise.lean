@@ -289,7 +289,7 @@ private theorem weighted_smooth_step
     simpa [weightedPartialSum, x, Finset.sum_range_succ, add_comm, add_left_comm, add_assoc]
       using hNext'
   have h :=
-    step_upper_of_LSmoothOnClosedBallUnderPair
+    step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
       P
       (f := B.potential)
       (grad := B.mirrorMap)
@@ -728,8 +728,11 @@ private theorem weighted_partial_potential_sq_integrable_and_bound
     have hNextMeas :
         AEStronglyMeasurable
           (fun ω => B.potential (weightedPartialSum α ξ (k + 1) ω)) μ := by
-      exact B.potential_continuous.comp_aestronglyMeasurable
-        ((weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable (k + 1)).aestronglyMeasurable)
+      exact
+        B.potential_comp_aestronglyMeasurable_of_mem_noiseBall_ae
+          ((weighted_partialSum_stronglyMeasurable_any
+              sample_stronglyMeasurable (k + 1)).aestronglyMeasurable)
+          hNextBall
     have hNextPotInt :
         Integrable (fun ω => B.potential (weightedPartialSum α ξ (k + 1) ω)) μ := by
       refine Integrable.mono' hAbsRhsInt hNextMeas ?_

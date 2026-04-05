@@ -141,13 +141,23 @@ variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
 variable {pairing : ContinuousDualPairingContext VDual V}
 
-/-- The proxy potential is continuous because it has a Fréchet derivative everywhere. -/
-lemma potential_continuous
+/-- The proxy potential is continuous on the closed Assumption-4 noise ball. -/
+lemma potential_continuousOn_noiseBall
     (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
-    Continuous P.potential := by
-  refine continuous_iff_continuousAt.mpr ?_
-  intro x
-  exact (P.potential_fderiv_eq x).continuousAt
+    ContinuousOn P.potential (Metric.closedBall 0 P.noiseRadius) := by
+  intro x hx
+  have hx' : ‖x‖ ≤ P.noiseRadius := by
+    simpa [Metric.mem_closedBall, dist_eq_norm] using hx
+  exact (P.potential_fderiv_eq x hx').continuousAt.continuousWithinAt
+
+/-- The proxy potential becomes measurable after restricting to the noise ball. -/
+lemma potential_restrict_measurable
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual] :
+    Measurable ((Metric.closedBall (0 : VDual) P.noiseRadius).restrict P.potential) := by
+  exact
+    (continuousOn_iff_continuous_restrict.1
+      P.potential_continuousOn_noiseBall).measurable
 
 /-- Assumption 4 gives a Lipschitz mirror map on the closed noise ball. -/
 lemma mirrorMap_lipschitzOn_noiseBall
@@ -225,6 +235,51 @@ lemma mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
     filter_upwards [hff', hfg] with ω hω1 hω2
     simp [hω1, hω2]
 
+/-- If a dual-valued process stays in the noise ball almost surely, then applying the
+Assumption-4 potential preserves a.e. strong measurability. -/
+lemma potential_comp_aestronglyMeasurable_of_mem_noiseBall_ae
+    {Ω : Type*} [MeasurableSpace Ω]
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
+    {m m0 : MeasurableSpace Ω} {μ : @Measure Ω m0} {f : Ω → VDual}
+    (hf : AEStronglyMeasurable[m] f μ)
+    (hball : ∀ᵐ ω ∂μ, ‖f ω‖ ≤ P.noiseRadius) :
+    AEStronglyMeasurable[m] (fun ω => P.potential (f ω)) μ := by
+  have hff' : f =ᵐ[μ] hf.mk f := hf.ae_eq_mk
+  have hball' : ∀ᵐ ω ∂μ, ‖hf.mk f ω‖ ≤ P.noiseRadius := by
+    filter_upwards [hball, hff'] with ω hω hEq
+    simpa [hEq] using hω
+  have hnorm_meas : Measurable[m] (fun ω => ‖hf.mk f ω‖) := by
+    exact (hf.stronglyMeasurable_mk.norm).measurable
+  have hs_meas : MeasurableSet[m] {ω | ‖hf.mk f ω‖ ≤ P.noiseRadius} := by
+    change MeasurableSet[m] ((fun ω => ‖hf.mk f ω‖) ⁻¹' Set.Iic P.noiseRadius)
+    exact hnorm_meas measurableSet_Iic
+  let g : Ω → VDual := fun ω => if ‖hf.mk f ω‖ ≤ P.noiseRadius then hf.mk f ω else 0
+  have hg_meas : Measurable[m] g := by
+    simpa [g, Set.piecewise] using hf.measurable_mk.piecewise hs_meas measurable_const
+  have hg_mem : ∀ ω, g ω ∈ Metric.closedBall (0 : VDual) P.noiseRadius := by
+    intro ω
+    by_cases hω : ‖hf.mk f ω‖ ≤ P.noiseRadius
+    · simp [g, hω, Metric.mem_closedBall, dist_eq_norm]
+    · have hzero : ‖(0 : VDual)‖ ≤ P.noiseRadius := by simpa using P.noiseRadius_nonneg
+      simpa [g, hω, Metric.mem_closedBall] using hzero
+  have hfg : hf.mk f =ᵐ[μ] g := by
+    filter_upwards [hball'] with ω hω
+    simp [g, hω]
+  have hcod :
+      Measurable[m]
+        ((Metric.closedBall (0 : VDual) P.noiseRadius).codRestrict g
+          (by intro ω; exact hg_mem ω)) := by
+    exact Measurable.subtype_mk hg_meas
+  have hPotentialMeas :
+      Measurable[m] (fun ω => P.potential (g ω)) := by
+    simpa [Function.comp_def, Set.restrict_comp_codRestrict
+      (by intro ω; exact hg_mem ω)] using
+      P.potential_restrict_measurable.comp hcod
+  exact (hPotentialMeas.stronglyMeasurable.aestronglyMeasurable).congr <| by
+    filter_upwards [hff', hfg] with ω hω1 hω2
+    simp [hω1, hω2]
+
 end Assumption4_LocalSmoothProxyPotential
 
 /-!
@@ -288,6 +343,14 @@ private lemma fGrad_restrict_measurable
   exact
     (continuousOn_iff_continuous_restrict.1
       (S.fGrad_lipschitzOn_constraintBall.continuousOn)).measurable
+
+/-- The objective restricted to the primal feasibility ball is measurable. -/
+private lemma f_restrict_measurable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    Measurable (S.constraintBall.restrict S.f) := by
+  exact
+    (continuousOn_iff_continuous_restrict.1
+      S.f_continuousOn_constraintBall).measurable
 
 /-- Every realized iterate stays inside the Assumption-3 primal ball. -/
 private lemma W_mem_constraintBall
@@ -549,6 +612,22 @@ lemma grad_measurable
   exact measurable_comp_of_measurable_restrict
     (f := S.W t) (g := S.fGrad) (s := S.constraintBall)
     (S.W_measurable t) (S.W_mem_constraintBall t) S.fGrad_restrict_measurable
+
+/-- The objective along the iterate process is measurable at each time. -/
+lemma objective_measurable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t, Measurable (fun ω => S.f (S.W t ω)) := by
+  intro t
+  exact measurable_comp_of_measurable_restrict
+    (f := S.W t) (g := S.f) (s := S.constraintBall)
+    (S.W_measurable t) (S.W_mem_constraintBall t) S.f_restrict_measurable
+
+/-- The objective along the iterate process is strongly measurable at each time. -/
+lemma objective_stronglyMeasurable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t, StronglyMeasurable (fun ω => S.f (S.W t ω)) := by
+  intro t
+  exact (S.objective_measurable t).stronglyMeasurable
 
 /-- The true gradient process is strongly measurable at each time. -/
 lemma grad_stronglyMeasurable

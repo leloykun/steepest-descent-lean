@@ -417,7 +417,7 @@ structure Assumption4_LocalSmoothProxyPotential
   potential_zero : potential 0 = 0
   mirrorMap_zero : mirrorMap 0 = 0
   potential_fderiv_eq :
-    ∀ x,
+    ∀ x, ‖x‖ ≤ noiseRadius →
       HasFDerivAt potential
         (pairing.toLinear (mirrorMap x)) x
   mirrorMap_local_lipschitz :
@@ -507,7 +507,7 @@ structure SteepestDescentPathGeometryContext
     extends StochasticSteepestDescentParameters where
   f : V → ℝ
   fGrad : V → StrongDual ℝ V
-  fderiv_eq : ∀ X, HasFDerivAt f (fGrad X) X
+  fderiv_eq : ∀ X, ‖X‖ ≤ 1 / lambda → HasFDerivAt f (fGrad X) X
   pairing : ContinuousDualPairingContext (StrongDual ℝ V) V
   WStar : V
   WStar_optimality : ∀ W, f WStar ≤ f W
@@ -603,7 +603,7 @@ structure StochasticSteepestDescentGeometryContext
     extends StochasticSteepestDescentParameters where
   f : V → ℝ
   fGrad : V → StrongDual ℝ V
-  fderiv_eq : ∀ X, HasFDerivAt f (fGrad X) X
+  fderiv_eq : ∀ X, ‖X‖ ≤ 1 / lambda → HasFDerivAt f (fGrad X) X
   pairing : ContinuousDualPairingContext (StrongDual ℝ V) V
   W0 : V
   W0_bound : ‖W0‖ ≤ 1 / lambda
@@ -779,11 +779,12 @@ lemma mirrorMap_zero (S : SteepestDescentPathGeometryContext V) :
     S.mirrorMap 0 = 0 :=
   S.assumption4_localProxyPotential.mirrorMap_zero
 
-lemma potential_fderiv_eq (S : SteepestDescentPathGeometryContext V) :
-    ∀ x,
-      HasFDerivAt S.potential
-        (S.pairing.toLinear (S.mirrorMap x)) x :=
-  S.assumption4_localProxyPotential.potential_fderiv_eq
+lemma potential_fderiv_eq
+    (S : SteepestDescentPathGeometryContext V) {x : StrongDual ℝ V}
+    (hx : ‖x‖ ≤ S.noiseRadius) :
+    HasFDerivAt S.potential
+      (S.pairing.toLinear (S.mirrorMap x)) x :=
+  S.assumption4_localProxyPotential.potential_fderiv_eq x hx
 
 lemma norm_sq_le_two_potential_of_mem_noiseRadius
     (S : SteepestDescentPathGeometryContext V) (x : StrongDual ℝ V)
@@ -794,6 +795,16 @@ lemma norm_sq_le_two_potential_of_mem_noiseRadius
 /-- The shared radius-`1 / λ` primal ball induced by decoupled weight decay. -/
 def constraintBall (S : SteepestDescentPathGeometryContext V) : Set V :=
   Metric.closedBall 0 (1 / S.lambda)
+
+/-- The objective is continuous on the primal feasibility ball. -/
+lemma f_continuousOn_constraintBall
+    (S : SteepestDescentPathGeometryContext V) :
+    ContinuousOn S.f S.constraintBall := by
+  intro x hx
+  have hx' : ‖x‖ ≤ 1 / S.lambda := by
+    simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
+      using hx
+  exact (S.fderiv_eq x hx').continuousAt.continuousWithinAt
 
 /-- The pathwise suboptimality gap. -/
 def suboptimality (S : SteepestDescentPathGeometryContext V) (t : ℕ) : ℝ :=
@@ -920,11 +931,12 @@ lemma mirrorMap_zero (S : StochasticSteepestDescentGeometryContext Ω V) :
     S.mirrorMap 0 = 0 :=
   S.assumption4_localProxyPotential.mirrorMap_zero
 
-lemma potential_fderiv_eq (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ x,
-      HasFDerivAt S.potential
-        (S.pairing.toLinear (S.mirrorMap x)) x :=
-  S.assumption4_localProxyPotential.potential_fderiv_eq
+lemma potential_fderiv_eq
+    (S : StochasticSteepestDescentGeometryContext Ω V) {x : StrongDual ℝ V}
+    (hx : ‖x‖ ≤ S.noiseRadius) :
+    HasFDerivAt S.potential
+      (S.pairing.toLinear (S.mirrorMap x)) x :=
+  S.assumption4_localProxyPotential.potential_fderiv_eq x hx
 
 lemma norm_sq_le_two_potential_of_mem_noiseRadius
     (S : StochasticSteepestDescentGeometryContext Ω V) (x : StrongDual ℝ V)
@@ -935,6 +947,16 @@ lemma norm_sq_le_two_potential_of_mem_noiseRadius
 /-- The shared radius-`1 / λ` primal ball induced by decoupled weight decay. -/
 def constraintBall (S : StochasticSteepestDescentGeometryContext Ω V) : Set V :=
   Metric.closedBall 0 (1 / S.lambda)
+
+/-- The objective is continuous on the primal feasibility ball. -/
+lemma f_continuousOn_constraintBall
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ContinuousOn S.f S.constraintBall := by
+  intro x hx
+  have hx' : ‖x‖ ≤ 1 / S.lambda := by
+    simpa [StochasticSteepestDescentGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
+      using hx
+  exact (S.fderiv_eq x hx').continuousAt.continuousWithinAt
 
 /-- The stochastic suboptimality gap along a realized sample path. -/
 def suboptimality (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) : ℝ :=

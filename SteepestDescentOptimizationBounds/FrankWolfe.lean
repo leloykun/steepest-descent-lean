@@ -342,68 +342,82 @@ theorem path_one_step_descent_fwGap
     S.weight_bound_from_feasible_step t
   have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda :=
     S.weight_bound_from_feasible_step (t + 1)
-  have hUpdateBound : ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta :=
-    (S.proposition9_weight_and_update_bounds t).2
   let pairing : ContinuousDualPairingContext V (StrongDual ℝ V) := {
     toLinear := by simpa using (ContinuousLinearMap.id ℝ (StrongDual ℝ V))
     opNorm_le := by
       intro xDual
       simp
   }
-  have hTaylor :=
-    taylor_bound_of_LSmoothOnClosedBallUnderPair
-      pairing
-      (f := S.f)
-      (grad := S.fGrad)
-      (L := S.L)
-      (R := 1 / S.lambda)
-      S.fderiv_eq
-      S.assumption3_fLocalSmoothness.local_lipschitz
-      hWeight
-      hNextWeight
-  have hStepRightRaw := (abs_le.mp hTaylor).2
-  have hLinearNext :
-      (S.grad t) (S.W (t + 1) - S.W t) =
-        (S.fGrad (S.W t)) (S.W (t + 1)) - (S.fGrad (S.W t)) (S.W t) := by
-    simp [SteepestDescentPathGeometryContext.grad]
+  have hStepVec := S.scaledLMOPoint_sub_weight_eq t
+  have hUpdateEq :
+      S.W t + (S.lambda * S.eta) • (S.scaledLMOPoint t - S.W t) = S.W (t + 1) := by
+    rw [← hStepVec]
+    abel_nf
+  have hNextStep :
+      ‖S.W t + (S.lambda * S.eta) • (S.scaledLMOPoint t - S.W t)‖ ≤ 1 / S.lambda := by
+    simpa [hUpdateEq] using hNextWeight
   have hSmoothStep :
       S.f (S.W (t + 1)) ≤
-        S.f (S.W t) + (S.grad t) (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := by
+        S.f (S.W t)
+          + (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t)
+          + 2 * S.L * S.eta ^ 2 := by
     have hStepRight :
-        S.f (S.W (t + 1)) ≤
+        S.f (S.W t + (S.lambda * S.eta) • (S.scaledLMOPoint t - S.W t)) ≤
           S.f (S.W t)
-            + (S.grad t) (S.W (t + 1) - S.W t)
-            + S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
-      rw [hLinearNext]
-      have hTmp :
-          S.f (S.W (t + 1)) -
-              (S.f (S.W t)
-                + ((S.fGrad (S.W t)) (S.W (t + 1)) - (S.fGrad (S.W t)) (S.W t))) ≤
-            S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
-        simpa [pairing, SteepestDescentPathGeometryContext.grad] using hStepRightRaw
-      linarith
+            + (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t)
+            + S.L / 2 * (S.lambda * S.eta) ^ 2 * ‖S.scaledLMOPoint t - S.W t‖ ^ 2 := by
+      simpa [pairing, SteepestDescentPathGeometryContext.grad, smul_eq_mul] using
+        (step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
+          pairing
+          (f := S.f)
+          (grad := S.fGrad)
+          (L := S.L)
+          (R := 1 / S.lambda)
+          (α := S.lambda * S.eta)
+          S.fderiv_eq
+          S.assumption3_fLocalSmoothness.local_lipschitz
+          S.lambda_eta_nonneg
+          (x := S.W t)
+          (ξ := S.scaledLMOPoint t - S.W t)
+          hWeight
+          hNextStep)
     have hQuad :
-        S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤ 2 * S.L * S.eta ^ 2 := by
+        S.L / 2 * (S.lambda * S.eta) ^ 2 * ‖S.scaledLMOPoint t - S.W t‖ ^ 2 ≤
+          2 * S.L * S.eta ^ 2 := by
       have hLnonneg : 0 ≤ S.L / 2 := by
         exact div_nonneg S.assumption3_fLocalSmoothness.nonneg (by positivity)
-      calc
-        S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤ S.L / 2 * (2 * S.eta) ^ 2 := by
-          gcongr
-        _ = 2 * S.L * S.eta ^ 2 := by ring
+      have hStepNorm : ‖S.scaledLMOPoint t - S.W t‖ ≤ 2 / S.lambda := by
+        exact
+          S.scaledLMOPoint_sub_feasible_bound t
+            (by
+              simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
+                using hWeight)
+      have hSquare :
+          ‖S.scaledLMOPoint t - S.W t‖ ^ 2 ≤ (2 / S.lambda) ^ 2 := by
+        nlinarith [norm_nonneg (S.scaledLMOPoint t - S.W t), hStepNorm]
+      have hLambdaNonneg : 0 ≤ S.lambda := S.lambda_pos.le
+      have hStepBound :
+          (S.lambda * S.eta) ^ 2 * ‖S.scaledLMOPoint t - S.W t‖ ^ 2 ≤ (2 * S.eta) ^ 2 := by
+        have hMul :=
+          mul_le_mul_of_nonneg_left hSquare (sq_nonneg (S.lambda * S.eta))
+        have hEq : (S.lambda * S.eta) ^ 2 * (2 / S.lambda) ^ 2 = (2 * S.eta) ^ 2 := by
+          field_simp [S.lambda_pos.ne']
+        rw [hEq] at hMul
+        exact hMul
+      nlinarith [hLnonneg, hStepBound]
+    have hStepRight' :
+        S.f (S.W (t + 1)) ≤
+          S.f (S.W t)
+            + (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t)
+            + S.L / 2 * (S.lambda * S.eta) ^ 2 * ‖S.scaledLMOPoint t - S.W t‖ ^ 2 := by
+      simpa [hUpdateEq] using hStepRight
     linarith
-  have hStepVec := S.scaledLMOPoint_sub_weight_eq t
-  have hGradStep :
-      (S.grad t) (S.W (t + 1) - S.W t) =
-        (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t) := by
-    rw [hStepVec, ContinuousLinearMap.map_smul]
-    simp [smul_eq_mul]
   have hApprox := S.path_approx_lmo_fwGap_inner_bound t
   calc
     S.f (S.W (t + 1))
-        ≤ S.f (S.W t) + (S.grad t) (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := hSmoothStep
-    _ = S.f (S.W t)
+        ≤ S.f (S.W t)
           + (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t)
-          + 2 * S.L * S.eta ^ 2 := by rw [hGradStep]
+          + 2 * S.L * S.eta ^ 2 := hSmoothStep
     _ ≤ S.f (S.W t)
           + (S.lambda * S.eta) * (-S.frankWolfeGap t + (2 / S.lambda) * S.nesterovErrorNorm t)
           + 2 * S.L * S.eta ^ 2 := by

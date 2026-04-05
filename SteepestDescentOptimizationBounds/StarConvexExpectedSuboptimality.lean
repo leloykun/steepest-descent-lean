@@ -45,12 +45,8 @@ variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual
 private theorem suboptimality_aestronglyMeasurable
     (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
     AEStronglyMeasurable (fun ω => S.suboptimality t ω) S.μ := by
-  have hFCont : Continuous S.f := by
-    refine continuous_iff_continuousAt.mpr ?_
-    intro x
-    exact (S.fderiv_eq x).continuousAt
   exact
-    (((hFCont.measurable.comp (S.W_measurable t)).stronglyMeasurable).sub
+    ((S.objective_stronglyMeasurable t).sub
       stronglyMeasurable_const).aestronglyMeasurable
 
 private theorem suboptimality_integrable

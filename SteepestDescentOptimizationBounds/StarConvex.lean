@@ -189,28 +189,6 @@ theorem one_step_descent_bound
   rcases hLemma13 with ⟨hInterpWeight, hOptimalDir, hXWeightBound, hNextXBound⟩
   have hWeight : ‖S.W t‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step t
   have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step (t + 1)
-  have hTaylorInterp :=
-    taylor_bound_of_LSmoothOnClosedBallUnderPair
-      (continuousDualPairing (V := V))
-      (f := S.f)
-      (grad := S.fGrad)
-      (L := S.L)
-      (R := 1 / S.lambda)
-      S.fderiv_eq
-      S.assumption3_fLocalSmoothness.local_lipschitz
-      hWeight
-      hInterpWeight
-  have hTaylorNext :=
-    taylor_bound_of_LSmoothOnClosedBallUnderPair
-      (continuousDualPairing (V := V))
-      (f := S.f)
-      (grad := S.fGrad)
-      (L := S.L)
-      (R := 1 / S.lambda)
-      S.fderiv_eq
-      S.assumption3_fLocalSmoothness.local_lipschitz
-      hWeight
-      hNextWeight
   have hUpdateBound : ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta :=
     (S.proposition9_weight_and_update_bounds t).2
   have hGradDecomp :
@@ -242,22 +220,22 @@ theorem one_step_descent_bound
   have hSmoothCompare :
       S.f (S.W t) + S.gradientLinear t (S.interpolatedPoint t - S.W t) ≤
         S.f (S.interpolatedPoint t) + 2 * S.L * S.eta ^ 2 := by
-    have hCompLeftRaw := (abs_le.mp hTaylorInterp).1
-    have hLinearInterp :
-        S.gradientLinear t (S.interpolatedPoint t - S.W t) =
-          (S.fGrad (S.W t)) (S.interpolatedPoint t) - (S.fGrad (S.W t)) (S.W t) := by
-      simp [gradientLinear, SteepestDescentPathGeometryContext.grad]
     have hCompLeft :
         S.f (S.W t) + S.gradientLinear t (S.interpolatedPoint t - S.W t) ≤
           S.f (S.interpolatedPoint t) + S.L / 2 * ‖S.interpolatedPoint t - S.W t‖ ^ 2 := by
-      rw [hLinearInterp]
-      have hTmp :
-          -(S.L / 2 * ‖S.interpolatedPoint t - S.W t‖ ^ 2) ≤
-            S.f (S.interpolatedPoint t) -
-              (S.f (S.W t)
-                + ((S.fGrad (S.W t)) (S.interpolatedPoint t) - (S.fGrad (S.W t)) (S.W t))) := by
-        simpa [continuousDualPairing, SteepestDescentPathGeometryContext.grad] using hCompLeftRaw
-      linarith
+      simpa [continuousDualPairing, gradientLinear, SteepestDescentPathGeometryContext.grad] using
+        (taylor_compare_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
+          (continuousDualPairing (V := V))
+          (f := S.f)
+          (grad := S.fGrad)
+          (L := S.L)
+          (R := 1 / S.lambda)
+          S.fderiv_eq
+          S.assumption3_fLocalSmoothness.local_lipschitz
+          hWeight
+          hInterpWeight
+          (x := S.W t)
+          (y := S.interpolatedPoint t))
     have hQuad :
         S.L / 2 * ‖S.interpolatedPoint t - S.W t‖ ^ 2 ≤ 2 * S.L * S.eta ^ 2 := by
       have hSquare : ‖S.interpolatedPoint t - S.W t‖ ^ 2 ≤ (2 * S.eta) ^ 2 := by
@@ -274,22 +252,24 @@ theorem one_step_descent_bound
   have hSmoothStep :
       S.f (S.W (t + 1)) ≤
         S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + 2 * S.L * S.eta ^ 2 := by
-    have hStepRightRaw := (abs_le.mp hTaylorNext).2
-    have hLinearNext :
-        S.gradientLinear t (S.W (t + 1) - S.W t) =
-          (S.fGrad (S.W t)) (S.W (t + 1)) - (S.fGrad (S.W t)) (S.W t) := by
-      simp [gradientLinear, SteepestDescentPathGeometryContext.grad]
     have hStepRight :
         S.f (S.W (t + 1)) ≤
           S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
-      rw [hLinearNext]
-      have hTmp :
-          S.f (S.W (t + 1)) -
-              (S.f (S.W t)
-                + ((S.fGrad (S.W t)) (S.W (t + 1)) - (S.fGrad (S.W t)) (S.W t))) ≤
-            S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
-        simpa [continuousDualPairing, SteepestDescentPathGeometryContext.grad] using hStepRightRaw
-      linarith
+      simpa [gradientLinear, SteepestDescentPathGeometryContext.grad] using
+        (step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
+          (continuousDualPairing (V := V))
+          (f := S.f)
+          (grad := S.fGrad)
+          (L := S.L)
+          (R := 1 / S.lambda)
+          (α := 1)
+          S.fderiv_eq
+          S.assumption3_fLocalSmoothness.local_lipschitz
+          (by norm_num)
+          (x := S.W t)
+          (ξ := S.W (t + 1) - S.W t)
+          hWeight
+          (by simpa using hNextWeight))
     have hQuad :
         S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 ≤ 2 * S.L * S.eta ^ 2 := by
       have hSquare : ‖S.W (t + 1) - S.W t‖ ^ 2 ≤ (2 * S.eta) ^ 2 := by
