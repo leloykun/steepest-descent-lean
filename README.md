@@ -206,78 +206,17 @@ These Frank-Wolfe expected-suboptimality results are formalized in [FrankWolfeEx
 
 The independent weight decay rule [(Kosson et al., 2026)](https://arxiv.org/abs/2510.19093v2) can already be read off from our star-convex expected-suboptimality bound.
 
-Fix the training horizon $T$, batch size $b$, momentum $\beta$, and all other theorem coefficients, and vary only the weight decay $\lambda$ and learning rate $\eta$. Write
+Fix the training horizon $T$, batch size $b$, momentum $\beta$, and all other theorem coefficients, and vary only the weight decay $\lambda$ and learning rate $\eta$. Then for any given weight decay $\lambda$, the optimal learning rate $\eta^*(\lambda)$ that minimizes the expected-suboptimality bound is given by,
 
 $$
-\begin{aligned}
-A_{\mathrm{SC}} &:= 4L\left(1 + \frac{\beta^2}{1 - \beta}\right), \\
-B_{\mathrm{SC}} &:= 2\left(\sqrt{\frac{1 - \beta}{1 + \beta}}\,\beta + (1 - \beta)\right)\frac{\sqrt{D}\,\sigma}{\sqrt{b}}, \\
-C_{\mathrm{SC}} &:= \frac{2\beta}{1 - \beta}E_0^{\mathrm{mom}}.
-\end{aligned}
+\eta^*(\lambda) = \frac{1}{\lambda} \left( 1 - \left( \frac{ 4L\left(1 + \frac{\beta^2}{1 - \beta}\right) + \frac{2\beta}{1 - \beta}E_0^{\mathrm{mom}}\lambda }{ \Delta_0 T \lambda^2 } \right)^{\!\frac{1}{T-1}} \right).
 $$
 
-Then the theorem-facing proxy becomes
+or, asymptotically,
 
 $$
-\Delta_0(1 - \lambda \eta)^T + \frac{B_{\mathrm{SC}}}{\lambda} + \left(\frac{A_{\mathrm{SC}}}{\lambda} + C_{\mathrm{SC}}\right)\eta.
+\eta^*(\lambda) = \Theta\left(\frac{1}{\lambda}\right).
 $$
-
-The $\frac{B_{\mathrm{SC}}}{\lambda}$ term is independent of $\eta$, so the exact interior stationary point is
-
-$$
-\eta_\lambda^*
-=
-\frac{1}{\lambda}
-\left[
-1 -
-\left(
-\frac{A_{\mathrm{SC}} + C_{\mathrm{SC}}\lambda}{\Delta_0 T \lambda^2}
-\right)^{\!\frac{1}{T-1}}
-\right],
-$$
-
-which is equivalently
-
-$$
-\eta_\lambda^*
-=
-\frac{1}{\lambda}
-\left(
-1 -
-\left(
-\frac{
-4L\left(1 + \frac{\beta^2}{1 - \beta}\right)
-    + \frac{2\beta}{1 - \beta}E_0^{\mathrm{mom}}\lambda
-}{
-\Delta_0 T \lambda^2
-}
-\right)^{\!\frac{1}{T-1}}
-\right).
-$$
-
-This is the interior critical point provided
-
-$$
-\frac{A_{\mathrm{SC}} + C_{\mathrm{SC}}\lambda}{\Delta_0 T \lambda^2} < 1,
-$$
-
-or equivalently, provided the optimizer is on the interior branch rather than collapsing to the boundary $\eta = 0$.
-
-The key asymptotic consequence is that, for any fixed $q \in (0,1)$, there exists a threshold $\lambda_0$ such that for all $\lambda \ge \lambda_0$,
-
-$$
-\frac{q}{\lambda} \le \eta_\lambda^* \le \frac{1}{\lambda}.
-$$
-
-So on the eventual interior branch,
-
-$$
-\eta_\lambda^* = \Theta\left(\frac{1}{\lambda}\right).
-$$
-
-This is exactly the independent-weight-decay rule: if weight decay is scaled by a factor of $c$, then the theorem-prescribed learning rate should also scale by $1/c$.
-
-These results are formalized in [StarConvexScalingLawsIndependentWeightDecay.lean](./SteepestDescentScalingLaws/StarConvexScalingLawsIndependentWeightDecay.lean). The figure above plots both the exact interior stationary point and a fitted inverse-law reference against $\lambda$, together with the expected-suboptimality bound evaluated at the optimal $\eta_\lambda^*$.
 
 ## Discussion
 
@@ -298,3 +237,4 @@ These results are formalized in [StarConvexScalingLawsIndependentWeightDecay.lea
 5. Dmitry Kovalev (2025). *Understanding Gradient Orthogonalization for Deep Learning via Non-Euclidean Trust-Region Optimization*. URL: <https://arxiv.org/abs/2503.12645>
 6. Egor Shulgin, Dimitri von Rütte, Tianyue H. Zhang, Niccolò Ajroldi, Bernhard Schölkopf, Antonio Orvieto (2026). *Deriving Hyperparameter Scaling Laws via Modern Optimization Theory*. URL: <https://arxiv.org/abs/2603.15958>
 7. Rustem Islamov, Roman Machacek, Aurelien Lucchi, Antonio Silveti-Falls, Eduard Gorbunov, Volkan Cevher (2026). *On the Role of Batch Size in Stochastic Conditional Gradient Methods*. URL: <https://arxiv.org/abs/2603.21191>
+8. Atli Kosson, Jeremy Welborn, Yang Liu, Martin Jaggi, Xi Chen (2026). *Weight Decay may matter more than muP for Learning Rate Transfer in Practice*. URL: <https://arxiv.org/abs/2510.19093v2>
