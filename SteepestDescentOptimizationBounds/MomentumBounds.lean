@@ -395,13 +395,6 @@ private theorem flatNoise_stronglyMeasurable
     ((S.grad_stronglyMeasurable (S.flatTimeIndex m)).sub
       (S.sample_stronglyMeasurable (S.flatTimeIndex m) (S.flatSampleSlot m)))
 
-private theorem flatNoise_integrable
-    (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) :
-    Integrable (S.flatNoise m) S.μ := by
-  simpa [flatNoise, StochasticSteepestDescentGeometryContext.ξ] using
-    ((S.grad_integrable (S.flatTimeIndex m)).sub
-      (S.sample_integrable (S.flatTimeIndex m) (S.flatSampleSlot m)))
-
 private theorem flatNoise_condexp_zero
     (S : StochasticSteepestDescentGeometryContext Ω V) (m : ℕ) :
     S.μ[S.flatNoise m | S.flatPastSigma m] =ᵐ[S.μ] 0 := by
@@ -462,24 +455,6 @@ private theorem flatPartialSum_stronglyMeasurable_at
       convert hPrev.add hCurr using 1
       ext ω
       simp [weightedPartialSum, Finset.sum_range_succ, add_comm]
-
-private theorem flatCoeff_measurable
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
-    ∀ k, k < t * S.batchSize →
-      AEStronglyMeasurable[S.flatPastSigma k]
-        (fun ω =>
-          S.pairing.toLinear (S.mirrorMap (weightedPartialSum (S.flatCoeff t) S.flatNoise k ω))) S.μ
-  | k, hk => by
-      have hPartial :
-          StronglyMeasurable[S.flatPastSigma k]
-            (fun ω => weightedPartialSum (S.flatCoeff t) S.flatNoise k ω) :=
-        S.flatPartialSum_stronglyMeasurable_at t k k le_rfl
-      have hMirror :
-          StronglyMeasurable[S.flatPastSigma k]
-            (fun ω => S.mirrorMap (weightedPartialSum (S.flatCoeff t) S.flatNoise k ω)) :=
-        S.mirrorMap_continuous.comp_stronglyMeasurable hPartial
-      exact
-        (S.pairing.toLinear.continuous.comp_stronglyMeasurable hMirror).aestronglyMeasurable
 
 private theorem flatCoeff_nonneg
     (S : StochasticSteepestDescentGeometryContext Ω V)
@@ -564,6 +539,48 @@ private theorem flatCoeff_sum_le_one
   have hPowNonneg : 0 ≤ S.beta ^ t := by
     exact pow_nonneg S.beta_nonneg _
   linarith
+
+private theorem flatCoeff_measurable
+    (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
+    ∀ k, k < t * S.batchSize →
+      AEStronglyMeasurable[S.flatPastSigma k]
+        (fun ω =>
+          S.pairing.toLinear (S.mirrorMap (weightedPartialSum (S.flatCoeff t) S.flatNoise k ω))) S.μ
+  | k, hk => by
+      have hPartial :
+          StronglyMeasurable[S.flatPastSigma k]
+            (fun ω => weightedPartialSum (S.flatCoeff t) S.flatNoise k ω) :=
+        S.flatPartialSum_stronglyMeasurable_at t k k le_rfl
+      have hCoeffSumLeOne :
+          Finset.sum (Finset.range k) (fun m => S.flatCoeff t m) ≤ 1 := by
+        refine
+          (Finset.sum_le_sum_of_subset_of_nonneg
+            (Finset.range_mono (Nat.le_of_lt hk)) ?_).trans (S.flatCoeff_sum_le_one t)
+        intro m _ _
+        exact S.flatCoeff_nonneg t m
+      have hPartialBound :
+          ∀ᵐ ω ∂S.μ, ‖weightedPartialSum (S.flatCoeff t) S.flatNoise k ω‖ ≤ S.noiseRadius :=
+        weightedPartialSum_norm_le_noiseRadius_ae
+          S.pairing S.assumption4_localProxyPotential
+          (μ := S.μ)
+          (ξ := S.flatNoise)
+          (α := S.flatCoeff t)
+          (n := k)
+          (coeff_nonneg := by intro i hi; exact S.flatCoeff_nonneg t i)
+          (coeff_sum_le_one := hCoeffSumLeOne)
+          (sample_norm_le_noiseRadius_ae := by
+            intro i hi
+            exact S.flatNoise_norm_le_noiseRadius_ae i)
+          k le_rfl
+      have hMirror :
+          AEStronglyMeasurable[S.flatPastSigma k]
+            (fun ω => S.mirrorMap (weightedPartialSum (S.flatCoeff t) S.flatNoise k ω)) S.μ :=
+        Assumption4_LocalSmoothProxyPotential.mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
+          (V := V) (VDual := StrongDual ℝ V) (pairing := S.pairing) (Ω := Ω)
+          S.assumption4_localProxyPotential
+          (m := S.flatPastSigma k) (μ := S.μ)
+          hPartial.aestronglyMeasurable hPartialBound
+      exact S.pairing.toLinear.continuous.comp_aestronglyMeasurable hMirror
 
 private theorem momentumNoiseProcess_eq_flatPartialSum
     (S : StochasticSteepestDescentGeometryContext Ω V) :
@@ -679,7 +696,6 @@ private theorem flatWeightedNoise_analysis
         (coeff_nonneg := by intro i hi; exact S.flatCoeff_nonneg t i)
         (coeff_sum_le_one := S.flatCoeff_sum_le_one t)
         (sample_stronglyMeasurable := fun i => S.flatNoise_stronglyMeasurable i)
-        (sample_integrable := by intro i hi; exact S.flatNoise_integrable i)
         (coeff_measurable := by intro i hi; exact S.flatCoeff_measurable t i hi)
         (cond_zero := by intro i hi; exact S.flatNoise_condexp_zero i)
         (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.flatNoise_norm_le_noiseRadius_ae i)
@@ -697,7 +713,6 @@ private theorem flatWeightedNoise_analysis
         (coeff_nonneg := by intro i hi; exact S.flatCoeff_nonneg t i)
         (coeff_sum_le_one := S.flatCoeff_sum_le_one t)
         (sample_stronglyMeasurable := fun i => S.flatNoise_stronglyMeasurable i)
-        (sample_integrable := by intro i hi; exact S.flatNoise_integrable i)
         (coeff_measurable := by intro i hi; exact S.flatCoeff_measurable t i hi)
         (cond_zero := by intro i hi; exact S.flatNoise_condexp_zero i)
         (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.flatNoise_norm_le_noiseRadius_ae i)

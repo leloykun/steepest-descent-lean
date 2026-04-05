@@ -9,6 +9,137 @@ open ProbabilityTheory
 
 noncomputable section
 
+section IntegrabilityHelpers
+
+/-- Square-integrability on a probability space implies integrability of the norm. -/
+theorem integrable_norm_of_sq_integrable
+    {Ω E : Type*}
+    [MeasurableSpace Ω]
+    [NormedAddCommGroup E]
+    [MeasurableSpace E]
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → E}
+    (hf : StronglyMeasurable f)
+    (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ) :
+    Integrable (fun ω => ‖f ω‖) μ := by
+  have hConst : Integrable (fun _ : Ω => (1 : ℝ)) μ := integrable_const 1
+  refine Integrable.mono' ((hf_sq.add hConst).const_mul (1 / 2 : ℝ))
+    hf.norm.aestronglyMeasurable ?_
+  filter_upwards with ω
+  have hYoung : ‖f ω‖ ≤ (‖f ω‖ ^ 2 + 1) / 2 := by
+    nlinarith [sq_nonneg (‖f ω‖ - 1)]
+  have hRightNonneg : 0 ≤ (‖f ω‖ ^ 2 + 1) / 2 := by positivity
+  simpa [div_eq_mul_inv, mul_comm, Real.norm_of_nonneg (norm_nonneg _),
+    Real.norm_of_nonneg hRightNonneg] using hYoung
+
+/-- Square-integrability on a probability space implies vector-valued integrability. -/
+theorem integrable_of_sq_integrable
+    {Ω E : Type*}
+    [MeasurableSpace Ω]
+    [NormedAddCommGroup E]
+    [MeasurableSpace E]
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → E}
+    (hf : StronglyMeasurable f)
+    (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ) :
+    Integrable f μ := by
+  exact
+    (integrable_norm_iff hf.aestronglyMeasurable).mp
+      (integrable_norm_of_sq_integrable hf hf_sq)
+
+end IntegrabilityHelpers
+
+namespace Assumption4_LocalSmoothProxyPotential
+
+variable {V VDual : Type*}
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
+variable {pairing : ContinuousDualPairingContext VDual V}
+
+/-- The proxy potential is continuous because it has a Fréchet derivative everywhere. -/
+lemma potential_continuous
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
+    Continuous P.potential := by
+  refine continuous_iff_continuousAt.mpr ?_
+  intro x
+  exact (P.potential_fderiv_eq x).continuousAt
+
+/-- Assumption 4 gives a Lipschitz mirror map on the closed noise ball. -/
+lemma mirrorMap_lipschitzOn_noiseBall
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
+    LipschitzOnWith (Real.toNNReal P.D) P.mirrorMap
+      (Metric.closedBall 0 P.noiseRadius) := by
+  refine LipschitzOnWith.of_dist_le_mul ?_
+  intro x hx y hy
+  have hx' : ‖x‖ ≤ P.noiseRadius := by
+    simpa [Metric.mem_closedBall, dist_eq_norm] using hx
+  have hy' : ‖y‖ ≤ P.noiseRadius := by
+    simpa [Metric.mem_closedBall, dist_eq_norm] using hy
+  have hBound := P.mirrorMap_local_lipschitz.bound hx' hy'
+  simpa [dist_eq_norm, norm_sub_rev, Real.toNNReal_of_nonneg P.D_nonneg] using hBound
+
+/-- The mirror map is continuous on the closed Assumption-4 noise ball. -/
+lemma mirrorMap_continuousOn_noiseBall
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
+    ContinuousOn P.mirrorMap (Metric.closedBall 0 P.noiseRadius) :=
+  P.mirrorMap_lipschitzOn_noiseBall.continuousOn
+
+/-- The mirror map becomes measurable after restricting its domain to the noise ball. -/
+lemma mirrorMap_restrict_measurable
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual] :
+    Measurable ((Metric.closedBall (0 : VDual) P.noiseRadius).restrict P.mirrorMap) := by
+  exact
+    (continuousOn_iff_continuous_restrict.1
+      P.mirrorMap_continuousOn_noiseBall).measurable
+
+/-- If a dual-valued process stays in the noise ball almost surely, then applying the
+Assumption-4 mirror map preserves a.e. strong measurability. -/
+lemma mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
+    {Ω : Type*} [MeasurableSpace Ω]
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
+    {m m0 : MeasurableSpace Ω} {μ : @Measure Ω m0} {f : Ω → VDual}
+    (hf : AEStronglyMeasurable[m] f μ)
+    (hball : ∀ᵐ ω ∂μ, ‖f ω‖ ≤ P.noiseRadius) :
+    AEStronglyMeasurable[m] (fun ω => P.mirrorMap (f ω)) μ := by
+  have hff' : f =ᵐ[μ] hf.mk f := hf.ae_eq_mk
+  have hball' : ∀ᵐ ω ∂μ, ‖hf.mk f ω‖ ≤ P.noiseRadius := by
+    filter_upwards [hball, hff'] with ω hω hEq
+    simpa [hEq] using hω
+  have hnorm_meas : Measurable[m] (fun ω => ‖hf.mk f ω‖) := by
+    exact (hf.stronglyMeasurable_mk.norm).measurable
+  have hs_meas : MeasurableSet[m] {ω | ‖hf.mk f ω‖ ≤ P.noiseRadius} := by
+    change MeasurableSet[m] ((fun ω => ‖hf.mk f ω‖) ⁻¹' Set.Iic P.noiseRadius)
+    exact hnorm_meas measurableSet_Iic
+  let g : Ω → VDual := fun ω => if ‖hf.mk f ω‖ ≤ P.noiseRadius then hf.mk f ω else 0
+  have hg_meas : Measurable[m] g := by
+    simpa [g, Set.piecewise] using hf.measurable_mk.piecewise hs_meas measurable_const
+  have hg_mem : ∀ ω, g ω ∈ Metric.closedBall (0 : VDual) P.noiseRadius := by
+    intro ω
+    by_cases hω : ‖hf.mk f ω‖ ≤ P.noiseRadius
+    · simp [g, hω, Metric.mem_closedBall, dist_eq_norm]
+    · have hzero : ‖(0 : VDual)‖ ≤ P.noiseRadius := by simpa using P.noiseRadius_nonneg
+      simpa [g, hω, Metric.mem_closedBall] using hzero
+  have hfg : hf.mk f =ᵐ[μ] g := by
+    filter_upwards [hball'] with ω hω
+    simp [g, hω]
+  have hcod :
+      Measurable[m]
+        ((Metric.closedBall (0 : VDual) P.noiseRadius).codRestrict g
+          (by intro ω; exact hg_mem ω)) := by
+    exact Measurable.subtype_mk hg_meas
+  have hMirrorMeas :
+      Measurable[m] (fun ω => P.mirrorMap (g ω)) := by
+    simpa [Function.comp_def, Set.restrict_comp_codRestrict
+      (by intro ω; exact hg_mem ω)] using
+      P.mirrorMap_restrict_measurable.comp hcod
+  exact (hMirrorMeas.stronglyMeasurable.aestronglyMeasurable).congr <| by
+    filter_upwards [hff', hfg] with ω hω1 hω2
+    simp [hω1, hω2]
+
+end Assumption4_LocalSmoothProxyPotential
+
 /-!
 Stochastic process support layer for the realized stochastic steepest-descent model.
 
@@ -339,6 +470,33 @@ lemma grad_stronglyMeasurable
   intro t
   exact (S.grad_measurable t).stronglyMeasurable
 
+/-- The refined per-sample noise is integrable by the Assumption-4 radius bound. -/
+private lemma ξ_integrable
+    (S : StochasticSteepestDescentGeometryContext Ω V)
+    (t : ℕ) (i : Fin S.batchSize) :
+    Integrable (S.ξ t i) S.μ := by
+  letI := S.prob
+  have hξStrong : StronglyMeasurable (S.ξ t i) := by
+    simpa [StochasticSteepestDescentGeometryContext.ξ] using
+      (S.grad_stronglyMeasurable t).sub ((S.assumption1_sampling.sample_measurable t i).stronglyMeasurable)
+  have hξSq : Integrable (fun ω => ‖S.ξ t i ω‖ ^ 2) S.μ := by
+    have hSqAEStrong :
+        AEStronglyMeasurable (fun ω => ‖S.ξ t i ω‖ ^ 2) S.μ := by
+      exact (hξStrong.norm.measurable.pow_const 2).aestronglyMeasurable
+    have hConst : Integrable (fun _ : Ω => S.noiseRadius ^ 2) S.μ :=
+      MeasureTheory.integrable_const _
+    refine Integrable.mono' hConst hSqAEStrong ?_
+    filter_upwards [S.assumption4_oracleSampleNoiseBound t i] with ω hω
+    have hω' : ‖S.ξ t i ω‖ ≤ S.noiseRadius := by
+      simpa [StochasticSteepestDescentGeometryContext.ξ,
+        StochasticSteepestDescentGeometryContext.grad,
+        StochasticSteepestDescentGeometryContext.noiseRadius] using hω
+    have hSq : ‖S.ξ t i ω‖ ^ 2 ≤ S.noiseRadius ^ 2 := by
+      nlinarith [hω', S.noiseRadius_nonneg, norm_nonneg (S.ξ t i ω)]
+    simpa [Real.norm_of_nonneg (sq_nonneg _),
+      Real.norm_of_nonneg (sq_nonneg _)] using hSq
+  exact integrable_of_sq_integrable hξStrong hξSq
+
 /-- The current iterate is measurable with respect to its prefix filtration. -/
 lemma current_iterate_prefixMeasurable
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ)
@@ -391,12 +549,6 @@ lemma grad_prefixStronglyMeasurable
       S.fGrad_restrict_measurable.comp hWcod
   exact hGrad.stronglyMeasurable
 
-/-- The realized stochastic-gradient samples are integrable. -/
-lemma sample_integrable
-    (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ t i, Integrable (S.stochasticGradientSample t i) S.μ :=
-  S.assumption1_sampling.estimator_integrable
-
 /-- The realized stochastic-gradient samples are measurable. -/
 lemma sample_measurable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
@@ -415,9 +567,67 @@ lemma sample_condexp_eq_grad
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t i, S.μ[S.stochasticGradientSample t i | S.iterateSigma t] =ᵐ[S.μ] S.grad t := by
   intro t i
-  simpa [StochasticSteepestDescentGeometryContext.iterateSigma,
-    StochasticSteepestDescentGeometryContext.grad] using
-    S.assumption1_sampling.estimator_condexp_eq_grad t i
+  have hIterLePrefix :
+      S.iterateSigma t ≤
+        samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i := by
+    unfold StochasticSteepestDescentGeometryContext.iterateSigma samplePrefixSigma
+    exact le_sup_left
+  have hPrefixLe :
+      samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i ≤
+        inferInstanceAs (MeasurableSpace Ω) :=
+    S.samplePrefixSigma_le t i
+  letI := S.prob
+  letI : IsFiniteMeasure S.μ := by infer_instance
+  letI : SigmaFinite (S.μ.trim hPrefixLe) := by infer_instance
+  have hGradInt : Integrable (S.grad t) S.μ := by
+    have hCondInt :
+        Integrable
+          (S.μ[S.stochasticGradientSample t i |
+            samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i]) S.μ := by
+      simpa using
+        (MeasureTheory.integrable_condExp
+          (m := samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i)
+          (μ := S.μ)
+          (f := S.stochasticGradientSample t i))
+    exact hCondInt.congr (by
+      simpa [StochasticSteepestDescentGeometryContext.grad] using
+        S.assumption1_sampling.estimator_condexp_eq_grad_of_prefix S.batchSize_pos t i)
+  have hWiter :
+      Measurable[S.iterateSigma t]
+        (S.constraintBall.codRestrict (S.W t) (S.W_mem_constraintBall t)) := by
+    exact Measurable.subtype_mk <| Measurable.of_comap_le <| by
+      unfold StochasticSteepestDescentGeometryContext.iterateSigma
+      exact le_rfl
+  have hGradIter :
+      StronglyMeasurable[S.iterateSigma t] (S.grad t) := by
+    have hGradMeas :
+        Measurable[S.iterateSigma t] (fun ω => S.fGrad (S.W t ω)) := by
+      simpa [Function.comp_def, StochasticSteepestDescentGeometryContext.grad,
+        Set.restrict_comp_codRestrict (S.W_mem_constraintBall t)] using
+        S.fGrad_restrict_measurable.comp hWiter
+    exact hGradMeas.stronglyMeasurable
+  calc
+    S.μ[S.stochasticGradientSample t i | S.iterateSigma t]
+      =ᵐ[S.μ]
+        S.μ[S.μ[S.stochasticGradientSample t i |
+          samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i]
+          | S.iterateSigma t] := by
+            exact
+              (MeasureTheory.condExp_condExp_of_le
+                (μ := S.μ) (f := S.stochasticGradientSample t i)
+                hIterLePrefix hPrefixLe).symm
+    _ =ᵐ[S.μ] S.μ[S.grad t | S.iterateSigma t] := by
+          exact MeasureTheory.condExp_congr_ae <| by
+            simpa [StochasticSteepestDescentGeometryContext.grad] using
+              S.assumption1_sampling.estimator_condexp_eq_grad_of_prefix S.batchSize_pos t i
+    _ =ᵐ[S.μ] S.grad t := by
+          exact Filter.EventuallyEq.of_eq
+            (MeasureTheory.condExp_of_stronglyMeasurable
+              (μ := S.μ)
+              (m := S.iterateSigma t)
+              (hIterLePrefix.trans hPrefixLe)
+              hGradIter
+              hGradInt)
 
 /-- Assumption 1 rewritten on the refined prefix filtration. -/
 lemma sample_condexp_eq_grad_of_prefix
@@ -428,7 +638,7 @@ lemma sample_condexp_eq_grad_of_prefix
         =ᵐ[S.μ] S.grad t := by
   intro t i
   simpa [StochasticSteepestDescentGeometryContext.grad] using
-    S.assumption1_sampling.estimator_condexp_eq_grad_of_prefix t i
+    S.assumption1_sampling.estimator_condexp_eq_grad_of_prefix S.batchSize_pos t i
 
 /-- The true gradient process is integrable at each time. -/
 lemma grad_integrable
@@ -445,6 +655,19 @@ lemma grad_integrable
         (μ := S.μ)
         (f := S.stochasticGradientSample t i))
   exact hCondInt.congr (by simpa using (S.sample_condexp_eq_grad t i))
+
+/-- The realized stochastic-gradient samples are integrable. -/
+lemma sample_integrable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t i, Integrable (S.stochasticGradientSample t i) S.μ := by
+  intro t i
+  have hEq :
+      S.stochasticGradientSample t i =
+        fun ω => S.grad t ω - S.ξ t i ω := by
+    funext ω
+    simp [StochasticSteepestDescentGeometryContext.ξ, sub_eq_add_neg]
+  rw [hEq]
+  exact (S.grad_integrable t).sub (S.ξ_integrable t i)
 
 /-- The refined per-sample noises have zero conditional expectation on the prefix filtration. -/
 lemma ξ_condexp_eq_zero_of_prefix
@@ -496,9 +719,26 @@ lemma second_moment_integrable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
     ∀ t i, Integrable (fun ω => ‖S.ξ t i ω‖ ^ 2) S.μ := by
   intro t i
-  simpa [StochasticSteepestDescentGeometryContext.ξ,
-    StochasticSteepestDescentGeometryContext.grad] using
-    S.assumption2_secondMoment.noise_sq_integrable t i
+  letI := S.prob
+  have hXiStrong : StronglyMeasurable (S.ξ t i) := by
+    simpa [StochasticSteepestDescentGeometryContext.ξ] using
+      (S.grad_stronglyMeasurable t).sub (S.sample_stronglyMeasurable t i)
+  have hSqAEStrong :
+      AEStronglyMeasurable (fun ω => ‖S.ξ t i ω‖ ^ 2) S.μ := by
+    exact (hXiStrong.norm.measurable.pow_const 2).aestronglyMeasurable
+  have hConst : Integrable (fun _ : Ω => S.noiseRadius ^ 2) S.μ :=
+    MeasureTheory.integrable_const _
+  refine Integrable.mono' hConst hSqAEStrong ?_
+  filter_upwards [S.assumption4_oracleSampleNoiseBound t i] with ω hω
+  have hω' : ‖S.ξ t i ω‖ ≤ S.noiseRadius := by
+    simpa [StochasticSteepestDescentGeometryContext.ξ,
+      StochasticSteepestDescentGeometryContext.grad,
+      StochasticSteepestDescentGeometryContext.noiseRadius] using hω
+  have hSq : ‖S.ξ t i ω‖ ^ 2 ≤ S.noiseRadius ^ 2 := by
+    nlinarith [hω', S.noiseRadius_nonneg, norm_nonneg (S.ξ t i ω)]
+  simpa [
+    Real.norm_of_nonneg (sq_nonneg _),
+    Real.norm_of_nonneg (sq_nonneg _)] using hSq
 
 /-- The conditional second moment of the per-sample noise is uniformly bounded. -/
 lemma sample_cond_secondMoment_le
@@ -589,6 +829,15 @@ lemma sample_mean_zero
           simp [StochasticSteepestDescentGeometryContext.ξ,
             MeasureTheory.integral_sub hGradInt hSampleInt]
     _ = 0 := sub_eq_zero.mpr hEq
+
+/-- Assumption 4 rewritten as a bound on the raw samplewise gradient error. -/
+lemma oracle_sample_norm_le_noiseRadius_ae
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t i, ∀ᵐ ω ∂S.μ, ‖S.grad t ω - S.stochasticGradientSample t i ω‖ ≤ S.noiseRadius := by
+  intro t i
+  simpa [StochasticSteepestDescentGeometryContext.grad,
+    StochasticSteepestDescentGeometryContext.noiseRadius] using
+    S.assumption4_oracleSampleNoiseBound t i
 
 /-- The refined per-sample noise is almost surely supported in the Assumption-4 radius. -/
 lemma sample_norm_le_noiseRadius_ae

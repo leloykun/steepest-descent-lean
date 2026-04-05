@@ -191,7 +191,6 @@ structure PerSampleDrawProcess
   prob : IsProbabilityMeasure μ
   draw : ℕ → Fin batchSize → Ω → Ξ
   draw_measurable : ∀ t i, @Measurable Ω Ξ inferInstance measurableSpaceΞ (draw t i)
-  batchSize_pos : 0 < batchSize
 
 /--
 Flatten the doubly indexed sample family `(t, i)` into a single natural index.
@@ -339,9 +338,8 @@ lemma flatSample_measurable_of_lt
   simpa [flatSample, flatSamplePrefixTuple, tuple, proj] using hProj.comp hTuple
 
 structure Assumption1_UnbiasedFreshBatchSampling
-    (Ω Ξ V VDual : Type*)
+    (Ω V VDual : Type*)
     [MeasurableSpace Ω]
-    [MeasurableSpace Ξ]
     [MeasurableSpace V] [TopologicalSpace V] [BorelSpace V]
     [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
     [MeasurableSpace VDual] [BorelSpace VDual]
@@ -349,32 +347,18 @@ structure Assumption1_UnbiasedFreshBatchSampling
     (batchSize : ℕ)
     (μ : Measure Ω)
     (W : ℕ → Ω → V)
-    (draw : ℕ → Fin batchSize → Ω → Ξ)
     (sample : ℕ → Fin batchSize → Ω → VDual)
     (grad : ℕ → Ω → VDual) where
-  batchSize_pos : 0 < batchSize
   sample_measurable :
     ∀ t i, Measurable (sample t i)
-  estimator_integrable :
-    ∀ t i, Integrable (sample t i) μ
-  estimator_condexp_eq_grad :
-    ∀ t i,
-      μ[sample t i | MeasurableSpace.comap (W t) inferInstance] =ᵐ[μ] grad t
   /--
   The theorem-facing freshness consequence of Assumption 1: after conditioning
   on the current iterate and every previously revealed sample, the next sample
   remains unbiased.
   -/
   estimator_condexp_eq_grad_of_prefix :
-    ∀ t i,
-      μ[sample t i | samplePrefixSigma batchSize_pos W sample t i] =ᵐ[μ] grad t
-  /--
-  Mutual independence of the underlying fresh draws across all time/sample
-  indices.
-  -/
-  draw_iIndep :
-    iIndepFun
-      (fun p : ℕ × Fin batchSize => draw p.1 p.2) μ
+    ∀ (hb : 0 < batchSize) t i,
+      μ[sample t i | samplePrefixSigma hb W sample t i] =ᵐ[μ] grad t
 
 /--
 Assumption 2: a uniform conditional second-moment bound on the per-sample
@@ -398,8 +382,10 @@ structure Assumption2_PerSampleGradientNoiseSecondMomentBound
     (grad : ℕ → Ω → VDual) where
   sigma : ℝ
   sigma_nonneg : 0 ≤ sigma
-  noise_sq_integrable :
-    ∀ t i, Integrable (fun ω => ‖grad t ω - sample t i ω‖ ^ 2) μ
+  /--
+  Conditioning only on the current iterate, the squared per-sample gradient
+  noise still has conditional expectation bounded by `sigma ^ 2`.
+  -/
   cond_secondMoment_le :
     ∀ t i,
       μ[fun ω => ‖grad t ω - sample t i ω‖ ^ 2 |
@@ -526,7 +512,6 @@ structure Assumption4_LocalSmoothProxyPotential
     ∀ x,
       HasFDerivAt potential
         (pairing.toLinear (mirrorMap x)) x
-  mirrorMap_continuous : Continuous mirrorMap
   mirrorMap_local_lipschitz :
     LocalLipschitzOnClosedBallUnderNormPair mirrorMap noiseRadius D
   norm_sq_le_two_potential_on_ball : ∀ x, ‖x‖ ≤ noiseRadius → ‖x‖ ^ 2 ≤ 2 * potential x
@@ -556,14 +541,24 @@ lemma D_nonneg
     (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) : 0 ≤ P.D :=
   P.mirrorMap_local_lipschitz.nonneg
 
-lemma potential_continuous
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
-    Continuous P.potential := by
-  refine continuous_iff_continuousAt.mpr ?_
-  intro x
-  exact (P.potential_fderiv_eq x).continuousAt
-
 end Assumption4_LocalSmoothProxyPotential
+
+/--
+Companion stochastic Assumption-4 clause: every realized oracle sample stays
+within the proxy-potential noise radius around the true gradient.
+-/
+def Assumption4_LocalSmoothProxyPotential.OracleSampleNoiseBound
+    {Ω V VDual : Type*}
+    [MeasurableSpace Ω]
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
+    {batchSize : ℕ}
+    {pairing : ContinuousDualPairingContext VDual V}
+    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    (μ : Measure Ω)
+    (sample : ℕ → Fin batchSize → Ω → VDual)
+    (grad : ℕ → Ω → VDual) : Prop :=
+  ∀ t i, ∀ᵐ ω ∂μ, ‖grad t ω - sample t i ω‖ ≤ P.noiseRadius
 
 /--
 Assumption 12: `f` is star-convex at the designated reference point `W_*`.
@@ -616,11 +611,9 @@ structure SteepestDescentPathGeometryContext
     ∀ t,
       momentum (t + 1) =
         beta • momentum t + (1 - beta) • minibatchGradient (t + 1)
-  C : ℕ → StrongDual ℝ V
-  C_spec :
-    ∀ t, C t = beta • momentum t + (1 - beta) • minibatchGradient t
   aStar : ℕ → V
-  aStar_spec : ∀ t, IsLMO (C t) (aStar t)
+  aStar_spec :
+    ∀ t, IsLMO (beta • momentum t + (1 - beta) • minibatchGradient t) (aStar t)
   update_eq :
     ∀ t, W (t + 1) = ((1 - lambda * eta) • W t) + eta • aStar t
   assumption3_fLocalSmoothness : Assumption3_FLocalSmoothness fGrad lambda
@@ -752,8 +745,8 @@ structure StochasticSteepestDescentGeometryContext
   -- Assumptions 1--4.
   assumption1_sampling :
     Assumption1_UnbiasedFreshBatchSampling
-      Ω Ξ V (StrongDual ℝ V) batchSize drawProcess.μ
-      W drawProcess.draw stochasticGradientSample (fun t ω => fGrad (W t ω))
+      Ω V (StrongDual ℝ V) batchSize drawProcess.μ
+      W stochasticGradientSample (fun t ω => fGrad (W t ω))
   assumption2_secondMoment :
     Assumption2_PerSampleGradientNoiseSecondMomentBound
       Ω V (StrongDual ℝ V) batchSize drawProcess.μ
@@ -762,10 +755,13 @@ structure StochasticSteepestDescentGeometryContext
     Assumption3_FLocalSmoothness fGrad lambda
   assumption4_localProxyPotential :
     Assumption4_LocalSmoothProxyPotential V (StrongDual ℝ V) pairing
-  oracle_sample_norm_le_noiseRadius_ae :
-    ∀ t i, ∀ᵐ ω ∂drawProcess.μ,
-      ‖fGrad (W t ω) - stochasticGradientSample t i ω‖ ≤
-        assumption4_localProxyPotential.noiseRadius
+  assumption4_oracleSampleNoiseBound :
+    Assumption4_LocalSmoothProxyPotential.OracleSampleNoiseBound
+      (batchSize := batchSize)
+      assumption4_localProxyPotential
+      drawProcess.μ
+      stochasticGradientSample
+      (fun t ω => fGrad (W t ω))
 
 /--
 Realized stochastic geometry specialized to the star-convex layer.
@@ -825,6 +821,17 @@ variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual
 def grad (S : SteepestDescentPathGeometryContext V) (t : ℕ) : StrongDual ℝ V :=
   S.fGrad (S.W t)
 
+/-- The Nesterov search direction `C_t = β m_t + (1 - β) g_t`. -/
+def C (S : SteepestDescentPathGeometryContext V) (t : ℕ) : StrongDual ℝ V :=
+  S.beta • S.momentum t + (1 - S.beta) • S.minibatchGradient t
+
+/-- The search direction satisfies the defining Nesterov recursion. -/
+lemma C_spec
+    (S : SteepestDescentPathGeometryContext V) :
+    ∀ t, S.C t = S.beta • S.momentum t + (1 - S.beta) • S.minibatchGradient t := by
+  intro t
+  rfl
+
 /-- The Assumption-4 proxy potential `g` on a deterministic path. -/
 def potential (S : SteepestDescentPathGeometryContext V) :
     StrongDual ℝ V → ℝ :=
@@ -870,14 +877,6 @@ lemma potential_fderiv_eq (S : SteepestDescentPathGeometryContext V) :
       HasFDerivAt S.potential
         (S.pairing.toLinear (S.mirrorMap x)) x :=
   S.assumption4_localProxyPotential.potential_fderiv_eq
-
-lemma potential_continuous (S : SteepestDescentPathGeometryContext V) :
-    Continuous S.potential :=
-  S.assumption4_localProxyPotential.potential_continuous
-
-lemma mirrorMap_continuous (S : SteepestDescentPathGeometryContext V) :
-    Continuous S.mirrorMap :=
-  S.assumption4_localProxyPotential.mirrorMap_continuous
 
 lemma norm_sq_le_two_potential_of_mem_noiseRadius
     (S : SteepestDescentPathGeometryContext V) (x : StrongDual ℝ V)
@@ -1021,14 +1020,6 @@ lemma potential_fderiv_eq (S : StochasticSteepestDescentGeometryContext Ω V) :
         (S.pairing.toLinear (S.mirrorMap x)) x :=
   S.assumption4_localProxyPotential.potential_fderiv_eq
 
-lemma potential_continuous (S : StochasticSteepestDescentGeometryContext Ω V) :
-    Continuous S.potential :=
-  S.assumption4_localProxyPotential.potential_continuous
-
-lemma mirrorMap_continuous (S : StochasticSteepestDescentGeometryContext Ω V) :
-    Continuous S.mirrorMap :=
-  S.assumption4_localProxyPotential.mirrorMap_continuous
-
 lemma norm_sq_le_two_potential_of_mem_noiseRadius
     (S : StochasticSteepestDescentGeometryContext Ω V) (x : StrongDual ℝ V)
     (hx : ‖x‖ ≤ S.noiseRadius) :
@@ -1081,10 +1072,6 @@ def path (S : StochasticSteepestDescentGeometryContext Ω V) (ω : Ω) :
   momentum_succ := by
     intro t
     exact S.momentum_succ t ω
-  C := fun t => S.C t ω
-  C_spec := by
-    intro t
-    exact S.C_spec t ω
   aStar := fun t => S.aStar t ω
   aStar_spec := by
     intro t

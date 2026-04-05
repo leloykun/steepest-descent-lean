@@ -147,6 +147,7 @@ section GenericWeightedNoise
 variable {Ω V VDual : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
 variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
 variable [MeasurableSpace VDual] [BorelSpace VDual]
 variable [SecondCountableTopology VDual] [CompleteSpace VDual]
@@ -240,6 +241,7 @@ def weightedPartialSum
 
 omit [MeasurableSpace Ω] [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weightedPartialSum_norm_le_noiseRadius_of_mem
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
@@ -303,6 +305,7 @@ private theorem weighted_smooth_step
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem sample_norm_le_noiseRadius_all_ae
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
@@ -329,7 +332,7 @@ private theorem sample_norm_le_noiseRadius_all_ae
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
-private theorem weightedPartialSum_norm_le_noiseRadius_ae
+theorem weightedPartialSum_norm_le_noiseRadius_ae
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
     {μ : Measure Ω} {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ}
@@ -420,7 +423,7 @@ private theorem integrable_norm_mul_of_sq_integrable
 
 omit [NormedSpace ℝ VDual] [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
-private theorem integrable_norm_of_sq_integrable
+private theorem integrable_norm_of_sq_integrable_local
     {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → VDual}
     (hf : StronglyMeasurable f)
     (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ) :
@@ -435,8 +438,20 @@ private theorem integrable_norm_of_sq_integrable
   simpa [div_eq_mul_inv, mul_comm, Real.norm_of_nonneg (norm_nonneg _),
     Real.norm_of_nonneg hRightNonneg] using hYoung
 
+omit [NormedSpace ℝ VDual] [MeasurableSpace VDual] [BorelSpace VDual]
+  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+private theorem integrable_of_sq_integrable_local
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → VDual}
+    (hf : StronglyMeasurable f)
+    (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ) :
+    Integrable f μ := by
+  exact
+    (integrable_norm_iff hf.aestronglyMeasurable).mp
+      (integrable_norm_of_sq_integrable_local hf hf_sq)
+
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weighted_partialSum_sq_integrable
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
@@ -467,9 +482,13 @@ private theorem weighted_partialSum_sq_integrable
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weighted_linearized_cross_integrable
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual]
+    [SecondCountableTopology VDual] [CompleteSpace VDual]
     {μ : Measure Ω} {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {k : ℕ}
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
     (partial_sq_integrable :
@@ -489,14 +508,17 @@ private theorem weighted_linearized_cross_integrable
       StronglyMeasurable (fun ω => weightedPartialSum α ξ k ω) :=
     weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable k
   have hMirror :
-      StronglyMeasurable
-        (fun ω => B.mirrorMap (weightedPartialSum α ξ k ω)) :=
-    B.mirrorMap_continuous.comp_stronglyMeasurable hPartial
+      AEStronglyMeasurable
+        (fun ω => B.mirrorMap (weightedPartialSum α ξ k ω)) μ :=
+    Assumption4_LocalSmoothProxyPotential.mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
+      (V := V) (VDual := VDual) (pairing := P) (Ω := Ω)
+      B
+      (m := inferInstance) (μ := μ) hPartial.aestronglyMeasurable partial_norm_le_noiseRadius_ae
   let coeffFun : Ω → VDual →L[ℝ] ℝ := fun ω =>
     P.toLinear (B.mirrorMap (weightedPartialSum α ξ k ω))
   have hCoeff :
       AEStronglyMeasurable coeffFun μ :=
-    (P.toLinear.continuous.comp_stronglyMeasurable hMirror).aestronglyMeasurable
+    P.toLinear.continuous.comp_aestronglyMeasurable hMirror
   have hXi : AEStronglyMeasurable (ξ k) μ :=
     (sample_stronglyMeasurable k).aestronglyMeasurable
   have hMeas :
@@ -529,15 +551,18 @@ private theorem weighted_linearized_cross_integrable
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] [CompleteSpace VDual] in
 private theorem weighted_cross_term_zero_at
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
+    [CompleteSpace VDual]
     {μ : Measure Ω} [IsProbabilityMeasure μ]
     {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n k : ℕ}
     (pastSigma : ℕ → MeasurableSpace Ω)
     (pastSigma_le : ∀ i, pastSigma i ≤ inferInstanceAs (MeasurableSpace Ω))
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (sample_integrable : ∀ i, i < n → Integrable (ξ i) μ)
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
@@ -577,13 +602,15 @@ private theorem weighted_cross_term_zero_at
           P.toLinear
             (B.mirrorMap (weightedPartialSum α ξ k ω))
             (ξ k ω) ∂μ = 0 :=
+    let hξ : Integrable (ξ k) μ :=
+      integrable_of_sq_integrable_local (sample_stronglyMeasurable k) sample_sq_integrable
     integral_clm_apply_eq_zero_of_condexp_zero
       (μ := μ)
       (m := pastSigma k)
       (pastSigma_le k)
       (hL := coeff_measurable k hk)
       (hLξ := hInt)
-      (hξ := sample_integrable k hk)
+      (hξ := hξ)
       (hCondZero := cond_zero k hk)
   refine ⟨hInt.const_mul (α k), ?_⟩
   calc
@@ -602,9 +629,13 @@ private theorem weighted_cross_term_zero_at
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
   [SecondCountableTopology VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] [CompleteSpace VDual] in
 private theorem weighted_partial_potential_sq_integrable_and_bound
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
+    [CompleteSpace VDual]
     {μ : Measure Ω} [IsProbabilityMeasure μ]
     {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
@@ -612,7 +643,6 @@ private theorem weighted_partial_potential_sq_integrable_and_bound
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (sample_integrable : ∀ i, i < n → Integrable (ξ i) μ)
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
@@ -655,7 +685,7 @@ private theorem weighted_partial_potential_sq_integrable_and_bound
         (k + 1) (Nat.succ_le_of_lt hk')
     have hCross :=
       weighted_cross_term_zero_at
-        P B pastSigma pastSigma_le sample_stronglyMeasurable sample_integrable
+        P B pastSigma pastSigma_le sample_stronglyMeasurable
         coeff_measurable cond_zero hPrevSqInt hVarInt hPrevBall hk'
     have hCrossInt := hCross.1
     have hCrossZero := hCross.2
@@ -850,6 +880,9 @@ omit [MeasurableSpace VDual] [BorelSpace VDual]
 theorem weighted_noise_sq_integrable
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
+    [CompleteSpace VDual]
     {μ : Measure Ω} [IsProbabilityMeasure μ]
     {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
@@ -857,7 +890,6 @@ theorem weighted_noise_sq_integrable
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (sample_integrable : ∀ i, i < n → Integrable (ξ i) μ)
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
@@ -874,7 +906,7 @@ theorem weighted_noise_sq_integrable
   exact
     (weighted_partial_potential_sq_integrable_and_bound
       P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
-      sample_integrable coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
+      coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
       second_moment_bound n le_rfl).2.1
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
@@ -883,6 +915,9 @@ omit [MeasurableSpace VDual] [BorelSpace VDual]
 theorem weighted_noise_norm_integrable
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
+    [CompleteSpace VDual]
     {μ : Measure Ω} [IsProbabilityMeasure μ]
     {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
@@ -890,7 +925,6 @@ theorem weighted_noise_norm_integrable
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (sample_integrable : ∀ i, i < n → Integrable (ξ i) μ)
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
@@ -905,11 +939,11 @@ theorem weighted_noise_norm_integrable
           ∫ ω, ‖ξ i ω‖ ^ 2 ∂μ ≤ sigma ^ 2) :
     Integrable (fun ω => ‖weightedPartialSum α ξ n ω‖) μ := by
   exact
-    integrable_norm_of_sq_integrable
+    integrable_norm_of_sq_integrable_local
       (weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable n)
       (weighted_noise_sq_integrable
         P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
-        sample_integrable coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
+        coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
         second_moment_bound)
 
 omit [MeasurableSpace VDual] [BorelSpace VDual]
@@ -918,6 +952,9 @@ omit [MeasurableSpace VDual] [BorelSpace VDual]
 theorem weighted_noise_first_moment_bound
     (P : ContinuousDualPairingContext VDual V)
     (B : Assumption4_LocalSmoothProxyPotential V VDual P)
+    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
+    [CompleteSpace VDual]
     {μ : Measure Ω} [IsProbabilityMeasure μ]
     {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
@@ -925,7 +962,6 @@ theorem weighted_noise_first_moment_bound
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (sample_integrable : ∀ i, i < n → Integrable (ξ i) μ)
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
@@ -943,7 +979,7 @@ theorem weighted_noise_first_moment_bound
   let hAll :=
     weighted_partial_potential_sq_integrable_and_bound
       P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
-      sample_integrable coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
+      coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
       second_moment_bound
   have hSqInt :
       Integrable (fun ω => ‖weightedPartialSum α ξ n ω‖ ^ 2) μ :=
@@ -1073,12 +1109,6 @@ private theorem fixedTimePastSigma_eq
       samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t ⟨i, hi⟩ := by
   simp [fixedTimePastSigma, hi]
 
-private theorem fixedTimeNoise_integrable
-    (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
-    Integrable (S.fixedTimeNoise t i) S.μ := by
-  simpa [S.fixedTimeNoise_eq_xi t i hi] using
-    (S.grad_integrable t).sub (S.sample_integrable t ⟨i, hi⟩)
-
 private theorem fixedTimeNoise_condexp_zero
     (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) (hi : i < S.batchSize) :
     S.μ[S.fixedTimeNoise t i | S.fixedTimePastSigma t i] =ᵐ[S.μ] 0 := by
@@ -1167,22 +1197,55 @@ private theorem fixedTimePartialSum_stronglyMeasurable_at
 
 private theorem fixedTimeCoeff_measurable
     (S : StochasticSteepestDescentGeometryContext Ω V)
-    (t : ℕ) {α : ℕ → ℝ} :
+    (t : ℕ) :
     ∀ k, k < S.batchSize →
       AEStronglyMeasurable[S.fixedTimePastSigma t k]
         (fun ω =>
-          S.pairing.toLinear (S.mirrorMap (weightedPartialSum α (S.fixedTimeNoise t) k ω))) S.μ
+          S.pairing.toLinear
+            (S.mirrorMap
+              (weightedPartialSum
+                (fun _ => uniformBatchWeight S.batchSize)
+                (S.fixedTimeNoise t) k ω))) S.μ
   | k, hk => by
     have hPartial :
         StronglyMeasurable[S.fixedTimePastSigma t k]
-          (fun ω => weightedPartialSum α (S.fixedTimeNoise t) k ω) :=
-      fixedTimePartialSum_stronglyMeasurable_at (S := S) (t := t) (α := α) k hk k le_rfl
+          (fun ω =>
+            weightedPartialSum
+              (fun _ => uniformBatchWeight S.batchSize)
+              (S.fixedTimeNoise t) k ω) :=
+      fixedTimePartialSum_stronglyMeasurable_at
+        (S := S) (t := t) (α := fun _ => uniformBatchWeight S.batchSize) k hk k le_rfl
+    have hPartialBound :
+        ∀ᵐ ω ∂S.μ,
+          ‖weightedPartialSum
+              (fun _ => uniformBatchWeight S.batchSize)
+              (S.fixedTimeNoise t)
+              k ω‖ ≤ S.noiseRadius :=
+      weightedPartialSum_norm_le_noiseRadius_ae
+        S.pairing S.assumption4_localProxyPotential
+        (μ := S.μ)
+        (ξ := S.fixedTimeNoise t)
+        (α := fun _ => uniformBatchWeight S.batchSize)
+        (n := S.batchSize)
+        (coeff_nonneg := by intro i hi; exact uniformBatchWeight_nonneg)
+        (coeff_sum_le_one := by simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
+        (sample_norm_le_noiseRadius_ae := by
+          intro i hi
+          exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
+        k (Nat.le_of_lt hk)
     have hMirror :
-        StronglyMeasurable[S.fixedTimePastSigma t k]
-          (fun ω => S.mirrorMap (weightedPartialSum α (S.fixedTimeNoise t) k ω)) :=
-      S.mirrorMap_continuous.comp_stronglyMeasurable hPartial
-    exact
-      (S.pairing.toLinear.continuous.comp_stronglyMeasurable hMirror).aestronglyMeasurable
+        AEStronglyMeasurable[S.fixedTimePastSigma t k]
+          (fun ω =>
+            S.mirrorMap
+              (weightedPartialSum
+                (fun _ => uniformBatchWeight S.batchSize)
+                (S.fixedTimeNoise t) k ω)) S.μ :=
+      Assumption4_LocalSmoothProxyPotential.mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
+        (V := V) (VDual := StrongDual ℝ V) (pairing := S.pairing) (Ω := Ω)
+        S.assumption4_localProxyPotential
+        (m := S.fixedTimePastSigma t k) (μ := S.μ)
+        hPartial.aestronglyMeasurable hPartialBound
+    exact S.pairing.toLinear.continuous.comp_aestronglyMeasurable hMirror
 
 private theorem minibatchNoise_eq_weightedPartialSum
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
@@ -1260,7 +1323,6 @@ private theorem fixedTimeWeightedNoise_analysis
         (coeff_nonneg := by intro i hi; exact uniformBatchWeight_nonneg)
         (coeff_sum_le_one := by simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
         (sample_stronglyMeasurable := fun i => S.fixedTimeNoise_stronglyMeasurable t i)
-        (sample_integrable := by intro i hi; exact S.fixedTimeNoise_integrable t i hi)
         (coeff_measurable := by intro i hi; exact S.fixedTimeCoeff_measurable t i hi)
         (cond_zero := by intro i hi; exact S.fixedTimeNoise_condexp_zero t i hi)
         (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
@@ -1278,7 +1340,6 @@ private theorem fixedTimeWeightedNoise_analysis
         (coeff_nonneg := by intro i hi; exact uniformBatchWeight_nonneg)
         (coeff_sum_le_one := by simpa using uniformBatchWeight_sum_le_one S.batchSize_pos)
         (sample_stronglyMeasurable := fun i => S.fixedTimeNoise_stronglyMeasurable t i)
-        (sample_integrable := by intro i hi; exact S.fixedTimeNoise_integrable t i hi)
         (coeff_measurable := by intro i hi; exact S.fixedTimeCoeff_measurable t i hi)
         (cond_zero := by intro i hi; exact S.fixedTimeNoise_condexp_zero t i hi)
         (sample_norm_le_noiseRadius_ae := by intro i hi; exact S.fixedTimeNoise_norm_le_noiseRadius_ae t i hi)
