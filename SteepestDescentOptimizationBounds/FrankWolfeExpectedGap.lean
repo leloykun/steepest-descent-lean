@@ -37,9 +37,7 @@ variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual
 /-- The expected Frank-Wolfe gap `E[gap_t]`. -/
 def expectedFrankWolfeGap
     (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) : ℝ :=
-  ∫ ω,
-    sSup ((fun V => (S.fGrad (S.W t ω)) (S.W t ω - V)) '' Metric.closedBall (0 : V) (1 / S.lambda))
-      ∂S.μ
+  ∫ ω, S.frankWolfeGap t ω ∂S.μ
 
 end PublicDefinitions
 

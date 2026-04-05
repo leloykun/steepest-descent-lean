@@ -50,38 +50,33 @@ private lemma measurable_comp_of_measurable_restrict
   have hcod : Measurable (s.codRestrict f hfs) := hf.subtype_mk
   simpa [Function.comp_def, Set.restrict_comp_codRestrict hfs] using hg.comp hcod
 
-/-- The primal closed ball on which Assumption 3 controls the gradient map. -/
-private def primalClosedBall
-    (S : StochasticSteepestDescentGeometryContext Ω V) : Set V :=
-  Metric.closedBall (0 : V) (1 / S.lambda)
-
 /-- Assumption 3 gives a Lipschitz gradient map on the primal feasibility ball. -/
-private lemma fGrad_lipschitzOn_primalClosedBall
+private lemma fGrad_lipschitzOn_constraintBall
     (S : StochasticSteepestDescentGeometryContext Ω V) :
-    LipschitzOnWith (Real.toNNReal S.L) S.fGrad S.primalClosedBall := by
+    LipschitzOnWith (Real.toNNReal S.L) S.fGrad S.constraintBall := by
   refine LipschitzOnWith.of_dist_le_mul ?_
   intro x hx y hy
   have hx' : ‖x‖ ≤ 1 / S.lambda := by
-    simpa [primalClosedBall, Metric.mem_closedBall, dist_eq_norm] using hx
+    simpa [StochasticSteepestDescentGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hx
   have hy' : ‖y‖ ≤ 1 / S.lambda := by
-    simpa [primalClosedBall, Metric.mem_closedBall, dist_eq_norm] using hy
+    simpa [StochasticSteepestDescentGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hy
   have hBound := S.assumption3_fLocalSmoothness.bound hx' hy'
   simpa [dist_eq_norm, norm_sub_rev, Real.toNNReal_of_nonneg S.L_pos.le] using hBound
 
 /-- The gradient map restricted to the primal feasibility ball is measurable. -/
 private lemma fGrad_restrict_measurable
     (S : StochasticSteepestDescentGeometryContext Ω V) :
-    Measurable (S.primalClosedBall.restrict S.fGrad) := by
+    Measurable (S.constraintBall.restrict S.fGrad) := by
   exact
     (continuousOn_iff_continuous_restrict.1
-      (S.fGrad_lipschitzOn_primalClosedBall.continuousOn)).measurable
+      (S.fGrad_lipschitzOn_constraintBall.continuousOn)).measurable
 
 /-- Every realized iterate stays inside the Assumption-3 primal ball. -/
-private lemma W_mem_primalClosedBall
+private lemma W_mem_constraintBall
     (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ t ω, S.W t ω ∈ S.primalClosedBall := by
+    ∀ t ω, S.W t ω ∈ S.constraintBall := by
   intro t ω
-  simpa [primalClosedBall, Metric.mem_closedBall, dist_eq_norm] using
+  simpa [StochasticSteepestDescentGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using
     S.weight_bound_from_feasible_step t ω
 
 /-- Internal measurability proof for the realized minibatch gradient. -/
@@ -334,8 +329,8 @@ lemma grad_measurable
     ∀ t, Measurable (S.grad t) := by
   intro t
   exact measurable_comp_of_measurable_restrict
-    (f := S.W t) (g := S.fGrad) (s := S.primalClosedBall)
-    (S.W_measurable t) (S.W_mem_primalClosedBall t) S.fGrad_restrict_measurable
+    (f := S.W t) (g := S.fGrad) (s := S.constraintBall)
+    (S.W_measurable t) (S.W_mem_constraintBall t) S.fGrad_restrict_measurable
 
 /-- The true gradient process is strongly measurable at each time. -/
 lemma grad_stronglyMeasurable
@@ -387,12 +382,12 @@ lemma grad_prefixStronglyMeasurable
       (fun ω => S.fGrad (S.W s ω)) := by
   have hWcod :
       Measurable[samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i]
-        (S.primalClosedBall.codRestrict (S.W s) (S.W_mem_primalClosedBall s)) := by
+        (S.constraintBall.codRestrict (S.W s) (S.W_mem_constraintBall s)) := by
     exact Measurable.subtype_mk (S.W_prefixMeasurable t i s hs)
   have hGrad :
       Measurable[samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i]
         (fun ω => S.fGrad (S.W s ω)) := by
-    simpa [Function.comp_def, Set.restrict_comp_codRestrict (S.W_mem_primalClosedBall s)] using
+    simpa [Function.comp_def, Set.restrict_comp_codRestrict (S.W_mem_constraintBall s)] using
       S.fGrad_restrict_measurable.comp hWcod
   exact hGrad.stronglyMeasurable
 

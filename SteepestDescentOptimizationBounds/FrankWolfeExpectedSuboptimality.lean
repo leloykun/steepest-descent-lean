@@ -74,6 +74,18 @@ private theorem suboptimality_aestronglyMeasurable
     (((hFCont.measurable.comp (S.W_measurable t)).stronglyMeasurable).sub
       stronglyMeasurable_const).aestronglyMeasurable
 
+private theorem frankWolfeGap_ge_muFW_mul_suboptimality_private
+    (S : StochasticFrankWolfeKLGeometryContext Ω V) :
+    ∀ t ω,
+      S.muFW * S.suboptimality t ω ≤
+        S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
+  intro t ω
+  simpa [StochasticSteepestDescentGeometryContext.suboptimality,
+    StochasticFrankWolfeGeometryContext.frankWolfeGap,
+    StochasticFrankWolfeGeometryContext.frankWolfeGapAt,
+    StochasticSteepestDescentGeometryContext.constraintBall] using
+    S.assumptionFrankWolfeKL t ω
+
 private theorem suboptimality_integrable
     (S : StochasticFrankWolfeKLGeometryContext Ω V) :
     ∀ t, Integrable (fun ω => S.suboptimality t ω) S.μ
@@ -109,11 +121,7 @@ private theorem suboptimality_integrable
         linarith [S.WStar_optimality (S.W t ω)]
       have hGapLower :
           S.muFW * S.suboptimality t ω ≤ S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
-        simpa [StochasticSteepestDescentGeometryContext.suboptimality,
-          StochasticFrankWolfeGeometryContext.frankWolfeGap,
-          StochasticSteepestDescentGeometryContext.grad,
-          StochasticFrankWolfeGeometryContext.constraintBall] using
-          S.assumptionFrankWolfeKL t ω
+        exact S.frankWolfeGap_ge_muFW_mul_suboptimality_private t ω
       have hGapNonneg : 0 ≤ S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
         have hMuSubNonneg : 0 ≤ S.muFW * S.suboptimality t ω :=
           mul_nonneg S.muFW_pos.le hSuboptNonneg
@@ -168,11 +176,7 @@ private theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound_bas
     have hOne :=
       S.toStochasticFrankWolfeGeometryContext.one_step_descent_fwGap t ω
     have hGap : S.muFW * S.suboptimality t ω ≤ S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
-      simpa [StochasticSteepestDescentGeometryContext.suboptimality,
-        StochasticFrankWolfeGeometryContext.frankWolfeGap,
-        StochasticSteepestDescentGeometryContext.grad,
-        StochasticFrankWolfeGeometryContext.constraintBall] using
-        S.assumptionFrankWolfeKL t ω
+      exact S.frankWolfeGap_ge_muFW_mul_suboptimality_private t ω
     have hScaledErr :
         2 * S.eta * S.nesterovErrorNorm t ω ≤ 2 * S.eta * err t ω := by
       exact mul_le_mul_of_nonneg_left (hErr t ω) (by nlinarith [S.eta_pos])
@@ -413,11 +417,8 @@ theorem frankWolfeGap_ge_muFW_mul_suboptimality
     (S : StochasticFrankWolfeKLGeometryContext Ω V) :
     ∀ t ω,
       S.muFW * S.suboptimality t ω ≤
-        sSup ((fun V => (S.fGrad (S.W t ω)) (S.W t ω - V)) '' Metric.closedBall (0 : V) (1 / S.lambda)) := by
-  intro t ω
-  change S.muFW * (S.f (S.W t ω) - S.f S.WStar) ≤
-    sSup ((fun V => (S.fGrad (S.W t ω)) (S.W t ω - V)) '' Metric.closedBall (0 : V) (1 / S.lambda))
-  exact S.assumptionFrankWolfeKL t ω
+        S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
+  exact S.frankWolfeGap_ge_muFW_mul_suboptimality_private
 
 /-- Expected FW-KL recurrence under a pathwise tracking envelope. -/
 theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound

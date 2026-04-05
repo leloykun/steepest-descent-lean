@@ -792,15 +792,7 @@ structure StochasticFrankWolfeGeometryContext
     [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
     [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
     [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-    extends StochasticSteepestDescentGeometryContext Ω V where
-  frankWolfeGap_integrable :
-    ∀ t,
-      Integrable
-        (fun ω =>
-          sSup
-            ((fun V => (fGrad (W t ω)) (W t ω - V)) ''
-              Metric.closedBall (0 : V) (1 / lambda)))
-        drawProcess.μ
+    extends StochasticSteepestDescentGeometryContext Ω V
 
 /--
 Realized stochastic geometry for the Frank-Wolfe expected-suboptimality layer.
@@ -893,11 +885,32 @@ lemma norm_sq_le_two_potential_of_mem_noiseRadius
     ‖x‖ ^ 2 ≤ 2 * S.potential x :=
   S.assumption4_localProxyPotential.norm_sq_le_two_potential_on_ball x hx
 
+/-- The shared radius-`1 / λ` primal ball induced by decoupled weight decay. -/
+def constraintBall (S : SteepestDescentPathGeometryContext V) : Set V :=
+  Metric.closedBall 0 (1 / S.lambda)
+
 /-- The pathwise suboptimality gap. -/
 def suboptimality (S : SteepestDescentPathGeometryContext V) (t : ℕ) : ℝ :=
   S.f (S.W t) - S.f S.WStar
 
 end SteepestDescentPathGeometryContext
+
+namespace FrankWolfePathGeometryContext
+
+variable {V : Type*}
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
+variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+
+/-- The Frank-Wolfe gap at a deterministic point. -/
+def frankWolfeGapAt (S : FrankWolfePathGeometryContext V) (X : V) : ℝ :=
+  sSup ((fun V => (S.fGrad X) (X - V)) '' S.constraintBall)
+
+/-- The iterate-wise Frank-Wolfe gap along a deterministic path. -/
+def frankWolfeGap (S : FrankWolfePathGeometryContext V) (t : ℕ) : ℝ :=
+  S.frankWolfeGapAt (S.W t)
+
+end FrankWolfePathGeometryContext
 
 namespace StochasticSteepestDescentGeometryContext
 
@@ -1022,6 +1035,10 @@ lemma norm_sq_le_two_potential_of_mem_noiseRadius
     ‖x‖ ^ 2 ≤ 2 * S.potential x :=
   S.assumption4_localProxyPotential.norm_sq_le_two_potential_on_ball x hx
 
+/-- The shared radius-`1 / λ` primal ball induced by decoupled weight decay. -/
+def constraintBall (S : StochasticSteepestDescentGeometryContext Ω V) : Set V :=
+  Metric.closedBall 0 (1 / S.lambda)
+
 /-- The stochastic suboptimality gap along a realized sample path. -/
 def suboptimality (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) : ℝ :=
   S.f (S.W t ω) - S.f S.WStar
@@ -1123,6 +1140,14 @@ abbrev initialSuboptimality (S : StochasticFrankWolfeGeometryContext Ω V) : ℝ
 /-- Shared expected suboptimality exposed with Frank-Wolfe-gap dot notation. -/
 abbrev expectedSuboptimality (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) : ℝ :=
   S.toStochasticSteepestDescentGeometryContext.expectedSuboptimality t
+
+/-- The Frank-Wolfe gap at a deterministic point. -/
+def frankWolfeGapAt (S : StochasticFrankWolfeGeometryContext Ω V) (X : V) : ℝ :=
+  sSup ((fun V => (S.fGrad X) (X - V)) '' S.constraintBall)
+
+/-- The realized iterate-wise Frank-Wolfe gap. -/
+def frankWolfeGap (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) (ω : Ω) : ℝ :=
+  S.frankWolfeGapAt (S.W t ω)
 
 /-- Frank-Wolfe deterministic sample-path view. -/
 def path (S : StochasticFrankWolfeGeometryContext Ω V) (ω : Ω) :
