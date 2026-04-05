@@ -1,5 +1,5 @@
 import Mathlib
-import SteepestDescentOptimizationBounds.Assumptions
+import SteepestDescentOptimizationBounds.StochasticProcessSupport
 import SteepestDescentOptimizationBounds.DescentLemma
 
 /-!
@@ -7,8 +7,9 @@ Minibatch-noise layer for the realized stochastic steepest-descent model.
 
 Upstream dependencies:
 
-- `Assumptions.lean` provides the realized stochastic-gradient samples, the
-  prefix conditional-expectation lemmas, and the local smooth proxy potential.
+- `StochasticProcessSupport.lean` provides the realized stochastic-gradient
+  samples, the prefix conditional-expectation lemmas, and the local smooth
+  proxy potential.
 
 Downstream use:
 

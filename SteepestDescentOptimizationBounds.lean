@@ -14,6 +14,7 @@ results.
 -/
 
 import SteepestDescentOptimizationBounds.Assumptions
+import SteepestDescentOptimizationBounds.StochasticProcessSupport
 import SteepestDescentOptimizationBounds.DescentLemma
 
 import SteepestDescentOptimizationBounds.MinibatchNoise
