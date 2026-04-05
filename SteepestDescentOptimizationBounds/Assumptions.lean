@@ -703,7 +703,6 @@ structure StochasticSteepestDescentGeometryContext
   f : V → ℝ
   fGrad : V → StrongDual ℝ V
   fderiv_eq : ∀ X, HasFDerivAt f (fGrad X) X
-  fGrad_measurable : Measurable fGrad
   pairing : ContinuousDualPairingContext (StrongDual ℝ V) V
   W0 : V
   W0_bound : ‖W0‖ ≤ 1 / lambda
