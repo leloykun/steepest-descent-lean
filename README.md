@@ -200,6 +200,85 @@ $$
 
 These Frank-Wolfe expected-suboptimality results are formalized in [FrankWolfeExpectedSuboptimality.lean](./SteepestDescentOptimizationBounds/FrankWolfeExpectedSuboptimality.lean), [FWExpectedSuboptimalitySLTheorem1.lean](./SteepestDescentScalingLaws/FWExpectedSuboptimalitySLTheorem1.lean), and [FWExpectedSuboptimalitySLTheorem2.lean](./SteepestDescentScalingLaws/FWExpectedSuboptimalitySLTheorem2.lean).
 
+## Deriving independent weight decay
+
+![](experiments/outputs/star_convex_weight_decay_only_lr_scaling.png)
+
+The independent weight decay rule [(Kosson et al., 2026)](https://arxiv.org/abs/2510.19093v2) can already be read off from our star-convex expected-suboptimality bound.
+
+Fix the training horizon $T$, batch size $b$, momentum $\beta$, and all other theorem coefficients, and vary only the weight decay $\lambda$ and learning rate $\eta$. Write
+
+$$
+\begin{aligned}
+A_{\mathrm{SC}} &:= 4L\left(1 + \frac{\beta^2}{1 - \beta}\right), \\
+B_{\mathrm{SC}} &:= 2\left(\sqrt{\frac{1 - \beta}{1 + \beta}}\,\beta + (1 - \beta)\right)\frac{\sqrt{D}\,\sigma}{\sqrt{b}}, \\
+C_{\mathrm{SC}} &:= \frac{2\beta}{1 - \beta}E_0^{\mathrm{mom}}.
+\end{aligned}
+$$
+
+Then the theorem-facing proxy becomes
+
+$$
+\Delta_0(1 - \lambda \eta)^T + \frac{B_{\mathrm{SC}}}{\lambda} + \left(\frac{A_{\mathrm{SC}}}{\lambda} + C_{\mathrm{SC}}\right)\eta.
+$$
+
+The $\frac{B_{\mathrm{SC}}}{\lambda}$ term is independent of $\eta$, so the exact interior stationary point is
+
+$$
+\eta_\lambda^*
+=
+\frac{1}{\lambda}
+\left[
+1 -
+\left(
+\frac{A_{\mathrm{SC}} + C_{\mathrm{SC}}\lambda}{\Delta_0 T \lambda^2}
+\right)^{\!\frac{1}{T-1}}
+\right],
+$$
+
+which is equivalently
+
+$$
+\eta_\lambda^*
+=
+\frac{1}{\lambda}
+\left(
+1 -
+\left(
+\frac{
+4L\left(1 + \frac{\beta^2}{1 - \beta}\right)
+    + \frac{2\beta}{1 - \beta}E_0^{\mathrm{mom}}\lambda
+}{
+\Delta_0 T \lambda^2
+}
+\right)^{\!\frac{1}{T-1}}
+\right).
+$$
+
+This is the interior critical point provided
+
+$$
+\frac{A_{\mathrm{SC}} + C_{\mathrm{SC}}\lambda}{\Delta_0 T \lambda^2} < 1,
+$$
+
+or equivalently, provided the optimizer is on the interior branch rather than collapsing to the boundary $\eta = 0$.
+
+The key asymptotic consequence is that, for any fixed $q \in (0,1)$, there exists a threshold $\lambda_0$ such that for all $\lambda \ge \lambda_0$,
+
+$$
+\frac{q}{\lambda} \le \eta_\lambda^* \le \frac{1}{\lambda}.
+$$
+
+So on the eventual interior branch,
+
+$$
+\eta_\lambda^* = \Theta\left(\frac{1}{\lambda}\right).
+$$
+
+This is exactly the independent-weight-decay rule: if weight decay is scaled by a factor of $c$, then the theorem-prescribed learning rate should also scale by $1/c$.
+
+These results are formalized in [StarConvexScalingLawsIndependentWeightDecay.lean](./SteepestDescentScalingLaws/StarConvexScalingLawsIndependentWeightDecay.lean). The figure above plots both the exact interior stationary point and a fitted inverse-law reference against $\lambda$, together with the expected-suboptimality bound evaluated at the optimal $\eta_\lambda^*$.
+
 ## Discussion
 
 1. **When do the results here hold?**

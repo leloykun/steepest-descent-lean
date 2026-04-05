@@ -17,6 +17,7 @@ scaling-law families:
 
 import SteepestDescentScalingLaws.Commons
 
+import SteepestDescentScalingLaws.StarConvexScalingLawsIndependentWeightDecay
 import SteepestDescentScalingLaws.StarConvexScalingLawsTheorem1
 import SteepestDescentScalingLaws.StarConvexScalingLawsTheorem2
 
