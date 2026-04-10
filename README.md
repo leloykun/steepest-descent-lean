@@ -34,11 +34,7 @@ $$
 \end{aligned}
 $$
 
-where
-$$
-\Delta_0 := \mathbb{E}[f(W_0) - f(W_*)],
-$$
-and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error. Here the initial iterate $W_0$ may already be stochastic, as long as it is pointwise bounded by $\frac{1}{\lambda}$.
+where $\Delta_0 := \mathbb{E}[f(W_0) - f(W_*)]$, and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error. Here the initial iterate $W_0$ may already be stochastic, as long as it is pointwise bounded by $\frac{1}{\lambda}$.
 
 These star-convex expected-suboptimality results are formalized in [StarConvexExpectedSuboptimality.lean](./SteepestDescentOptimizationBounds/StarConvexExpectedSuboptimality.lean), [StarConvexExpectedSuboptimalityConvergence.lean](./SteepestDescentOptimizationBounds/StarConvexExpectedSuboptimalityConvergence.lean), [StarConvexScalingLawsTheorem1.lean](./SteepestDescentScalingLaws/StarConvexScalingLawsTheorem1.lean), and [StarConvexScalingLawsTheorem2.lean](./SteepestDescentScalingLaws/StarConvexScalingLawsTheorem2.lean).
 
@@ -94,11 +90,7 @@ $$
 \end{aligned}
 $$
 
-where
-$$
-\Delta_0 := \mathbb{E}[f(W_0) - f(W_*)],
-$$
-and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error.
+where $ \Delta_0 := \mathbb{E}[f(W_0) - f(W_*)]$, and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error.
 
 Unlike the Expected Suboptimality layer above, this Frank-Wolfe expected-gap layer does not use the star-convexity assumption (Assumption 12).
 
@@ -151,11 +143,7 @@ $$
 \qquad \text{for all } t.
 $$
 
-The basic FW-KL recurrence only needs $\mu_{\mathrm{FW}} > 0$. The closed-form
-geometric bound below additionally assumes $\mu_{\mathrm{FW}} \lambda \eta \le
-1$, so that $1 - \mu_{\mathrm{FW}} \lambda \eta$ is a nonnegative contraction
-factor. Under the standing stochastic source, smoothness, pointwise initial-feasibility, and reference-point bounded-weight
-assumptions, we then have the expected-suboptimality bound
+The basic FW-KL recurrence only needs $\mu_{\mathrm{FW}} > 0$. The closed-form geometric bound below additionally assumes $\mu_{\mathrm{FW}} \lambda \eta \le 1$, so that $1 - \mu_{\mathrm{FW}} \lambda \eta$ is a nonnegative contraction factor. Under the standing stochastic source, smoothness, pointwise initial-feasibility, and reference-point bounded-weight assumptions, we then have the expected-suboptimality bound
 
 $$
 \begin{aligned}
@@ -172,11 +160,7 @@ $$
 \end{aligned}
 $$
 
-where
-$$
-\Delta_0 := \mathbb{E}[f(W_0) - f(W_*)],
-$$
-and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error.
+where $\Delta_0 := \mathbb{E}[f(W_0) - f(W_*)]$, and $E_0^{\mathrm{mom}} = \mathbb{E}\|\nabla f(W_0) - M_0\|^{\dagger}$ is the initial expected momentum error.
 
 Unlike the star-convex expected-suboptimality layer, this result does not use the star-convexity assumption. It uses the Frank-Wolfe KL assumption instead.
 
