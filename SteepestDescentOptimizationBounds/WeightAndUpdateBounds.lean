@@ -29,7 +29,6 @@ namespace SteepestDescentPathGeometryContext
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The center of the radius-`η` feasible ball used by the update. -/
 def stepCenter (S : SteepestDescentPathGeometryContext V) (t : ℕ) : V :=

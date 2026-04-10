@@ -478,7 +478,6 @@ sample path.
 structure SteepestDescentPathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [SecondCountableTopology (StrongDual ℝ V)]
     extends StochasticSteepestDescentParameters where
   f : V → ℝ
   fGrad : V → StrongDual ℝ V
@@ -508,7 +507,6 @@ Deterministic path geometry specialized to the star-convex layer.
 structure StarConvexPathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [SecondCountableTopology (StrongDual ℝ V)]
     extends SteepestDescentPathGeometryContext V where
   WStar_bound : ‖WStar‖ ≤ 1 / lambda
   assumption12_starConvexity :
@@ -536,7 +534,6 @@ Deterministic path geometry for the Frank-Wolfe gap layer.
 structure FrankWolfePathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [SecondCountableTopology (StrongDual ℝ V)]
     extends SteepestDescentPathGeometryContext V
 
 /--
@@ -545,7 +542,6 @@ Deterministic path geometry for the Frank-Wolfe expected-suboptimality layer.
 structure FrankWolfeKLPathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [SecondCountableTopology (StrongDual ℝ V)]
     extends FrankWolfePathGeometryContext V where
   muFW : ℝ
   muFW_pos : 0 < muFW
@@ -687,7 +683,6 @@ namespace SteepestDescentPathGeometryContext
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The true gradient along a deterministic sample path. -/
 def grad (S : SteepestDescentPathGeometryContext V) (t : ℕ) : StrongDual ℝ V :=
@@ -781,7 +776,6 @@ namespace FrankWolfePathGeometryContext
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The Frank-Wolfe gap at a deterministic point. -/
 def frankWolfeGapAt (S : FrankWolfePathGeometryContext V) (X : V) : ℝ :=

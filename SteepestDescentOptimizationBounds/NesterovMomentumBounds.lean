@@ -36,7 +36,6 @@ section PublicDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The pathwise minibatch noise `∇f(W_t) - g_{S_t}`. -/
 def minibatchNoise (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
@@ -71,7 +70,6 @@ section PublicTheorems
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The vector identity behind the Nesterov split. -/
 lemma nesterovError_split

@@ -34,7 +34,6 @@ section PublicDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The LMO point rescaled to the radius-`1 / λ` primal ball. -/
 def scaledLMOPoint (S : FrankWolfePathGeometryContext V) (t : ℕ) : V :=
@@ -46,7 +45,6 @@ section PrivateDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 end PrivateDefinitions
 
@@ -54,7 +52,6 @@ section PrivateLemmas
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Unpacks `∇f(W_t) = C_t + error_t` on a concrete vector. -/
 private lemma grad_split_apply
@@ -139,7 +136,6 @@ private lemma scaledLMOPoint_sub_feasible_bound
           gcongr
     _ = 2 / S.lambda := by ring
 
-omit [SecondCountableTopology (StrongDual ℝ V)] in
 private lemma exists_lt_neg_apply_closedBall_of_lt
     (f : StrongDual ℝ V) {r w : ℝ} (hr : 0 < r) (hw : w < r * ‖f‖) :
     ∃ x ∈ Metric.closedBall (0 : V) r, w < -f x := by
@@ -193,7 +189,6 @@ section PublicTheorems
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The scaled LMO point lies in the radius-`1 / λ` ball and minimizes `C_t` there. -/
 private theorem path_lmo_scaled_properties

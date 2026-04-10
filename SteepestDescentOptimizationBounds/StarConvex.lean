@@ -29,7 +29,6 @@ section PrivateDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The linear functional induced by the current true gradient. -/
 private def gradientLinear (S : StarConvexPathGeometryContext V) (t : ℕ) : V →ₗ[ℝ] ℝ :=
@@ -47,7 +46,6 @@ section PrivateLemmas
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Unpacks `∇f(W_t) = C_t + error_t` on a concrete vector. -/
 private lemma grad_split_apply
@@ -84,7 +82,6 @@ section PublicTheorems
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Rewrites the displacement from the step center to `X_t`. -/
 private lemma interpolatedPoint_sub_stepCenter
