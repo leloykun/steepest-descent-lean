@@ -36,8 +36,7 @@ section PublicDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The pathwise minibatch noise `∇f(W_t) - g_{S_t}`. -/
 def minibatchNoise (S : SteepestDescentPathGeometryContext V) (t : ℕ) :
@@ -72,8 +71,7 @@ section PublicTheorems
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The vector identity behind the Nesterov split. -/
 lemma nesterovError_split
@@ -109,8 +107,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The realized Nesterov residual `∇f(W_t(ω)) - C_t(ω)`. -/
 def nesterovError
@@ -140,8 +137,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 private theorem nesterovErrorNorm_le_split
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
@@ -216,8 +212,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Pathwise Nesterov split after freezing a sample path. -/
 lemma nesterovError_split

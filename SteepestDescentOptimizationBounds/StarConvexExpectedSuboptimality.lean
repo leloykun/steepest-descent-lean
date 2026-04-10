@@ -30,8 +30,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 section PrivateTheorems
 
@@ -39,8 +38,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 private theorem suboptimality_aestronglyMeasurable
     (S : StochasticStarConvexGeometryContext Ω V) (t : ℕ) :
@@ -291,8 +289,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Direct expected star-convex suboptimality bound with arbitrary initial momentum residual. -/
 theorem starConvexExpectedSuboptimality_bound

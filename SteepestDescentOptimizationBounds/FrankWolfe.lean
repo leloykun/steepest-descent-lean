@@ -34,8 +34,7 @@ section PublicDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The LMO point rescaled to the radius-`1 / λ` primal ball. -/
 def scaledLMOPoint (S : FrankWolfePathGeometryContext V) (t : ℕ) : V :=
@@ -47,8 +46,7 @@ section PrivateDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 end PrivateDefinitions
 
@@ -56,8 +54,7 @@ section PrivateLemmas
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Unpacks `∇f(W_t) = C_t + error_t` on a concrete vector. -/
 private lemma grad_split_apply
@@ -142,8 +139,7 @@ private lemma scaledLMOPoint_sub_feasible_bound
           gcongr
     _ = 2 / S.lambda := by ring
 
-omit [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-  [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 private lemma exists_lt_neg_apply_closedBall_of_lt
     (f : StrongDual ℝ V) {r w : ℝ} (hr : 0 < r) (hw : w < r * ‖f‖) :
     ∃ x ∈ Metric.closedBall (0 : V) r, w < -f x := by
@@ -197,8 +193,7 @@ section PublicTheorems
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The scaled LMO point lies in the radius-`1 / λ` ball and minimizes `C_t` there. -/
 private theorem path_lmo_scaled_properties
@@ -342,12 +337,6 @@ theorem path_one_step_descent_fwGap
     S.weight_bound_from_feasible_step t
   have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda :=
     S.weight_bound_from_feasible_step (t + 1)
-  let pairing : ContinuousDualPairingContext V (StrongDual ℝ V) := {
-    toLinear := by simpa using (ContinuousLinearMap.id ℝ (StrongDual ℝ V))
-    opNorm_le := by
-      intro xDual
-      simp
-  }
   have hStepVec := S.scaledLMOPoint_sub_weight_eq t
   have hUpdateEq :
       S.W t + (S.lambda * S.eta) • (S.scaledLMOPoint t - S.W t) = S.W (t + 1) := by
@@ -366,9 +355,8 @@ theorem path_one_step_descent_fwGap
           S.f (S.W t)
             + (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t)
             + S.L / 2 * (S.lambda * S.eta) ^ 2 * ‖S.scaledLMOPoint t - S.W t‖ ^ 2 := by
-      simpa [pairing, SteepestDescentPathGeometryContext.grad, smul_eq_mul] using
-        (step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-          pairing
+      simpa [SteepestDescentPathGeometryContext.grad, smul_eq_mul] using
+        (step_upper_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
           (f := S.f)
           (grad := S.fGrad)
           (L := S.L)
@@ -525,8 +513,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The realized scaled LMO point. -/
 def scaledLMOPoint (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) (ω : Ω) : V :=
@@ -540,8 +527,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 -- No private definitions are added in the stochastic wrapper layer.
 
@@ -553,8 +539,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 -- No private lemmas are needed beyond pathwise wrappers.
 
@@ -566,8 +551,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Closed-form formula for the realized Frank-Wolfe gap. -/
 theorem fwGap_ball_formula
@@ -724,8 +708,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- `μ_FW` is nonnegative. -/
 lemma muFW_nonneg (S : StochasticFrankWolfeKLGeometryContext Ω V) : 0 ≤ S.muFW :=

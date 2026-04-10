@@ -136,14 +136,12 @@ lemma flatSample_measurable_of_lt
 
 namespace Assumption4_LocalSmoothProxyPotential
 
-variable {V VDual : Type*}
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-variable {pairing : ContinuousDualPairingContext VDual V}
 
 /-- The proxy potential is continuous on the closed Assumption-4 noise ball. -/
 lemma potential_continuousOn_noiseBall
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
+    (P : Assumption4_LocalSmoothProxyPotential V) :
     ContinuousOn P.potential (Metric.closedBall 0 P.noiseRadius) := by
   intro x hx
   have hx' : ‖x‖ ≤ P.noiseRadius := by
@@ -152,16 +150,16 @@ lemma potential_continuousOn_noiseBall
 
 /-- The proxy potential becomes measurable after restricting to the noise ball. -/
 lemma potential_restrict_measurable
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual] :
-    Measurable ((Metric.closedBall (0 : VDual) P.noiseRadius).restrict P.potential) := by
+    (P : Assumption4_LocalSmoothProxyPotential V)
+    [SecondCountableTopology (StrongDual ℝ V)] :
+    Measurable ((Metric.closedBall (0 : StrongDual ℝ V) P.noiseRadius).restrict P.potential) := by
   exact
     (continuousOn_iff_continuous_restrict.1
       P.potential_continuousOn_noiseBall).measurable
 
 /-- Assumption 4 gives a Lipschitz mirror map on the closed noise ball. -/
 lemma mirrorMap_lipschitzOn_noiseBall
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
+    (P : Assumption4_LocalSmoothProxyPotential V) :
     LipschitzOnWith (Real.toNNReal P.D) P.mirrorMap
       (Metric.closedBall 0 P.noiseRadius) := by
   refine LipschitzOnWith.of_dist_le_mul ?_
@@ -175,16 +173,16 @@ lemma mirrorMap_lipschitzOn_noiseBall
 
 /-- The mirror map is continuous on the closed Assumption-4 noise ball. -/
 lemma mirrorMap_continuousOn_noiseBall
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) :
+    (P : Assumption4_LocalSmoothProxyPotential V) :
     ContinuousOn P.mirrorMap (Metric.closedBall 0 P.noiseRadius) :=
   P.mirrorMap_lipschitzOn_noiseBall.continuousOn
 
 /-- The mirror map becomes measurable after restricting its domain to the noise ball. -/
 lemma mirrorMap_restrict_measurable
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    (P : Assumption4_LocalSmoothProxyPotential V)
     [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual] :
-    Measurable ((Metric.closedBall (0 : VDual) P.noiseRadius).restrict P.mirrorMap) := by
+    [SecondCountableTopology (StrongDual ℝ V)] :
+    Measurable ((Metric.closedBall (0 : StrongDual ℝ V) P.noiseRadius).restrict P.mirrorMap) := by
   exact
     (continuousOn_iff_continuous_restrict.1
       P.mirrorMap_continuousOn_noiseBall).measurable
@@ -193,10 +191,10 @@ lemma mirrorMap_restrict_measurable
 Assumption-4 mirror map preserves a.e. strong measurability. -/
 lemma mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
     {Ω : Type*} [MeasurableSpace Ω]
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    (P : Assumption4_LocalSmoothProxyPotential V)
     [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
-    {m m0 : MeasurableSpace Ω} {μ : @Measure Ω m0} {f : Ω → VDual}
+    [SecondCountableTopology (StrongDual ℝ V)]
+    {m m0 : MeasurableSpace Ω} {μ : @Measure Ω m0} {f : Ω → StrongDual ℝ V}
     (hf : AEStronglyMeasurable[m] f μ)
     (hball : ∀ᵐ ω ∂μ, ‖f ω‖ ≤ P.noiseRadius) :
     AEStronglyMeasurable[m] (fun ω => P.mirrorMap (f ω)) μ := by
@@ -209,21 +207,23 @@ lemma mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
   have hs_meas : MeasurableSet[m] {ω | ‖hf.mk f ω‖ ≤ P.noiseRadius} := by
     change MeasurableSet[m] ((fun ω => ‖hf.mk f ω‖) ⁻¹' Set.Iic P.noiseRadius)
     exact hnorm_meas measurableSet_Iic
-  let g : Ω → VDual := fun ω => if ‖hf.mk f ω‖ ≤ P.noiseRadius then hf.mk f ω else 0
+  let g : Ω → StrongDual ℝ V := fun ω =>
+    if ‖hf.mk f ω‖ ≤ P.noiseRadius then hf.mk f ω else 0
   have hg_meas : Measurable[m] g := by
     simpa [g, Set.piecewise] using hf.measurable_mk.piecewise hs_meas measurable_const
-  have hg_mem : ∀ ω, g ω ∈ Metric.closedBall (0 : VDual) P.noiseRadius := by
+  have hg_mem : ∀ ω, g ω ∈ Metric.closedBall (0 : StrongDual ℝ V) P.noiseRadius := by
     intro ω
     by_cases hω : ‖hf.mk f ω‖ ≤ P.noiseRadius
     · simp [g, hω, Metric.mem_closedBall, dist_eq_norm]
-    · have hzero : ‖(0 : VDual)‖ ≤ P.noiseRadius := by simpa using P.noiseRadius_nonneg
+    · have hzero : ‖(0 : StrongDual ℝ V)‖ ≤ P.noiseRadius := by
+        simpa using P.noiseRadius_nonneg
       simpa [g, hω, Metric.mem_closedBall] using hzero
   have hfg : hf.mk f =ᵐ[μ] g := by
     filter_upwards [hball'] with ω hω
     simp [g, hω]
   have hcod :
       Measurable[m]
-        ((Metric.closedBall (0 : VDual) P.noiseRadius).codRestrict g
+        ((Metric.closedBall (0 : StrongDual ℝ V) P.noiseRadius).codRestrict g
           (by intro ω; exact hg_mem ω)) := by
     exact Measurable.subtype_mk hg_meas
   have hMirrorMeas :
@@ -239,9 +239,9 @@ lemma mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
 Assumption-4 potential preserves a.e. strong measurability. -/
 lemma potential_comp_aestronglyMeasurable_of_mem_noiseBall_ae
     {Ω : Type*} [MeasurableSpace Ω]
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
-    {m m0 : MeasurableSpace Ω} {μ : @Measure Ω m0} {f : Ω → VDual}
+    (P : Assumption4_LocalSmoothProxyPotential V)
+    [SecondCountableTopology (StrongDual ℝ V)]
+    {m m0 : MeasurableSpace Ω} {μ : @Measure Ω m0} {f : Ω → StrongDual ℝ V}
     (hf : AEStronglyMeasurable[m] f μ)
     (hball : ∀ᵐ ω ∂μ, ‖f ω‖ ≤ P.noiseRadius) :
     AEStronglyMeasurable[m] (fun ω => P.potential (f ω)) μ := by
@@ -254,21 +254,23 @@ lemma potential_comp_aestronglyMeasurable_of_mem_noiseBall_ae
   have hs_meas : MeasurableSet[m] {ω | ‖hf.mk f ω‖ ≤ P.noiseRadius} := by
     change MeasurableSet[m] ((fun ω => ‖hf.mk f ω‖) ⁻¹' Set.Iic P.noiseRadius)
     exact hnorm_meas measurableSet_Iic
-  let g : Ω → VDual := fun ω => if ‖hf.mk f ω‖ ≤ P.noiseRadius then hf.mk f ω else 0
+  let g : Ω → StrongDual ℝ V := fun ω =>
+    if ‖hf.mk f ω‖ ≤ P.noiseRadius then hf.mk f ω else 0
   have hg_meas : Measurable[m] g := by
     simpa [g, Set.piecewise] using hf.measurable_mk.piecewise hs_meas measurable_const
-  have hg_mem : ∀ ω, g ω ∈ Metric.closedBall (0 : VDual) P.noiseRadius := by
+  have hg_mem : ∀ ω, g ω ∈ Metric.closedBall (0 : StrongDual ℝ V) P.noiseRadius := by
     intro ω
     by_cases hω : ‖hf.mk f ω‖ ≤ P.noiseRadius
     · simp [g, hω, Metric.mem_closedBall, dist_eq_norm]
-    · have hzero : ‖(0 : VDual)‖ ≤ P.noiseRadius := by simpa using P.noiseRadius_nonneg
+    · have hzero : ‖(0 : StrongDual ℝ V)‖ ≤ P.noiseRadius := by
+        simpa using P.noiseRadius_nonneg
       simpa [g, hω, Metric.mem_closedBall] using hzero
   have hfg : hf.mk f =ᵐ[μ] g := by
     filter_upwards [hball'] with ω hω
     simp [g, hω]
   have hcod :
       Measurable[m]
-        ((Metric.closedBall (0 : VDual) P.noiseRadius).codRestrict g
+        ((Metric.closedBall (0 : StrongDual ℝ V) P.noiseRadius).codRestrict g
           (by intro ω; exact hg_mem ω)) := by
     exact Measurable.subtype_mk hg_meas
   have hPotentialMeas :
@@ -306,8 +308,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 section PrivateLemmas
 

@@ -27,8 +27,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 private theorem momentumNoisePrefactor_le_sqrtTwo_mul_sqrtOneSubBeta
     (S : StochasticStarConvexGeometryContext Ω V) :
@@ -212,8 +211,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The expected-suboptimality bound in the `θ = 1 - β` schedule form. -/
 theorem starConvexExpectedSuboptimality_bound_theta_form

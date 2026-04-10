@@ -22,36 +22,16 @@ open MeasureTheory
 open ProbabilityTheory
 
 /--
-Continuous realization of the abstract dual pairing.
+Canonical embedding of a primal vector into the bidual of `V`.
 
-This is the extra analytic structure needed to connect a normed dual variable
-`X† : VDual` to a Fréchet derivative `V →L[ℝ] ℝ`.
+It sends `v : V` to the continuous linear functional on `StrongDual ℝ V`
+defined by evaluation `φ ↦ φ v`.
 -/
--- Public Geometry Contexts and Compatibility API
-
-structure ContinuousDualPairingContext
-    (V VDual : Type*)
-    [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual] where
-  toLinear : VDual →L[ℝ] V →L[ℝ] ℝ
-  opNorm_le : ∀ xDual, ‖toLinear xDual‖ ≤ ‖xDual‖
-
-namespace ContinuousDualPairingContext
-
-variable {V VDual : Type*}
-variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-
-/-- The pairing map is Lipschitz from the dual norm into operator norm. -/
-lemma opNorm_sub_le
-    (P : ContinuousDualPairingContext V VDual) (xDual yDual : VDual) :
-    ‖P.toLinear yDual - P.toLinear xDual‖ ≤ ‖yDual - xDual‖ := by
-  calc
-    ‖P.toLinear yDual - P.toLinear xDual‖ = ‖P.toLinear (yDual - xDual)‖ := by
-      rw [ContinuousLinearMap.map_sub]
-    _ ≤ ‖yDual - xDual‖ := P.opNorm_le _
-
-end ContinuousDualPairingContext
+def strongDualBidual
+    (V : Type*)
+    [NormedAddCommGroup V] [NormedSpace ℝ V] :
+    V →L[ℝ] StrongDual ℝ V →L[ℝ] ℝ :=
+  ContinuousLinearMap.apply ℝ ℝ
 
 /--
 Canonical parameter block for stochastic steepest descent with weight decay and
@@ -168,11 +148,11 @@ Here `x` is a deterministic point in parameter space, `ζ` is a fresh sample dra
 `g(x; ζ)` is the resulting stochastic gradient estimator.
 -/
 structure StochasticGradientOracle
-    (V Ξ VDual : Type*)
-    [MeasurableSpace VDual]
+    (V Ξ : Type*)
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
     (measurableSpaceΞ : MeasurableSpace Ξ) where
-  g : V → Ξ → VDual
-  g_measurable : ∀ x, @Measurable Ξ VDual measurableSpaceΞ inferInstance (g x)
+  g : V → Ξ → StrongDual ℝ V
+  g_measurable : ∀ x, @Measurable Ξ (StrongDual ℝ V) measurableSpaceΞ inferInstance (g x)
 
 /--
 Fresh sample-draw process used to instantiate the oracle at each time and
@@ -246,17 +226,16 @@ def samplePrefixSigma
       (inferInstance : MeasurableSpace (Fin (flatSampleIndex t i) → β))
 
 structure Assumption1_UnbiasedFreshBatchSampling
-    (Ω V VDual : Type*)
+    (Ω V : Type*)
     [MeasurableSpace Ω]
-    [MeasurableSpace V] [TopologicalSpace V] [BorelSpace V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-    [MeasurableSpace VDual] [BorelSpace VDual]
-    [SecondCountableTopology VDual] [CompleteSpace VDual]
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [MeasurableSpace V] [BorelSpace V]
+    [SecondCountableTopology (StrongDual ℝ V)]
     (batchSize : ℕ)
     (μ : Measure Ω)
     (W : ℕ → Ω → V)
-    (sample : ℕ → Fin batchSize → Ω → VDual)
-    (grad : ℕ → Ω → VDual) where
+    (sample : ℕ → Fin batchSize → Ω → StrongDual ℝ V)
+    (grad : ℕ → Ω → StrongDual ℝ V) where
   sample_measurable :
     ∀ t i, Measurable (sample t i)
   /--
@@ -273,21 +252,20 @@ Assumption 2: a uniform conditional second-moment bound on the per-sample
 noise `ξ_{t,i} := ∇f(W_t) - g_{t,i}`.
 
 The current proof stack does not build a full conditional-independence theory
-on top of this structure. Instead, the shared geometry context later packages
-the minibatch expected-norm consequence it actually uses downstream.
+on top of this structure. Instead, the downstream stochastic-support and
+minibatch-noise layers package only the expected minibatch consequences they
+actually use.
 -/
 structure Assumption2_PerSampleGradientNoiseSecondMomentBound
-    (Ω V VDual : Type*)
+    (Ω V : Type*)
     [MeasurableSpace Ω]
-    [MeasurableSpace V] [TopologicalSpace V] [BorelSpace V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-    [MeasurableSpace VDual] [BorelSpace VDual]
-    [SecondCountableTopology VDual] [CompleteSpace VDual]
+    [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [MeasurableSpace V] [BorelSpace V]
     (batchSize : ℕ)
     (μ : Measure Ω)
     (W : ℕ → Ω → V)
-    (sample : ℕ → Fin batchSize → Ω → VDual)
-    (grad : ℕ → Ω → VDual) where
+    (sample : ℕ → Fin batchSize → Ω → StrongDual ℝ V)
+    (grad : ℕ → Ω → StrongDual ℝ V) where
   sigma : ℝ
   sigma_nonneg : 0 ≤ sigma
   /--
@@ -363,18 +341,16 @@ Assumption 3: the objective gradient is locally `L`-Lipschitz on the primal
 closed ball `‖x‖ ≤ 1 / λ`.
 -/
 structure Assumption3_FLocalSmoothness
-    {V VDual : Type*} [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-    (fGrad : V → VDual) (lambda : ℝ) where
+    {V : Type*} [NormedAddCommGroup V] [NormedSpace ℝ V]
+    (fGrad : V → StrongDual ℝ V) (lambda : ℝ) where
   L : ℝ
   local_lipschitz : LocalLipschitzOnClosedBallUnderNormPair fGrad (1 / lambda) L
 
 namespace Assumption3_FLocalSmoothness
 
-variable {V VDual : Type*}
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-variable {fGrad : V → VDual} {lambda : ℝ}
+variable {fGrad : V → StrongDual ℝ V} {lambda : ℝ}
 
 lemma pos (h : Assumption3_FLocalSmoothness fGrad lambda) : 0 < h.L :=
   h.local_lipschitz.pos
@@ -397,7 +373,7 @@ to be smooth. Instead, it asks for an auxiliary potential `g` with derivative-li
 map `Φ` such that, on the closed `noiseRadius` ball:
 
 - `g` dominates `‖x‖^2 / 2`,
-- `Φ` is the Fréchet derivative of `g` through the chosen pairing,
+- `Φ` is the Fréchet derivative of `g` through the canonical bidual embedding,
 - `Φ` is `D`-Lipschitz on that ball,
 - `Φ 0 = 0`.
 
@@ -405,12 +381,10 @@ The stochastic side then separately assumes that the derived per-sample noises
 lie in this ball almost surely.
 -/
 structure Assumption4_LocalSmoothProxyPotential
-    (V VDual : Type*)
-    [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-    (pairing : ContinuousDualPairingContext VDual V) where
-  potential : VDual → ℝ
-  mirrorMap : VDual → V
+    (V : Type*)
+    [NormedAddCommGroup V] [NormedSpace ℝ V] where
+  potential : StrongDual ℝ V → ℝ
+  mirrorMap : StrongDual ℝ V → V
   D : ℝ
   noiseRadius : ℝ
   noiseRadius_nonneg : 0 ≤ noiseRadius
@@ -419,7 +393,7 @@ structure Assumption4_LocalSmoothProxyPotential
   potential_fderiv_eq :
     ∀ x, ‖x‖ ≤ noiseRadius →
       HasFDerivAt potential
-        (pairing.toLinear (mirrorMap x)) x
+        ((strongDualBidual V) (mirrorMap x)) x
   mirrorMap_local_lipschitz :
     LocalLipschitzOnClosedBallUnderNormPair mirrorMap noiseRadius D
   norm_sq_le_two_potential_on_ball : ∀ x, ‖x‖ ≤ noiseRadius → ‖x‖ ^ 2 ≤ 2 * potential x
@@ -436,18 +410,22 @@ def IsLMO
 
 namespace Assumption4_LocalSmoothProxyPotential
 
-variable {V VDual : Type*}
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-variable {pairing : ContinuousDualPairingContext VDual V}
 
 lemma D_pos
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) : 0 < P.D :=
+    (P : Assumption4_LocalSmoothProxyPotential V) : 0 < P.D :=
   P.mirrorMap_local_lipschitz.pos
 
 lemma D_nonneg
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) : 0 ≤ P.D :=
+    (P : Assumption4_LocalSmoothProxyPotential V) : 0 ≤ P.D :=
   P.mirrorMap_local_lipschitz.nonneg
+
+/-- The linear functional on the dual induced by the mirror-map image. -/
+def mirrorLinear
+    (P : Assumption4_LocalSmoothProxyPotential V) (x : StrongDual ℝ V) :
+    StrongDual ℝ V →L[ℝ] ℝ :=
+  (strongDualBidual V) (P.mirrorMap x)
 
 end Assumption4_LocalSmoothProxyPotential
 
@@ -456,16 +434,14 @@ Companion stochastic Assumption-4 clause: every realized oracle sample stays
 within the proxy-potential noise radius around the true gradient.
 -/
 def Assumption4_LocalSmoothProxyPotential.OracleSampleNoiseBound
-    {Ω V VDual : Type*}
+    {Ω V : Type*}
     [MeasurableSpace Ω]
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
     {batchSize : ℕ}
-    {pairing : ContinuousDualPairingContext VDual V}
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing)
+    (P : Assumption4_LocalSmoothProxyPotential V)
     (μ : Measure Ω)
-    (sample : ℕ → Fin batchSize → Ω → VDual)
-    (grad : ℕ → Ω → VDual) : Prop :=
+    (sample : ℕ → Fin batchSize → Ω → StrongDual ℝ V)
+    (grad : ℕ → Ω → StrongDual ℝ V) : Prop :=
   ∀ t i, ∀ᵐ ω ∂μ, ‖grad t ω - sample t i ω‖ ≤ P.noiseRadius
 
 /--
@@ -502,13 +478,11 @@ sample path.
 structure SteepestDescentPathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends StochasticSteepestDescentParameters where
   f : V → ℝ
   fGrad : V → StrongDual ℝ V
   fderiv_eq : ∀ X, ‖X‖ ≤ 1 / lambda → HasFDerivAt f (fGrad X) X
-  pairing : ContinuousDualPairingContext (StrongDual ℝ V) V
   WStar : V
   WStar_optimality : ∀ W, f WStar ≤ f W
   W : ℕ → V
@@ -526,7 +500,7 @@ structure SteepestDescentPathGeometryContext
     ∀ t, W (t + 1) = ((1 - lambda * eta) • W t) + eta • aStar t
   assumption3_fLocalSmoothness : Assumption3_FLocalSmoothness fGrad lambda
   assumption4_localProxyPotential :
-    Assumption4_LocalSmoothProxyPotential V (StrongDual ℝ V) pairing
+    Assumption4_LocalSmoothProxyPotential V
 
 /--
 Deterministic path geometry specialized to the star-convex layer.
@@ -534,8 +508,7 @@ Deterministic path geometry specialized to the star-convex layer.
 structure StarConvexPathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends SteepestDescentPathGeometryContext V where
   WStar_bound : ‖WStar‖ ≤ 1 / lambda
   assumption12_starConvexity :
@@ -563,8 +536,7 @@ Deterministic path geometry for the Frank-Wolfe gap layer.
 structure FrankWolfePathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends SteepestDescentPathGeometryContext V
 
 /--
@@ -573,8 +545,7 @@ Deterministic path geometry for the Frank-Wolfe expected-suboptimality layer.
 structure FrankWolfeKLPathGeometryContext
     (V : Type*)
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends FrankWolfePathGeometryContext V where
   muFW : ℝ
   muFW_pos : 0 < muFW
@@ -598,13 +569,11 @@ structure StochasticSteepestDescentGeometryContext
     [MeasurableSpace Ω]
     [NormedAddCommGroup V] [NormedSpace ℝ V]
     [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends StochasticSteepestDescentParameters where
   f : V → ℝ
   fGrad : V → StrongDual ℝ V
   fderiv_eq : ∀ X, ‖X‖ ≤ 1 / lambda → HasFDerivAt f (fGrad X) X
-  pairing : ContinuousDualPairingContext (StrongDual ℝ V) V
   W0 : V
   W0_bound : ‖W0‖ ≤ 1 / lambda
   W : ℕ → Ω → V
@@ -617,7 +586,7 @@ structure StochasticSteepestDescentGeometryContext
   sampleMeasurableSpace : MeasurableSpace Ξ
   drawProcess : PerSampleDrawProcess Ω Ξ batchSize sampleMeasurableSpace
   stochasticGradientOracle :
-    StochasticGradientOracle V Ξ (StrongDual ℝ V) sampleMeasurableSpace
+    StochasticGradientOracle V Ξ sampleMeasurableSpace
   minibatchGradient :
     ℕ → Ω → StrongDual ℝ V
   minibatchGradient_spec :
@@ -648,20 +617,20 @@ structure StochasticSteepestDescentGeometryContext
   -- Assumptions 1--4.
   assumption1_sampling :
     Assumption1_UnbiasedFreshBatchSampling
-      Ω V (StrongDual ℝ V) batchSize drawProcess.μ
+      Ω V batchSize drawProcess.μ
       W
       (fun t i ω => stochasticGradientOracle.g (W t ω) (drawProcess.draw t i ω))
       (fun t ω => fGrad (W t ω))
   assumption2_secondMoment :
     Assumption2_PerSampleGradientNoiseSecondMomentBound
-      Ω V (StrongDual ℝ V) batchSize drawProcess.μ
+      Ω V batchSize drawProcess.μ
       W
       (fun t i ω => stochasticGradientOracle.g (W t ω) (drawProcess.draw t i ω))
       (fun t ω => fGrad (W t ω))
   assumption3_fLocalSmoothness :
     Assumption3_FLocalSmoothness fGrad lambda
   assumption4_localProxyPotential :
-    Assumption4_LocalSmoothProxyPotential V (StrongDual ℝ V) pairing
+    Assumption4_LocalSmoothProxyPotential V
   assumption4_oracleSampleNoiseBound :
     Assumption4_LocalSmoothProxyPotential.OracleSampleNoiseBound
       (batchSize := batchSize)
@@ -678,8 +647,7 @@ structure StochasticStarConvexGeometryContext
     [MeasurableSpace Ω]
     [NormedAddCommGroup V] [NormedSpace ℝ V]
     [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends StochasticSteepestDescentGeometryContext Ω V where
   WStar_bound : ‖WStar‖ ≤ 1 / lambda
   assumption12_starConvexity :
@@ -693,8 +661,7 @@ structure StochasticFrankWolfeGeometryContext
     [MeasurableSpace Ω]
     [NormedAddCommGroup V] [NormedSpace ℝ V]
     [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends StochasticSteepestDescentGeometryContext Ω V
 
 /--
@@ -705,8 +672,7 @@ structure StochasticFrankWolfeKLGeometryContext
     [MeasurableSpace Ω]
     [NormedAddCommGroup V] [NormedSpace ℝ V]
     [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-    [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+    [SecondCountableTopology (StrongDual ℝ V)]
     extends StochasticFrankWolfeGeometryContext Ω V where
   muFW : ℝ
   muFW_pos : 0 < muFW
@@ -721,8 +687,7 @@ namespace SteepestDescentPathGeometryContext
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The true gradient along a deterministic sample path. -/
 def grad (S : SteepestDescentPathGeometryContext V) (t : ℕ) : StrongDual ℝ V :=
@@ -783,7 +748,7 @@ lemma potential_fderiv_eq
     (S : SteepestDescentPathGeometryContext V) {x : StrongDual ℝ V}
     (hx : ‖x‖ ≤ S.noiseRadius) :
     HasFDerivAt S.potential
-      (S.pairing.toLinear (S.mirrorMap x)) x :=
+      ((strongDualBidual V) (S.mirrorMap x)) x :=
   S.assumption4_localProxyPotential.potential_fderiv_eq x hx
 
 lemma norm_sq_le_two_potential_of_mem_noiseRadius
@@ -816,8 +781,7 @@ namespace FrankWolfePathGeometryContext
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The Frank-Wolfe gap at a deterministic point. -/
 def frankWolfeGapAt (S : FrankWolfePathGeometryContext V) (X : V) : ℝ :=
@@ -835,8 +799,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The probability measure carried by the realized sample process. -/
 def μ (S : StochasticSteepestDescentGeometryContext Ω V) : Measure Ω :=
@@ -935,7 +898,7 @@ lemma potential_fderiv_eq
     (S : StochasticSteepestDescentGeometryContext Ω V) {x : StrongDual ℝ V}
     (hx : ‖x‖ ≤ S.noiseRadius) :
     HasFDerivAt S.potential
-      (S.pairing.toLinear (S.mirrorMap x)) x :=
+      ((strongDualBidual V) (S.mirrorMap x)) x :=
   S.assumption4_localProxyPotential.potential_fderiv_eq x hx
 
 lemma norm_sq_le_two_potential_of_mem_noiseRadius
@@ -988,7 +951,6 @@ def path (S : StochasticSteepestDescentGeometryContext Ω V) (ω : Ω) :
   f := S.f
   fGrad := S.fGrad
   fderiv_eq := S.fderiv_eq
-  pairing := S.pairing
   WStar := S.WStar
   WStar_optimality := S.WStar_optimality
   W := fun t => S.W t ω
@@ -1018,8 +980,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Shared initial suboptimality exposed with star-convex dot notation. -/
 abbrev initialSuboptimality (S : StochasticStarConvexGeometryContext Ω V) : ℝ :=
@@ -1045,8 +1006,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Shared initial suboptimality exposed with Frank-Wolfe-gap dot notation. -/
 abbrev initialSuboptimality (S : StochasticFrankWolfeGeometryContext Ω V) : ℝ :=
@@ -1078,8 +1038,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Shared initial suboptimality exposed with FW-KL dot notation. -/
 abbrev initialSuboptimality (S : StochasticFrankWolfeKLGeometryContext Ω V) : ℝ :=

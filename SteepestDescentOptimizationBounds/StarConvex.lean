@@ -29,17 +29,7 @@ section PrivateDefinitions
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
-
-/-- Canonical pairing context for the continuous dual. -/
-private def continuousDualPairing :
-    ContinuousDualPairingContext V (StrongDual ℝ V) where
-  toLinear := by
-    simpa using (ContinuousLinearMap.id ℝ (StrongDual ℝ V))
-  opNorm_le := by
-    intro xDual
-    simp
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The linear functional induced by the current true gradient. -/
 private def gradientLinear (S : StarConvexPathGeometryContext V) (t : ℕ) : V →ₗ[ℝ] ℝ :=
@@ -57,8 +47,7 @@ section PrivateLemmas
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Unpacks `∇f(W_t) = C_t + error_t` on a concrete vector. -/
 private lemma grad_split_apply
@@ -95,8 +84,7 @@ section PublicTheorems
 
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- Rewrites the displacement from the step center to `X_t`. -/
 private lemma interpolatedPoint_sub_stepCenter
@@ -223,9 +211,8 @@ theorem one_step_descent_bound
     have hCompLeft :
         S.f (S.W t) + S.gradientLinear t (S.interpolatedPoint t - S.W t) ≤
           S.f (S.interpolatedPoint t) + S.L / 2 * ‖S.interpolatedPoint t - S.W t‖ ^ 2 := by
-      simpa [continuousDualPairing, gradientLinear, SteepestDescentPathGeometryContext.grad] using
-        (taylor_compare_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-          (continuousDualPairing (V := V))
+      simpa [gradientLinear, SteepestDescentPathGeometryContext.grad] using
+        (taylor_compare_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
           (f := S.f)
           (grad := S.fGrad)
           (L := S.L)
@@ -256,8 +243,7 @@ theorem one_step_descent_bound
         S.f (S.W (t + 1)) ≤
           S.f (S.W t) + S.gradientLinear t (S.W (t + 1) - S.W t) + S.L / 2 * ‖S.W (t + 1) - S.W t‖ ^ 2 := by
       simpa [gradientLinear, SteepestDescentPathGeometryContext.grad] using
-        (step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-          (continuousDualPairing (V := V))
+        (step_upper_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
           (f := S.f)
           (grad := S.fGrad)
           (L := S.L)
@@ -337,8 +323,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-! Public lemmas/theorems. -/
 section PublicTheorems

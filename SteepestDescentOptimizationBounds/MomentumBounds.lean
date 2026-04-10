@@ -176,8 +176,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The realized momentum error `E_t(ω) = ∇f(W_t(ω)) - M_t(ω)`. -/
 def momentumError
@@ -208,8 +207,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 private def driftComponent
     (S : StochasticSteepestDescentGeometryContext Ω V) : ℕ → Ω → StrongDual ℝ V
@@ -263,8 +261,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 private theorem grad_increment_bound
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
@@ -537,7 +534,8 @@ private theorem flatCoeff_measurable
     ∀ k, k < t * S.batchSize →
       AEStronglyMeasurable[S.flatPastSigma k]
         (fun ω =>
-          S.pairing.toLinear (S.mirrorMap (weightedPartialSum (S.flatCoeff t) S.flatNoise k ω))) S.μ
+          S.assumption4_localProxyPotential.mirrorLinear
+            (weightedPartialSum (S.flatCoeff t) S.flatNoise k ω)) S.μ
   | k, hk => by
       have hPartial :
           StronglyMeasurable[S.flatPastSigma k]
@@ -553,7 +551,7 @@ private theorem flatCoeff_measurable
       have hPartialBound :
           ∀ᵐ ω ∂S.μ, ‖weightedPartialSum (S.flatCoeff t) S.flatNoise k ω‖ ≤ S.noiseRadius :=
         weightedPartialSum_norm_le_noiseRadius_ae
-          S.pairing S.assumption4_localProxyPotential
+          S.assumption4_localProxyPotential
           (μ := S.μ)
           (ξ := S.flatNoise)
           (α := S.flatCoeff t)
@@ -568,11 +566,10 @@ private theorem flatCoeff_measurable
           AEStronglyMeasurable[S.flatPastSigma k]
             (fun ω => S.mirrorMap (weightedPartialSum (S.flatCoeff t) S.flatNoise k ω)) S.μ :=
         Assumption4_LocalSmoothProxyPotential.mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
-          (V := V) (VDual := StrongDual ℝ V) (pairing := S.pairing) (Ω := Ω)
-          S.assumption4_localProxyPotential
+          (V := V) (Ω := Ω) S.assumption4_localProxyPotential
           (m := S.flatPastSigma k) (μ := S.μ)
           hPartial.aestronglyMeasurable hPartialBound
-      exact S.pairing.toLinear.continuous.comp_aestronglyMeasurable hMirror
+      exact (strongDualBidual V).continuous.comp_aestronglyMeasurable hMirror
 
 private theorem momentumNoiseProcess_eq_flatPartialSum
     (S : StochasticSteepestDescentGeometryContext Ω V) :
@@ -677,7 +674,7 @@ private theorem flatWeightedNoise_analysis
   refine ⟨?_, ?_⟩
   · exact
       weighted_noise_norm_integrable
-        S.pairing S.assumption4_localProxyPotential
+        S.assumption4_localProxyPotential
         (μ := S.μ)
         (sigma := S.sigma)
         (ξ := S.flatNoise)
@@ -694,7 +691,7 @@ private theorem flatWeightedNoise_analysis
         (second_moment_bound := by intro i hi; exact S.flatNoise_second_moment_bound i)
   · exact
       weighted_noise_first_moment_bound
-        S.pairing S.assumption4_localProxyPotential
+        S.assumption4_localProxyPotential
         (μ := S.μ)
         (sigma := S.sigma)
         (ξ := S.flatNoise)
@@ -958,8 +955,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The initial momentum is globally measurable. -/
 private lemma momentum_zero_measurable

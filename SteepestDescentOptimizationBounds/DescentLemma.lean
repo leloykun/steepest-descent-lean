@@ -214,53 +214,52 @@ private theorem taylor_bound_of_lipschitz_fderiv
 
 end GeneralNormDescent
 
-section DualPairBridge
+section StrongDualBridge
 
-variable {V VDual : Type*}
+variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
-variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
 
 /-! ------------------------------------------------------------------------
-Closed-Ball Pairing Bridge With Local Derivatives
+Closed-Ball Strong-Dual Bridge With Local Derivatives
 ------------------------------------------------------------------------ -/
 
 /--
 Local convex-set descent lemma when the derivative is only known on the convex
-region itself.
+region itself and gradients are represented in the continuous dual.
 -/
-theorem taylor_bound_of_LSmoothOnConvexSetUnderPair_of_localFDeriv
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L : ℝ} {s : Set V}
+theorem taylor_bound_of_LSmoothOnConvexSetUnderStrongDual_of_localFDeriv
+    {f : V → ℝ} {grad : V → StrongDual ℝ V} {L : ℝ} {s : Set V}
     (hs : Convex ℝ s)
-    (hf : ∀ x ∈ s, HasFDerivAt f (P.toLinear (grad x)) x)
+    (hf : ∀ x ∈ s, HasFDerivAt f (grad x) x)
     (hLipschitz : ∀ x ∈ s, ∀ y ∈ s, ‖grad y - grad x‖ ≤ L * ‖y - x‖)
     {x y : V} (hx : x ∈ s) (hy : y ∈ s) :
-    |f y - (f x + P.toLinear (grad x) (y - x))| ≤
+    |f y - (f x + grad x (y - x))| ≤
       (L / 2) * ‖y - x‖ ^ 2 := by
-  refine
+  exact
     taylor_bound_of_lipschitz_fderiv_on_convex_of_localFDeriv
-      (f := f) (f' := fun x => P.toLinear (grad x))
-      hs hf ?_ hx hy
-  intro x hx y hy
-  calc
-    ‖P.toLinear (grad y) - P.toLinear (grad x)‖ ≤ ‖grad y - grad x‖ :=
-      P.opNorm_sub_le (grad x) (grad y)
-    _ ≤ L * ‖y - x‖ := hLipschitz x hx y hy
+      (f := f)
+      (f' := grad)
+      hs
+      hf
+      hLipschitz
+      hx
+      hy
 
 /--
-Closed-ball specialization of the local-derivative descent lemma.
+Closed-ball specialization of the local `StrongDual` descent lemma.
 -/
-theorem taylor_bound_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L R : ℝ}
-    (hf : ∀ x, ‖x‖ ≤ R → HasFDerivAt f (P.toLinear (grad x)) x)
+theorem taylor_bound_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
+    {f : V → ℝ} {grad : V → StrongDual ℝ V} {L R : ℝ}
+    (hf : ∀ x, ‖x‖ ≤ R → HasFDerivAt f (grad x) x)
     (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
     {x y : V} (hx : ‖x‖ ≤ R) (hy : ‖y‖ ≤ R) :
-    |f y - (f x + P.toLinear (grad x) (y - x))| ≤
+    |f y - (f x + grad x (y - x))| ≤
       (L / 2) * ‖y - x‖ ^ 2 := by
   refine
-    taylor_bound_of_LSmoothOnConvexSetUnderPair_of_localFDeriv
-      P
+    taylor_bound_of_LSmoothOnConvexSetUnderStrongDual_of_localFDeriv
+      (f := f)
+      (grad := grad)
+      (L := L)
       (s := Metric.closedBall (0 : V) R)
       (convex_closedBall (0 : V) R)
       ?_
@@ -278,18 +277,17 @@ theorem taylor_bound_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
   · simpa [mem_closedBall_zero_iff] using hx
   · simpa [mem_closedBall_zero_iff] using hy
 
-/-- Comparison form on the closed ball when the derivative is only known on
-that ball. -/
-theorem taylor_compare_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L R : ℝ}
-    (hf : ∀ x, ‖x‖ ≤ R → HasFDerivAt f (P.toLinear (grad x)) x)
+/--
+Comparison form specialized to the canonical `StrongDual` pairing.
+-/
+theorem taylor_compare_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
+    {f : V → ℝ} {grad : V → StrongDual ℝ V} {L R : ℝ}
+    (hf : ∀ x, ‖x‖ ≤ R → HasFDerivAt f (grad x) x)
     (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
     {x y : V} (hx : ‖x‖ ≤ R) (hy : ‖y‖ ≤ R) :
-    f x + P.toLinear (grad x) (y - x) ≤ f y + (L / 2) * ‖y - x‖ ^ 2 := by
+    f x + grad x (y - x) ≤ f y + (L / 2) * ‖y - x‖ ^ 2 := by
   have h :=
-    taylor_bound_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-      P
+    taylor_bound_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
       (f := f)
       (grad := grad)
       (L := L)
@@ -302,21 +300,19 @@ theorem taylor_compare_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
   linarith
 
 /--
-Local one-step descent lemma on the Assumption-4 closed noise ball when the
-derivative is only known inside that ball.
+One-step closed-ball descent lemma specialized to the canonical `StrongDual`
+pairing.
 -/
-theorem step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L R α : ℝ}
-    (hf : ∀ x, ‖x‖ ≤ R → HasFDerivAt f (P.toLinear (grad x)) x)
+theorem step_upper_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
+    {f : V → ℝ} {grad : V → StrongDual ℝ V} {L R α : ℝ}
+    (hf : ∀ x, ‖x‖ ≤ R → HasFDerivAt f (grad x) x)
     (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
     (hα_nonneg : 0 ≤ α)
     {x ξ : V} (hx : ‖x‖ ≤ R) (hNext : ‖x + α • ξ‖ ≤ R) :
     f (x + α • ξ) ≤
-      f x + α * P.toLinear (grad x) ξ + (L / 2) * α ^ 2 * ‖ξ‖ ^ 2 := by
+      f x + α * grad x ξ + (L / 2) * α ^ 2 * ‖ξ‖ ^ 2 := by
   have h :=
-    taylor_bound_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-      P
+    taylor_bound_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
       (f := f)
       (grad := grad)
       (L := L)
@@ -330,11 +326,11 @@ theorem step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
   have hUpper := (abs_le.mp h).2
   rw [hStep, ContinuousLinearMap.map_smul, norm_smul, Real.norm_of_nonneg hα_nonneg] at hUpper
   have hUpper'' :
-      f (x + α • ξ) - f x - α * P.toLinear (grad x) ξ ≤
+      f (x + α • ξ) - f x - α * grad x ξ ≤
         (L / 2) * (α * ‖ξ‖) ^ 2 := by
     simpa [smul_eq_mul, sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using hUpper
   have hUpper' :
-      f (x + α • ξ) - f x - α * P.toLinear (grad x) ξ ≤
+      f (x + α • ξ) - f x - α * grad x ξ ≤
         L * α ^ 2 * ‖ξ‖ ^ 2 * (1 / 2) := by
     have hEq : (L / 2) * (α * ‖ξ‖) ^ 2 = L * α ^ 2 * ‖ξ‖ ^ 2 * (1 / 2) := by
       ring
@@ -342,165 +338,70 @@ theorem step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
     exact hUpper''
   linarith
 
-/-! ------------------------------------------------------------------------
-Global Pairing Bridge
------------------------------------------------------------------------- -/
+end StrongDualBridge
 
-/--
-Descent lemma under an arbitrary norm / dual-norm setup, once the dual
-pairing is realized as a continuous linear functional map.
--/
-theorem taylor_bound_of_LSmoothUnderPair
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L : ℝ}
-    (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : GlobalLipschitzUnderNormPair grad L) :
-    ∀ x y,
-      |f y - (f x + P.toLinear (grad x) (y - x))| ≤
-        (L / 2) * ‖y - x‖ ^ 2 := by
-  intro x y
-  simpa using
-    (taylor_bound_of_LSmoothOnConvexSetUnderPair_of_localFDeriv
-      P
-      (s := Set.univ)
-      (hs := convex_univ)
-      (hf := fun z _ => hf z)
-      (hLipschitz := fun z _ w _ => hLipschitz.bound z w)
-      (hx := by simp)
-      (hy := by simp)
-      (x := x)
-      (y := y))
+section StrongDualBidualBridge
 
-/-- Comparison form derived from `taylor_bound_of_LSmoothUnderPair`. -/
-theorem taylor_compare_of_LSmoothUnderPair
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L : ℝ}
-    (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : GlobalLipschitzUnderNormPair grad L) :
-    ∀ x y,
-      f x + P.toLinear (grad x) (y - x) ≤ f y + (L / 2) * ‖y - x‖ ^ 2 := by
-  intro x y
-  have h := taylor_bound_of_LSmoothUnderPair P hf hLipschitz x y
-  have hLower := (abs_le.mp h).1
-  linarith
+variable {V : Type*}
+variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 
-/--
-One-step descent-lemma form specialized to a nonnegative scaled increment
-`α • ξ`. This is the exact analytic inequality used in the weighted-noise proof.
--/
-theorem step_upper_of_LSmoothUnderPair
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L α : ℝ}
-    (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : GlobalLipschitzUnderNormPair grad L)
-    (hα_nonneg : 0 ≤ α) :
-    ∀ x ξ,
-      f (x + α • ξ) ≤
-        f x + α * P.toLinear (grad x) ξ + (L / 2) * α ^ 2 * ‖ξ‖ ^ 2 := by
-  intro x ξ
-  exact
-    step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-      P
-      (f := f)
-      (grad := grad)
-      (L := L)
-      (R := max ‖x‖ ‖x + α • ξ‖)
-      (hf := fun z _ => hf z)
-      (hLipschitz := by
-        refine ⟨hLipschitz.pos, ?_⟩
-        intro z w _ _
-        exact hLipschitz.bound z w)
-      (hα_nonneg := hα_nonneg)
-      (hx := le_max_left _ _)
-      (hNext := le_max_right _ _)
-      (x := x)
-      (ξ := ξ)
-
-/-! ------------------------------------------------------------------------
-Closed-Ball Pairing Bridge
------------------------------------------------------------------------- -/
-
-/--
-Local descent lemma under an arbitrary norm / dual-norm setup on a
-convex region.
--/
-theorem taylor_bound_of_LSmoothOnConvexSetUnderPair
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L : ℝ} {s : Set V}
-    (hs : Convex ℝ s)
-    (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : ∀ x ∈ s, ∀ y ∈ s, ‖grad y - grad x‖ ≤ L * ‖y - x‖)
-    {x y : V} (hx : x ∈ s) (hy : y ∈ s) :
-    |f y - (f x + P.toLinear (grad x) (y - x))| ≤
-      (L / 2) * ‖y - x‖ ^ 2 := by
-  exact
-    taylor_bound_of_LSmoothOnConvexSetUnderPair_of_localFDeriv
-      P
-      hs
-      (fun z _ => hf z)
-      hLipschitz
-      hx
-      hy
-
-/--
-Closed-ball specialization of the local dual-pairing descent lemma, matching
-the local Assumption-4 formulation.
--/
-theorem taylor_bound_of_LSmoothOnClosedBallUnderPair
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L R : ℝ}
-    (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
-    {x y : V} (hx : ‖x‖ ≤ R) (hy : ‖y‖ ≤ R) :
-    |f y - (f x + P.toLinear (grad x) (y - x))| ≤
-      (L / 2) * ‖y - x‖ ^ 2 := by
-  exact
-    taylor_bound_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-      P
-      (fun z _ => hf z)
-      hLipschitz
-      hx
-      hy
-
-/-- Comparison form on the closed ball derived from
-`taylor_bound_of_LSmoothOnClosedBallUnderPair`. -/
-theorem taylor_compare_of_LSmoothOnClosedBallUnderPair
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L R : ℝ}
-    (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
-    (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
-    {x y : V} (hx : ‖x‖ ≤ R) (hy : ‖y‖ ≤ R) :
-    f x + P.toLinear (grad x) (y - x) ≤ f y + (L / 2) * ‖y - x‖ ^ 2 := by
-  exact
-    taylor_compare_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-      P
-      (fun z _ => hf z)
-      hLipschitz
-      hx
-      hy
-
-/--
-Local one-step descent lemma on the Assumption-4 closed noise ball.
--/
-theorem step_upper_of_LSmoothOnClosedBallUnderPair
-    (P : ContinuousDualPairingContext V VDual)
-    {f : V → ℝ} {grad : V → VDual} {L R α : ℝ}
-    (hf : ∀ x, HasFDerivAt f (P.toLinear (grad x)) x)
+/-- Closed-ball descent lemma for functions on `StrongDual ℝ V` whose derivative
+is represented by the canonical bidual embedding of a primal-valued mirror map. -/
+theorem step_upper_of_LSmoothOnClosedBallUnderStrongDualBidual_of_localFDeriv
+    {f : StrongDual ℝ V → ℝ} {grad : StrongDual ℝ V → V} {L R α : ℝ}
+    (hf : ∀ x, ‖x‖ ≤ R → HasFDerivAt f ((strongDualBidual V) (grad x)) x)
     (hLipschitz : LocalLipschitzOnClosedBallUnderNormPair grad R L)
     (hα_nonneg : 0 ≤ α)
-    {x ξ : V} (hx : ‖x‖ ≤ R) (hNext : ‖x + α • ξ‖ ≤ R) :
+    {x ξ : StrongDual ℝ V} (hx : ‖x‖ ≤ R) (hNext : ‖x + α • ξ‖ ≤ R) :
     f (x + α • ξ) ≤
-      f x + α * P.toLinear (grad x) ξ + (L / 2) * α ^ 2 * ‖ξ‖ ^ 2 := by
-  exact
-    step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-      P
-      (fun z _ => hf z)
-      hLipschitz
-      hα_nonneg
-      hx
-      hNext
+      f x + α * (strongDualBidual V (grad x)) ξ + (L / 2) * α ^ 2 * ‖ξ‖ ^ 2 := by
+  have h :=
+    taylor_bound_of_lipschitz_fderiv_on_convex_of_localFDeriv
+      (V := StrongDual ℝ V)
+      (f := f)
+      (f' := fun x => (strongDualBidual V) (grad x))
+      (L := L)
+      (s := Metric.closedBall (0 : StrongDual ℝ V) R)
+      (hs := convex_closedBall (0 : StrongDual ℝ V) R)
+      (hf := by
+        intro z hz
+        simpa [Metric.mem_closedBall, dist_eq_norm] using
+          hf z (by simpa [Metric.mem_closedBall, dist_eq_norm] using hz))
+      (hLipschitz := by
+        intro z hz w hw
+        have hEmbed :
+            ‖(strongDualBidual V) (grad w) - (strongDualBidual V) (grad z)‖ ≤
+              ‖grad w - grad z‖ := by
+          have hEmbed' : ‖(strongDualBidual V) (grad w - grad z)‖ ≤ ‖grad w - grad z‖ := by
+            refine ContinuousLinearMap.opNorm_le_bound _ (norm_nonneg _) ?_
+            intro φ
+            simpa [strongDualBidual, mul_comm] using
+              (ContinuousLinearMap.le_opNorm φ (grad w - grad z))
+          simpa [map_sub] using hEmbed'
+        exact hEmbed.trans <|
+          hLipschitz.bound
+            (by simpa [Metric.mem_closedBall, dist_eq_norm] using hz)
+            (by simpa [Metric.mem_closedBall, dist_eq_norm] using hw))
+      (hx := by simpa [mem_closedBall_zero_iff] using hx)
+      (hy := by simpa [mem_closedBall_zero_iff] using hNext)
+  have hStep : x + α • ξ - x = α • ξ := by
+    abel_nf
+  have hUpper := (abs_le.mp h).2
+  rw [hStep, ContinuousLinearMap.map_smul, norm_smul, Real.norm_of_nonneg hα_nonneg] at hUpper
+  have hUpper'' :
+      f (x + α • ξ) - f x - α * (strongDualBidual V (grad x)) ξ ≤
+        (L / 2) * (α * ‖ξ‖) ^ 2 := by
+    simpa [smul_eq_mul, sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using hUpper
+  have hUpper' :
+      f (x + α • ξ) - f x - α * (strongDualBidual V (grad x)) ξ ≤
+        L * α ^ 2 * ‖ξ‖ ^ 2 * (1 / 2) := by
+    have hEq : (L / 2) * (α * ‖ξ‖) ^ 2 = L * α ^ 2 * ‖ξ‖ ^ 2 * (1 / 2) := by
+      ring
+    rw [hEq] at hUpper''
+    exact hUpper''
+  linarith
 
-end DualPairBridge
+end StrongDualBidualBridge
 
 end
 

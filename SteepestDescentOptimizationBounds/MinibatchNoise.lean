@@ -114,27 +114,23 @@ private lemma norm_sum_range_smul_le_of_nonneg_prefix
 namespace Assumption4_LocalSmoothProxyPotential
 
 private lemma potential_nonneg_of_mem_noiseRadius
-    {V VDual : Type*}
+    {V : Type*}
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-    {pairing : ContinuousDualPairingContext VDual V}
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) (x : VDual)
+    (P : Assumption4_LocalSmoothProxyPotential V) (x : StrongDual ℝ V)
     (hx : ‖x‖ ≤ P.noiseRadius) :
     0 ≤ P.potential x := by
   have h := P.norm_sq_le_two_potential_on_ball x hx
   nlinarith [sq_nonneg ‖x‖]
 
 private lemma mirrorMap_norm_le_of_mem_noiseRadius
-    {V VDual : Type*}
+    {V : Type*}
     [NormedAddCommGroup V] [NormedSpace ℝ V]
-    [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-    {pairing : ContinuousDualPairingContext VDual V}
-    (P : Assumption4_LocalSmoothProxyPotential V VDual pairing) (x : VDual)
+    (P : Assumption4_LocalSmoothProxyPotential V) (x : StrongDual ℝ V)
     (hx : ‖x‖ ≤ P.noiseRadius) :
     ‖P.mirrorMap x‖ ≤ P.D * ‖x‖ := by
   have h :=
     P.mirrorMap_local_lipschitz.bound
-      (show ‖(0 : VDual)‖ ≤ P.noiseRadius by simpa using P.noiseRadius_nonneg)
+      (show ‖(0 : StrongDual ℝ V)‖ ≤ P.noiseRadius by simpa using P.noiseRadius_nonneg)
       hx
   simpa [P.mirrorMap_zero] using h
 
@@ -144,16 +140,14 @@ end PrivateHelpers
 
 section GenericWeightedNoise
 
-variable {Ω V VDual : Type*}
+variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [NormedAddCommGroup VDual] [NormedSpace ℝ VDual]
-variable [MeasurableSpace VDual] [BorelSpace VDual]
-variable [SecondCountableTopology VDual] [CompleteSpace VDual]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
-omit [MeasurableSpace Ω] [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] in
+omit [MeasurableSpace Ω] [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
+  [SecondCountableTopology (StrongDual ℝ V)] in
 /--
 If a scalar-valued cross term is obtained by applying an `m`-measurable
 continuous linear functional to a vector-valued noise term whose conditional
@@ -163,20 +157,22 @@ theorem integral_clm_apply_eq_zero_of_condexp_zero
     {m m0 : MeasurableSpace Ω} {μ : @Measure Ω m0}
     (hm : m ≤ m0)
     [IsFiniteMeasure μ]
-    {L : Ω → VDual →L[ℝ] ℝ} {ξ : Ω → VDual}
+    {L : Ω → StrongDual ℝ V →L[ℝ] ℝ} {ξ : Ω → StrongDual ℝ V}
     (hL : AEStronglyMeasurable[m] L μ)
     (hLξ : Integrable (fun ω => L ω (ξ ω)) μ)
     (hξ : Integrable ξ μ)
     (hCondZero : μ[ξ | m] =ᵐ[μ] 0) :
     ∫ ω, L ω (ξ ω) ∂μ = 0 := by
-  let B : (VDual →L[ℝ] ℝ) →L[ℝ] VDual →L[ℝ] ℝ :=
-    ContinuousLinearMap.flip
-      (ContinuousLinearMap.apply ℝ ℝ : VDual →L[ℝ] (VDual →L[ℝ] ℝ) →L[ℝ] ℝ)
+  let B : (StrongDual ℝ V →L[ℝ] ℝ) →L[ℝ] StrongDual ℝ V →L[ℝ] ℝ :=
+    ContinuousLinearMap.flip (ContinuousLinearMap.apply ℝ ℝ)
   have hPull :
       μ[fun ω ↦ L ω (ξ ω) | m] =ᵐ[μ] fun ω ↦ L ω (μ[ξ | m] ω) := by
-    simpa [B] using
+    simpa only [B, ContinuousLinearMap.flip_apply] using
       (MeasureTheory.condExp_bilin_of_aestronglyMeasurable_left
-        (μ := μ) (m := m) B hL (by simpa [B] using hLξ) hξ)
+        (Ω := Ω) (m := m) (mΩ := m0) (μ := μ)
+        (E := StrongDual ℝ V) (F := StrongDual ℝ V →L[ℝ] ℝ) (G := ℝ)
+        (B := B) (f := L) (g := ξ) hL
+        (by simpa only [B, ContinuousLinearMap.flip_apply] using hLξ) hξ)
   have hCondCrossZero : μ[fun ω ↦ L ω (ξ ω) | m] =ᵐ[μ] 0 := by
     refine hPull.trans ?_
     filter_upwards [hCondZero] with ω hω
@@ -236,16 +232,14 @@ theorem integral_norm_le_sqrt_second_moment
 
 /-- Weighted partial sum used in the generic Lemma-5-style noise bounds. -/
 def weightedPartialSum
-    (α : ℕ → ℝ) (ξ : ℕ → Ω → VDual) (k : ℕ) (ω : Ω) : VDual :=
+    (α : ℕ → ℝ) (ξ : ℕ → Ω → StrongDual ℝ V) (k : ℕ) (ω : Ω) : StrongDual ℝ V :=
   Finset.sum (Finset.range k) (fun i => α i • ξ i ω)
 
-omit [MeasurableSpace Ω] [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace Ω] [SecondCountableTopology (StrongDual ℝ V)] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weightedPartialSum_norm_le_noiseRadius_of_mem
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ}
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ}
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
     {ω : Ω}
@@ -256,13 +250,11 @@ private theorem weightedPartialSum_norm_le_noiseRadius_of_mem
     norm_sum_range_smul_le_of_nonneg_prefix
       hk coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius B.noiseRadius_nonneg
 
-omit [MeasurableSpace Ω] [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace Ω] [SecondCountableTopology (StrongDual ℝ V)] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weighted_smooth_step
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ}
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ}
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1) :
     ∀ k, k < n →
@@ -271,46 +263,42 @@ private theorem weighted_smooth_step
         B.potential (weightedPartialSum α ξ (k + 1) ω) ≤
           B.potential (weightedPartialSum α ξ k ω)
             + α k
-                * P.toLinear
-                    (B.mirrorMap (weightedPartialSum α ξ k ω))
+                * B.mirrorLinear (weightedPartialSum α ξ k ω)
                     (ξ k ω)
             + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 := by
   intro k hk ω hξ
-  let x : VDual := weightedPartialSum α ξ k ω
+  let x : StrongDual ℝ V := weightedPartialSum α ξ k ω
   have hx :
       ‖x‖ ≤ B.noiseRadius := by
-    exact weightedPartialSum_norm_le_noiseRadius_of_mem P B coeff_nonneg coeff_sum_le_one
+    exact weightedPartialSum_norm_le_noiseRadius_of_mem B coeff_nonneg coeff_sum_le_one
       (fun i hi => hξ i hi) k (Nat.le_of_lt hk)
   have hNext :
       ‖x + α k • ξ k ω‖ ≤ B.noiseRadius := by
     have hNext' :=
-      weightedPartialSum_norm_le_noiseRadius_of_mem P B coeff_nonneg coeff_sum_le_one
+      weightedPartialSum_norm_le_noiseRadius_of_mem B coeff_nonneg coeff_sum_le_one
         (fun i hi => hξ i hi) (k + 1) (Nat.succ_le_of_lt hk)
     simpa [weightedPartialSum, x, Finset.sum_range_succ, add_comm, add_left_comm, add_assoc]
       using hNext'
   have h :=
-    step_upper_of_LSmoothOnClosedBallUnderPair_of_localFDeriv
-      P
+    step_upper_of_LSmoothOnClosedBallUnderStrongDualBidual_of_localFDeriv
       (f := B.potential)
       (grad := B.mirrorMap)
       (L := B.D)
       (R := B.noiseRadius)
       (α := α k)
-      B.potential_fderiv_eq
-      B.mirrorMap_local_lipschitz
-      (coeff_nonneg k hk)
+      (hf := B.potential_fderiv_eq)
+      (hLipschitz := B.mirrorMap_local_lipschitz)
+      (hα_nonneg := coeff_nonneg k hk)
       hx
       hNext
   simpa [weightedPartialSum, x, Finset.sum_range_succ, add_comm, add_left_comm, add_assoc]
     using h
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem sample_norm_le_noiseRadius_all_ae
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    {μ : Measure Ω} {ξ : ℕ → Ω → VDual} {n : ℕ}
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    {μ : Measure Ω} {ξ : ℕ → Ω → StrongDual ℝ V} {n : ℕ}
     (sample_norm_le_noiseRadius_ae :
       ∀ i, i < n → ∀ᵐ ω ∂μ, ‖ξ i ω‖ ≤ B.noiseRadius) :
     ∀ᵐ ω ∂μ, ∀ i, i < n → ‖ξ i ω‖ ≤ B.noiseRadius := by
@@ -331,13 +319,11 @@ private theorem sample_norm_le_noiseRadius_all_ae
     · exact hPrevω i hi'
     · exact hLastω
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 theorem weightedPartialSum_norm_le_noiseRadius_ae
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    {μ : Measure Ω} {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ}
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    {μ : Measure Ω} {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ}
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
     (sample_norm_le_noiseRadius_ae :
@@ -345,21 +331,18 @@ theorem weightedPartialSum_norm_le_noiseRadius_ae
     ∀ k, k ≤ n → ∀ᵐ ω ∂μ, ‖weightedPartialSum α ξ k ω‖ ≤ B.noiseRadius := by
   intro k hk
   have hAll :=
-    sample_norm_le_noiseRadius_all_ae
-      (P := P) (B := B) (μ := μ) (ξ := ξ) (n := n) sample_norm_le_noiseRadius_ae
+    sample_norm_le_noiseRadius_all_ae (B := B) (μ := μ) (ξ := ξ) (n := n)
+      sample_norm_le_noiseRadius_ae
   filter_upwards [hAll] with ω hω
   exact
-    weightedPartialSum_norm_le_noiseRadius_of_mem
-      P B coeff_nonneg coeff_sum_le_one
+    weightedPartialSum_norm_le_noiseRadius_of_mem B coeff_nonneg coeff_sum_le_one
       (fun i hi => hω i hi) k hk
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weighted_smooth_step_ae
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    {μ : Measure Ω} {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ}
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    {μ : Measure Ω} {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ}
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
     (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
     (sample_norm_le_noiseRadius_ae :
@@ -368,26 +351,25 @@ private theorem weighted_smooth_step_ae
       B.potential (weightedPartialSum α ξ (k + 1) ω) ≤
         B.potential (weightedPartialSum α ξ k ω)
           + α k
-              * P.toLinear
-                  (B.mirrorMap (weightedPartialSum α ξ k ω))
+              * B.mirrorLinear (weightedPartialSum α ξ k ω)
                   (ξ k ω)
           + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 := by
   intro k hk
   have hAll :=
-    sample_norm_le_noiseRadius_all_ae
-      (P := P) (B := B) (μ := μ) (ξ := ξ) (n := n) sample_norm_le_noiseRadius_ae
+    sample_norm_le_noiseRadius_all_ae (B := B) (μ := μ) (ξ := ξ) (n := n)
+      sample_norm_le_noiseRadius_ae
   filter_upwards [hAll] with ω hω
-  exact weighted_smooth_step P B coeff_nonneg coeff_sum_le_one k hk ω hω
+  exact weighted_smooth_step B coeff_nonneg coeff_sum_le_one k hk ω hω
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 private theorem weighted_partialSum_stronglyMeasurable_any
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ}
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ}
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i)) :
     ∀ k, StronglyMeasurable (fun ω => weightedPartialSum α ξ k ω)
   | 0 => by
       simpa [weightedPartialSum] using
-        (stronglyMeasurable_const : StronglyMeasurable (fun _ : Ω => (0 : VDual)))
+        (stronglyMeasurable_const : StronglyMeasurable (fun _ : Ω => (0 : StrongDual ℝ V)))
   | k + 1 => by
       have hk : StronglyMeasurable (fun ω => weightedPartialSum α ξ k ω) :=
         weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable k
@@ -398,10 +380,10 @@ private theorem weighted_partialSum_stronglyMeasurable_any
       ext ω
       simp [weightedPartialSum, Finset.sum_range_succ, add_comm]
 
-omit [NormedSpace ℝ VDual] [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 private theorem integrable_norm_mul_of_sq_integrable
-    {μ : Measure Ω} {f g : Ω → VDual}
+    {μ : Measure Ω} {f g : Ω → StrongDual ℝ V}
     (hf : StronglyMeasurable f)
     (hg : StronglyMeasurable g)
     (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ)
@@ -424,10 +406,10 @@ private theorem integrable_norm_mul_of_sq_integrable
     positivity
   simpa [Real.norm_of_nonneg hLeftNonneg, Real.norm_of_nonneg hRightNonneg] using hYoung
 
-omit [NormedSpace ℝ VDual] [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 private theorem integrable_norm_of_sq_integrable_local
-    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → VDual}
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → StrongDual ℝ V}
     (hf : StronglyMeasurable f)
     (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ) :
     Integrable (fun ω => ‖f ω‖) μ := by
@@ -441,10 +423,10 @@ private theorem integrable_norm_of_sq_integrable_local
   simpa [div_eq_mul_inv, mul_comm, Real.norm_of_nonneg (norm_nonneg _),
     Real.norm_of_nonneg hRightNonneg] using hYoung
 
-omit [NormedSpace ℝ VDual] [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 private theorem integrable_of_sq_integrable_local
-    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → VDual}
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → StrongDual ℝ V}
     (hf : StronglyMeasurable f)
     (hf_sq : Integrable (fun ω => ‖f ω‖ ^ 2) μ) :
     Integrable f μ := by
@@ -452,13 +434,11 @@ private theorem integrable_of_sq_integrable_local
     (integrable_norm_iff hf.aestronglyMeasurable).mp
       (integrable_norm_of_sq_integrable_local hf hf_sq)
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+omit [SecondCountableTopology (StrongDual ℝ V)] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 private theorem weighted_partialSum_sq_integrable
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    {μ : Measure Ω} {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {k : ℕ}
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    {μ : Measure Ω} {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {k : ℕ}
     (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
     (potential_integrable :
       Integrable (fun ω => B.potential (weightedPartialSum α ξ k ω)) μ)
@@ -483,164 +463,18 @@ private theorem weighted_partialSum_sq_integrable
     nlinarith [hSqLe]
   simpa [Real.norm_of_nonneg hLeftNonneg, Real.norm_of_nonneg hRightNonneg] using hSqLe
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
+private def weightedLinearizedCross
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    (α : ℕ → ℝ) (ξ : ℕ → Ω → StrongDual ℝ V) (k : ℕ) :
+    Ω → ℝ :=
+  fun ω => B.mirrorLinear (weightedPartialSum α ξ k ω) (ξ k ω)
+
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
-private theorem weighted_linearized_cross_integrable
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual]
-    [SecondCountableTopology VDual] [CompleteSpace VDual]
-    {μ : Measure Ω} {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {k : ℕ}
-    (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (partial_sq_integrable :
-      Integrable (fun ω => ‖weightedPartialSum α ξ k ω‖ ^ 2) μ)
-    (sample_sq_integrable :
-      Integrable (fun ω => ‖ξ k ω‖ ^ 2) μ)
-    (partial_norm_le_noiseRadius_ae :
-      ∀ᵐ ω ∂μ, ‖weightedPartialSum α ξ k ω‖ ≤ B.noiseRadius) :
-    Integrable
-      (fun ω =>
-        P.toLinear
-          (B.mirrorMap (weightedPartialSum α ξ k ω))
-          (ξ k ω)) μ := by
-  let Pflip : (VDual →L[ℝ] ℝ) →L[ℝ] VDual →L[ℝ] ℝ :=
-    ContinuousLinearMap.flip (ContinuousLinearMap.apply ℝ ℝ)
-  have hPartial :
-      StronglyMeasurable (fun ω => weightedPartialSum α ξ k ω) :=
-    weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable k
-  have hMirror :
-      AEStronglyMeasurable
-        (fun ω => B.mirrorMap (weightedPartialSum α ξ k ω)) μ :=
-    Assumption4_LocalSmoothProxyPotential.mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
-      (V := V) (VDual := VDual) (pairing := P) (Ω := Ω)
-      B
-      (m := inferInstance) (μ := μ) hPartial.aestronglyMeasurable partial_norm_le_noiseRadius_ae
-  let coeffFun : Ω → VDual →L[ℝ] ℝ := fun ω =>
-    P.toLinear (B.mirrorMap (weightedPartialSum α ξ k ω))
-  have hCoeff :
-      AEStronglyMeasurable coeffFun μ :=
-    P.toLinear.continuous.comp_aestronglyMeasurable hMirror
-  have hXi : AEStronglyMeasurable (ξ k) μ :=
-    (sample_stronglyMeasurable k).aestronglyMeasurable
-  have hMeas :
-      AEStronglyMeasurable (fun ω => coeffFun ω (ξ k ω)) μ := by
-    simpa [Pflip, coeffFun] using Pflip.aestronglyMeasurable_comp₂ hCoeff hXi
-  have hProd :
-      Integrable
-        (fun ω => ‖weightedPartialSum α ξ k ω‖ * ‖ξ k ω‖) μ :=
-    integrable_norm_mul_of_sq_integrable
-      hPartial (sample_stronglyMeasurable k) partial_sq_integrable sample_sq_integrable
-  have hDom :
-      Integrable
-        (fun ω => B.D * (‖weightedPartialSum α ξ k ω‖ * ‖ξ k ω‖)) μ :=
-    hProd.const_mul B.D
-  refine Integrable.mono' hDom hMeas ?_
-  filter_upwards [partial_norm_le_noiseRadius_ae] with ω hω
-  have hMirrorBound :
-      ‖B.mirrorMap (weightedPartialSum α ξ k ω)‖ ≤
-        B.D * ‖weightedPartialSum α ξ k ω‖ :=
-    B.mirrorMap_norm_le_of_mem_noiseRadius (weightedPartialSum α ξ k ω) hω
-  calc
-    ‖coeffFun ω (ξ k ω)‖
-      ≤ ‖coeffFun ω‖ * ‖ξ k ω‖ := ContinuousLinearMap.le_opNorm _ _
-    _ ≤ ‖B.mirrorMap (weightedPartialSum α ξ k ω)‖ * ‖ξ k ω‖ := by
-          gcongr
-          exact P.opNorm_le _
-    _ ≤ (B.D * ‖weightedPartialSum α ξ k ω‖) * ‖ξ k ω‖ := by
-          gcongr
-    _ = B.D * (‖weightedPartialSum α ξ k ω‖ * ‖ξ k ω‖) := by ring
-
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] in
-omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] [CompleteSpace VDual] in
-private theorem weighted_cross_term_zero_at
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
-    [CompleteSpace VDual]
+set_option maxHeartbeats 1000000 in
+private theorem weighted_partial_potential_step
+    (B : Assumption4_LocalSmoothProxyPotential V)
     {μ : Measure Ω} [IsProbabilityMeasure μ]
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n k : ℕ}
-    (pastSigma : ℕ → MeasurableSpace Ω)
-    (pastSigma_le : ∀ i, pastSigma i ≤ inferInstanceAs (MeasurableSpace Ω))
-    (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
-    (coeff_measurable :
-      ∀ i, i < n →
-        AEStronglyMeasurable[pastSigma i]
-          (fun ω => P.toLinear (B.mirrorMap (weightedPartialSum α ξ i ω))) μ)
-    (cond_zero :
-      ∀ i, i < n → μ[ξ i | pastSigma i] =ᵐ[μ] 0)
-    (partial_sq_integrable :
-      Integrable (fun ω => ‖weightedPartialSum α ξ k ω‖ ^ 2) μ)
-    (sample_sq_integrable :
-      Integrable (fun ω => ‖ξ k ω‖ ^ 2) μ)
-    (partial_norm_le_noiseRadius_ae :
-      ∀ᵐ ω ∂μ, ‖weightedPartialSum α ξ k ω‖ ≤ B.noiseRadius)
-    (hk : k < n) :
-    Integrable
-        (fun ω =>
-          α k
-            * P.toLinear
-                (B.mirrorMap (weightedPartialSum α ξ k ω))
-                (ξ k ω)) μ ∧
-      ∫ ω,
-          α k
-            * P.toLinear
-                (B.mirrorMap (weightedPartialSum α ξ k ω))
-                (ξ k ω) ∂μ = 0 := by
-  have hInt :
-      Integrable
-        (fun ω =>
-          P.toLinear
-            (B.mirrorMap (weightedPartialSum α ξ k ω))
-            (ξ k ω)) μ := by
-    simpa using
-      weighted_linearized_cross_integrable P B
-        sample_stronglyMeasurable partial_sq_integrable sample_sq_integrable
-        partial_norm_le_noiseRadius_ae
-  have hZero :
-      ∫ ω,
-          P.toLinear
-            (B.mirrorMap (weightedPartialSum α ξ k ω))
-            (ξ k ω) ∂μ = 0 :=
-    let hξ : Integrable (ξ k) μ :=
-      integrable_of_sq_integrable_local (sample_stronglyMeasurable k) sample_sq_integrable
-    integral_clm_apply_eq_zero_of_condexp_zero
-      (μ := μ)
-      (m := pastSigma k)
-      (pastSigma_le k)
-      (hL := coeff_measurable k hk)
-      (hLξ := hInt)
-      (hξ := hξ)
-      (hCondZero := cond_zero k hk)
-  refine ⟨hInt.const_mul (α k), ?_⟩
-  calc
-    ∫ ω,
-        α k
-          * P.toLinear
-              (B.mirrorMap (weightedPartialSum α ξ k ω))
-              (ξ k ω) ∂μ
-      = α k
-          * ∫ ω,
-              P.toLinear
-                (B.mirrorMap (weightedPartialSum α ξ k ω))
-                (ξ k ω) ∂μ := by
-                  rw [MeasureTheory.integral_const_mul]
-    _ = 0 := by simp [hZero]
-
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] in
-omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] [CompleteSpace VDual] in
-private theorem weighted_partial_potential_sq_integrable_and_bound
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
-    [CompleteSpace VDual]
-    {μ : Measure Ω} [IsProbabilityMeasure μ]
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n k : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
     (pastSigma_le : ∀ i, pastSigma i ≤ inferInstanceAs (MeasurableSpace Ω))
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
@@ -649,7 +483,305 @@ private theorem weighted_partial_potential_sq_integrable_and_bound
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
-          (fun ω => P.toLinear (B.mirrorMap (weightedPartialSum α ξ i ω))) μ)
+          (fun ω => B.mirrorLinear (weightedPartialSum α ξ i ω)) μ)
+    (cond_zero :
+      ∀ i, i < n -> μ[ξ i | pastSigma i] =ᵐ[μ] 0)
+    (sample_norm_le_noiseRadius_ae :
+      ∀ i, i < n -> ∀ᵐ ω ∂μ, ‖ξ i ω‖ ≤ B.noiseRadius)
+    (hk : k < n)
+    (hPrevPotInt :
+      Integrable (fun ω => B.potential (weightedPartialSum α ξ k ω)) μ)
+    (hPrevBound :
+      ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ ≤
+        (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range k) (fun i => (α i) ^ 2))
+    (hVarInt : Integrable (fun ω => ‖ξ k ω‖ ^ 2) μ)
+    (hVarBound : ∫ ω, ‖ξ k ω‖ ^ 2 ∂μ ≤ sigma ^ 2) :
+    Integrable (fun ω => B.potential (weightedPartialSum α ξ (k + 1) ω)) μ ∧
+      Integrable (fun ω => ‖weightedPartialSum α ξ (k + 1) ω‖ ^ 2) μ ∧
+      ∫ ω, B.potential (weightedPartialSum α ξ (k + 1) ω) ∂μ ≤
+        (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range (k + 1)) (fun i => (α i) ^ 2) := by
+  have hXiInt : Integrable (ξ k) μ :=
+    integrable_of_sq_integrable_local (sample_stronglyMeasurable k) hVarInt
+  have hPrevBall :=
+    weightedPartialSum_norm_le_noiseRadius_ae
+      B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae k (Nat.le_of_lt hk)
+  have hNextBall :=
+    weightedPartialSum_norm_le_noiseRadius_ae
+      B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae
+      (k + 1) (Nat.succ_le_of_lt hk)
+  let coeff : Ω → StrongDual ℝ V →L[ℝ] ℝ :=
+    fun ω => B.mirrorLinear (weightedPartialSum α ξ k ω)
+  have hCoeffBound :
+      ∀ᵐ ω ∂μ, ‖coeff ω‖ ≤ B.D * B.noiseRadius := by
+    filter_upwards [hPrevBall] with ω hω
+    have hMirrorBound :
+        ‖B.mirrorMap (weightedPartialSum α ξ k ω)‖ ≤
+          B.D * ‖weightedPartialSum α ξ k ω‖ :=
+      B.mirrorMap_norm_le_of_mem_noiseRadius (weightedPartialSum α ξ k ω) hω
+    have hCoeffNorm :
+        ‖coeff ω‖ ≤ ‖B.mirrorMap (weightedPartialSum α ξ k ω)‖ := by
+      refine ContinuousLinearMap.opNorm_le_bound _ (norm_nonneg _) ?_
+      intro φ
+      simpa [coeff, Assumption4_LocalSmoothProxyPotential.mirrorLinear, mul_comm] using
+        (ContinuousLinearMap.le_opNorm φ (B.mirrorMap (weightedPartialSum α ξ k ω)))
+    calc
+      ‖coeff ω‖
+        ≤ ‖B.mirrorMap (weightedPartialSum α ξ k ω)‖ := hCoeffNorm
+      _ ≤ B.D * ‖weightedPartialSum α ξ k ω‖ := hMirrorBound
+      _ ≤ B.D * B.noiseRadius := mul_le_mul_of_nonneg_left hω B.D_nonneg
+  have hCrossInt :
+      Integrable (weightedLinearizedCross B α ξ k) μ :=
+    by
+      have hCoeffMeas :
+          AEStronglyMeasurable (fun ω => coeff ω) μ :=
+        (coeff_measurable k hk).mono (pastSigma_le k)
+      have hCrossMeas :
+          AEStronglyMeasurable (weightedLinearizedCross B α ξ k) μ := by
+        let applyMap : (StrongDual ℝ V →L[ℝ] ℝ) × StrongDual ℝ V → ℝ :=
+          fun p => p.1 p.2
+        have hApplyMap : Continuous applyMap := by
+          fun_prop
+        simpa [weightedLinearizedCross, coeff, applyMap] using
+          hApplyMap.comp_aestronglyMeasurable (hCoeffMeas.prodMk hXiInt.aestronglyMeasurable)
+      refine Integrable.mono' ((hXiInt.norm).const_mul (B.D * B.noiseRadius)) hCrossMeas ?_
+      filter_upwards [hCoeffBound] with ω hω
+      calc
+        ‖weightedLinearizedCross B α ξ k ω‖
+          = ‖coeff ω (ξ k ω)‖ := by simp [weightedLinearizedCross, coeff]
+        _ ≤ ‖coeff ω‖ * ‖ξ k ω‖ := ContinuousLinearMap.le_opNorm _ _
+        _ ≤ (B.D * B.noiseRadius) * ‖ξ k ω‖ := by gcongr
+  have hCrossZero :
+      ∫ ω, weightedLinearizedCross B α ξ k ω ∂μ = 0 :=
+    by
+      exact
+        integral_clm_apply_eq_zero_of_condexp_zero
+          (μ := μ)
+          (m := pastSigma k)
+          (m0 := inferInstanceAs (MeasurableSpace Ω))
+          (hm := pastSigma_le k)
+          (L := coeff)
+          (ξ := ξ k)
+          (hL := coeff_measurable k hk)
+          (hLξ := by simpa [weightedLinearizedCross, coeff] using hCrossInt)
+          (hξ := hXiInt)
+          (hCondZero := cond_zero k hk)
+  have hCrossInt' :
+      Integrable (fun ω => α k * weightedLinearizedCross B α ξ k ω) μ :=
+    hCrossInt.const_mul (α k)
+  have hCrossZero' :
+      ∫ ω,
+          α k * B.mirrorLinear (weightedPartialSum α ξ k ω) (ξ k ω) ∂μ = 0 := by
+    calc
+      ∫ ω, α k * B.mirrorLinear (weightedPartialSum α ξ k ω) (ξ k ω) ∂μ
+        = ∫ ω, α k * weightedLinearizedCross B α ξ k ω ∂μ := by
+            simp [weightedLinearizedCross]
+      _ 
+        = α k * ∫ ω, weightedLinearizedCross B α ξ k ω ∂μ := by
+            rw [MeasureTheory.integral_const_mul]
+      _ = 0 := by simp [hCrossZero]
+  have hSmooth :
+      ∀ᵐ ω ∂μ,
+        B.potential (weightedPartialSum α ξ (k + 1) ω) ≤
+          B.potential (weightedPartialSum α ξ k ω)
+            + α k
+                * B.mirrorLinear
+                    (weightedPartialSum α ξ k ω)
+                    (ξ k ω)
+            + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 := by
+    exact
+      weighted_smooth_step_ae
+        B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae k hk
+  have hScaleNonneg : 0 ≤ (B.D / 2) * (α k) ^ 2 := by
+    have hDhalf : 0 ≤ B.D / 2 := by nlinarith [B.D_nonneg]
+    exact mul_nonneg hDhalf (sq_nonneg _)
+  let f : Ω → ℝ := fun ω => B.potential (weightedPartialSum α ξ k ω)
+  let g : Ω → ℝ := fun ω =>
+    α k * B.mirrorLinear (weightedPartialSum α ξ k ω) (ξ k ω)
+  let h : Ω → ℝ := fun ω => ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2
+  have hf : Integrable f μ := by simpa [f] using hPrevPotInt
+  have hg : Integrable g μ := by simpa [g] using hCrossInt'
+  have hh : Integrable h μ := by
+    simpa [h] using hVarInt.const_mul ((B.D / 2) * (α k) ^ 2)
+  have hAbsRhsInt :
+      Integrable
+        (fun ω =>
+          B.potential (weightedPartialSum α ξ k ω)
+            + ‖α k
+                  * B.mirrorLinear
+                      (weightedPartialSum α ξ k ω)
+                      (ξ k ω)‖
+            + ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2) μ := by
+    simpa [f, g, h, add_assoc] using hf.add (hg.norm.add hh)
+  have hNextMeas :
+      AEStronglyMeasurable
+        (fun ω => B.potential (weightedPartialSum α ξ (k + 1) ω)) μ := by
+    exact
+      B.potential_comp_aestronglyMeasurable_of_mem_noiseBall_ae
+        ((weighted_partialSum_stronglyMeasurable_any
+            sample_stronglyMeasurable (k + 1)).aestronglyMeasurable)
+        hNextBall
+  have hNextPotInt :
+      Integrable (fun ω => B.potential (weightedPartialSum α ξ (k + 1) ω)) μ := by
+    refine Integrable.mono' hAbsRhsInt hNextMeas ?_
+    filter_upwards [hSmooth, hPrevBall, hNextBall] with ω hω hPrevω hNextω
+    have hPotNonnegNext :
+        0 ≤ B.potential (weightedPartialSum α ξ (k + 1) ω) :=
+      B.potential_nonneg_of_mem_noiseRadius (weightedPartialSum α ξ (k + 1) ω) hNextω
+    have hPotNonneg :
+        0 ≤ B.potential (weightedPartialSum α ξ k ω) :=
+      B.potential_nonneg_of_mem_noiseRadius (weightedPartialSum α ξ k ω) hPrevω
+    have hVarNonneg :
+        0 ≤ ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 := by
+      exact mul_nonneg hScaleNonneg (sq_nonneg _)
+    have hDom :
+        B.potential (weightedPartialSum α ξ (k + 1) ω) ≤
+          B.potential (weightedPartialSum α ξ k ω)
+            + ‖α k
+                  * B.mirrorLinear
+                      (weightedPartialSum α ξ k ω)
+                      (ξ k ω)‖
+            + ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 := by
+      have hAbs :
+          α k
+            * B.mirrorLinear (weightedPartialSum α ξ k ω) (ξ k ω)
+          ≤ ‖α k
+              * B.mirrorLinear (weightedPartialSum α ξ k ω) (ξ k ω)‖ := by
+        exact le_abs_self _
+      linarith
+    have hRhsNonneg :
+        0 ≤
+          B.potential (weightedPartialSum α ξ k ω)
+            + ‖α k
+                  * B.mirrorLinear
+                      (weightedPartialSum α ξ k ω)
+                      (ξ k ω)‖
+            + ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 := by
+      positivity
+    simpa [Real.norm_of_nonneg hPotNonnegNext, Real.norm_of_nonneg hRhsNonneg] using hDom
+  have hNextSqInt :
+      Integrable (fun ω => ‖weightedPartialSum α ξ (k + 1) ω‖ ^ 2) μ :=
+    weighted_partialSum_sq_integrable
+      B sample_stronglyMeasurable hNextPotInt hNextBall
+  have hRhsInt :
+      Integrable
+        (fun ω =>
+          B.potential (weightedPartialSum α ξ k ω)
+            + α k
+                * B.mirrorLinear
+                    (weightedPartialSum α ξ k ω)
+                    (ξ k ω)
+            + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2) μ := by
+    simpa [f, g, h, add_assoc] using hf.add (hg.add hh)
+  have hMono :
+      ∫ ω, B.potential (weightedPartialSum α ξ (k + 1) ω) ∂μ ≤
+        ∫ ω,
+          B.potential (weightedPartialSum α ξ k ω)
+            + α k
+                * B.mirrorLinear
+                    (weightedPartialSum α ξ k ω)
+                    (ξ k ω)
+            + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ := by
+    exact integral_mono_ae hNextPotInt hRhsInt hSmooth
+  have hSplitIntegral :
+      ∫ ω,
+          B.potential (weightedPartialSum α ξ k ω)
+            + α k
+                * B.mirrorLinear
+                    (weightedPartialSum α ξ k ω)
+                    (ξ k ω)
+            + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ
+        =
+          ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
+            + ∫ ω,
+                α k
+                  * B.mirrorLinear
+                      (weightedPartialSum α ξ k ω)
+                      (ξ k ω) ∂μ
+            + ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ := by
+    have hAdd1 :
+        ∫ ω, (f + g + h) ω ∂μ =
+          ∫ ω, (f + g) ω ∂μ + ∫ ω, h ω ∂μ := by
+      simpa [Pi.add_apply] using
+        (integral_add (hf.add hg) hh : ∫ ω, ((f + g) + h) ω ∂μ = _)
+    have hAdd2 :
+        ∫ ω, (f + g) ω ∂μ =
+          ∫ ω, f ω ∂μ + ∫ ω, g ω ∂μ := by
+      simpa [Pi.add_apply] using
+        (integral_add hf hg : ∫ ω, (f + g) ω ∂μ = _)
+    calc
+      ∫ ω,
+          B.potential (weightedPartialSum α ξ k ω)
+            + α k
+                * B.mirrorLinear
+                    (weightedPartialSum α ξ k ω)
+                    (ξ k ω)
+            + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ
+        = ∫ ω, (f + g + h) ω ∂μ := by simp [f, g, h, add_assoc]
+      _ = ∫ ω, (f + g) ω ∂μ + ∫ ω, h ω ∂μ := hAdd1
+      _ = (∫ ω, f ω ∂μ + ∫ ω, g ω ∂μ) + ∫ ω, h ω ∂μ := by rw [hAdd2]
+      _ = ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
+            + ∫ ω,
+                α k
+                  * B.mirrorLinear
+                      (weightedPartialSum α ξ k ω)
+                      (ξ k ω) ∂μ
+            + ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ := by
+              simp [f, g, h]
+  have hVarIntegral :
+      ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ =
+        (B.D / 2) * (α k) ^ 2 * ∫ ω, ‖ξ k ω‖ ^ 2 ∂μ := by
+    rw [integral_const_mul]
+  have hNextBound :
+      ∫ ω, B.potential (weightedPartialSum α ξ (k + 1) ω) ∂μ ≤
+        (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range (k + 1)) (fun i => (α i) ^ 2) := by
+    calc
+      ∫ ω, B.potential (weightedPartialSum α ξ (k + 1) ω) ∂μ
+        ≤ ∫ ω,
+            B.potential (weightedPartialSum α ξ k ω)
+              + α k
+                  * B.mirrorLinear
+                      (weightedPartialSum α ξ k ω)
+                      (ξ k ω)
+              + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ := hMono
+      _ = ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
+            + ∫ ω,
+                α k
+                  * B.mirrorLinear
+                      (weightedPartialSum α ξ k ω)
+                      (ξ k ω) ∂μ
+            + ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ := hSplitIntegral
+      _ = ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
+            + 0
+            + (B.D / 2) * (α k) ^ 2 * ∫ ω, ‖ξ k ω‖ ^ 2 ∂μ := by
+              rw [hCrossZero', hVarIntegral]
+      _ ≤ ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
+            + 0
+            + (B.D / 2) * (α k) ^ 2 * sigma ^ 2 := by
+              gcongr
+      _ ≤ (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range k) (fun i => (α i) ^ 2)
+            + 0
+            + (B.D / 2) * (α k) ^ 2 * sigma ^ 2 := by
+              gcongr
+      _ = (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range (k + 1)) (fun i => (α i) ^ 2) := by
+            rw [Finset.sum_range_succ]
+            ring
+  exact ⟨hNextPotInt, hNextSqInt, hNextBound⟩
+
+omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
+set_option maxHeartbeats 1000000 in
+private theorem weighted_partial_potential_sq_integrable_and_bound
+    (B : Assumption4_LocalSmoothProxyPotential V)
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
+    (pastSigma : ℕ → MeasurableSpace Ω)
+    (pastSigma_le : ∀ i, pastSigma i ≤ inferInstanceAs (MeasurableSpace Ω))
+    (coeff_nonneg : ∀ i < n, 0 ≤ α i)
+    (coeff_sum_le_one : Finset.sum (Finset.range n) α ≤ 1)
+    (sample_stronglyMeasurable : ∀ i, StronglyMeasurable (ξ i))
+    (coeff_measurable :
+      ∀ i, i < n →
+        AEStronglyMeasurable[pastSigma i]
+          (fun ω => B.mirrorLinear (weightedPartialSum α ξ i ω)) μ)
     (cond_zero :
       ∀ i, i < n → μ[ξ i | pastSigma i] =ᵐ[μ] 0)
     (sample_norm_le_noiseRadius_ae :
@@ -679,219 +811,29 @@ private theorem weighted_partial_potential_sq_integrable_and_bound
     rcases ih (Nat.le_of_lt hk') with ⟨hPrevPotInt, hPrevSqInt, hPrevBound⟩
     have hVarInt := (second_moment_bound k hk').1
     have hVarBound := (second_moment_bound k hk').2
-    have hPrevBall :=
-      weightedPartialSum_norm_le_noiseRadius_ae
-        P B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae k (Nat.le_of_lt hk')
-    have hNextBall :=
-      weightedPartialSum_norm_le_noiseRadius_ae
-        P B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae
-        (k + 1) (Nat.succ_le_of_lt hk')
-    have hCross :=
-      weighted_cross_term_zero_at
-        P B pastSigma pastSigma_le sample_stronglyMeasurable
-        coeff_measurable cond_zero hPrevSqInt hVarInt hPrevBall hk'
-    have hCrossInt := hCross.1
-    have hCrossZero := hCross.2
-    have hSmooth :
-        ∀ᵐ ω ∂μ,
-          B.potential (weightedPartialSum α ξ (k + 1) ω) ≤
-            B.potential (weightedPartialSum α ξ k ω)
-              + α k
-                  * P.toLinear
-                      (B.mirrorMap (weightedPartialSum α ξ k ω))
-                      (ξ k ω)
-              + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 := by
-      exact
-        weighted_smooth_step_ae
-          P B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae k hk'
-    have hScaleNonneg : 0 ≤ (B.D / 2) * (α k) ^ 2 := by
-      have hDhalf : 0 ≤ B.D / 2 := by nlinarith [B.D_nonneg]
-      exact mul_nonneg hDhalf (sq_nonneg _)
-    let f : Ω → ℝ := fun ω => B.potential (weightedPartialSum α ξ k ω)
-    let g : Ω → ℝ := fun ω =>
-      α k * P.toLinear (B.mirrorMap (weightedPartialSum α ξ k ω)) (ξ k ω)
-    let h : Ω → ℝ := fun ω => ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2
-    have hf : Integrable f μ := by simpa [f] using hPrevPotInt
-    have hg : Integrable g μ := by simpa [g] using hCrossInt
-    have hh : Integrable h μ := by
-      simpa [h] using hVarInt.const_mul ((B.D / 2) * (α k) ^ 2)
-    have hAbsRhsInt :
-        Integrable
-          (fun ω =>
-            B.potential (weightedPartialSum α ξ k ω)
-              + ‖α k
-                    * P.toLinear
-                        (B.mirrorMap (weightedPartialSum α ξ k ω))
-                        (ξ k ω)‖
-              + ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2) μ := by
-      simpa [f, g, h, add_assoc] using hf.add (hg.norm.add hh)
-    have hNextMeas :
-        AEStronglyMeasurable
-          (fun ω => B.potential (weightedPartialSum α ξ (k + 1) ω)) μ := by
-      exact
-        B.potential_comp_aestronglyMeasurable_of_mem_noiseBall_ae
-          ((weighted_partialSum_stronglyMeasurable_any
-              sample_stronglyMeasurable (k + 1)).aestronglyMeasurable)
-          hNextBall
-    have hNextPotInt :
-        Integrable (fun ω => B.potential (weightedPartialSum α ξ (k + 1) ω)) μ := by
-      refine Integrable.mono' hAbsRhsInt hNextMeas ?_
-      filter_upwards [hSmooth, hPrevBall, hNextBall] with ω hω hPrevω hNextω
-      have hPotNonnegNext :
-          0 ≤ B.potential (weightedPartialSum α ξ (k + 1) ω) :=
-        B.potential_nonneg_of_mem_noiseRadius (weightedPartialSum α ξ (k + 1) ω) hNextω
-      have hPotNonneg :
-          0 ≤ B.potential (weightedPartialSum α ξ k ω) :=
-        B.potential_nonneg_of_mem_noiseRadius (weightedPartialSum α ξ k ω) hPrevω
-      have hVarNonneg :
-          0 ≤ ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 := by
-        exact mul_nonneg hScaleNonneg (sq_nonneg _)
-      have hDom :
-          B.potential (weightedPartialSum α ξ (k + 1) ω) ≤
-            B.potential (weightedPartialSum α ξ k ω)
-              + ‖α k
-                    * P.toLinear
-                        (B.mirrorMap (weightedPartialSum α ξ k ω))
-                        (ξ k ω)‖
-              + ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 := by
-        have hAbs :
-            α k
-              * P.toLinear (B.mirrorMap (weightedPartialSum α ξ k ω)) (ξ k ω)
-            ≤ ‖α k
-                * P.toLinear (B.mirrorMap (weightedPartialSum α ξ k ω)) (ξ k ω)‖ := by
-          exact le_abs_self _
-        linarith
-      have hRhsNonneg :
-          0 ≤
-            B.potential (weightedPartialSum α ξ k ω)
-              + ‖α k
-                    * P.toLinear
-                        (B.mirrorMap (weightedPartialSum α ξ k ω))
-                        (ξ k ω)‖
-              + ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 := by
-        positivity
-      simpa [Real.norm_of_nonneg hPotNonnegNext, Real.norm_of_nonneg hRhsNonneg] using hDom
-    have hNextSqInt :
-        Integrable (fun ω => ‖weightedPartialSum α ξ (k + 1) ω‖ ^ 2) μ :=
-      weighted_partialSum_sq_integrable
-        P B sample_stronglyMeasurable hNextPotInt hNextBall
-    have hRhsInt :
-        Integrable
-          (fun ω =>
-            B.potential (weightedPartialSum α ξ k ω)
-              + α k
-                  * P.toLinear
-                      (B.mirrorMap (weightedPartialSum α ξ k ω))
-                      (ξ k ω)
-              + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2) μ := by
-      simpa [f, g, h, add_assoc] using hf.add (hg.add hh)
-    have hMono :
-        ∫ ω, B.potential (weightedPartialSum α ξ (k + 1) ω) ∂μ ≤
-          ∫ ω,
-            B.potential (weightedPartialSum α ξ k ω)
-              + α k
-                  * P.toLinear
-                      (B.mirrorMap (weightedPartialSum α ξ k ω))
-                      (ξ k ω)
-              + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ := by
-      exact integral_mono_ae hNextPotInt hRhsInt hSmooth
-    have hSplitIntegral :
-        ∫ ω,
-            B.potential (weightedPartialSum α ξ k ω)
-              + α k
-                  * P.toLinear
-                      (B.mirrorMap (weightedPartialSum α ξ k ω))
-                      (ξ k ω)
-              + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ
-          =
-            ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
-              + ∫ ω,
-                  α k
-                    * P.toLinear
-                        (B.mirrorMap (weightedPartialSum α ξ k ω))
-                        (ξ k ω) ∂μ
-              + ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ := by
-      have hAdd1 :
-          ∫ ω, (f + g + h) ω ∂μ =
-            ∫ ω, (f + g) ω ∂μ + ∫ ω, h ω ∂μ := by
-        simpa [Pi.add_apply] using
-          (integral_add (hf.add hg) hh : ∫ ω, ((f + g) + h) ω ∂μ = _)
-      have hAdd2 :
-          ∫ ω, (f + g) ω ∂μ =
-            ∫ ω, f ω ∂μ + ∫ ω, g ω ∂μ := by
-        simpa [Pi.add_apply] using
-          (integral_add hf hg : ∫ ω, (f + g) ω ∂μ = _)
-      calc
-        ∫ ω,
-            B.potential (weightedPartialSum α ξ k ω)
-              + α k
-                  * P.toLinear
-                      (B.mirrorMap (weightedPartialSum α ξ k ω))
-                      (ξ k ω)
-              + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ
-          = ∫ ω, (f + g + h) ω ∂μ := by simp [f, g, h, add_assoc]
-        _ = ∫ ω, (f + g) ω ∂μ + ∫ ω, h ω ∂μ := hAdd1
-        _ = (∫ ω, f ω ∂μ + ∫ ω, g ω ∂μ) + ∫ ω, h ω ∂μ := by rw [hAdd2]
-        _ = ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
-              + ∫ ω,
-                  α k
-                    * P.toLinear
-                        (B.mirrorMap (weightedPartialSum α ξ k ω))
-                        (ξ k ω) ∂μ
-              + ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ := by
-                simp [f, g, h]
-    have hVarIntegral :
-        ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ =
-          (B.D / 2) * (α k) ^ 2 * ∫ ω, ‖ξ k ω‖ ^ 2 ∂μ := by
-      rw [integral_const_mul]
-    have hNextBound :
-        ∫ ω, B.potential (weightedPartialSum α ξ (k + 1) ω) ∂μ ≤
-          (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range (k + 1)) (fun i => (α i) ^ 2) := by
-      calc
-        ∫ ω, B.potential (weightedPartialSum α ξ (k + 1) ω) ∂μ
-          ≤ ∫ ω,
-              B.potential (weightedPartialSum α ξ k ω)
-                + α k
-                    * P.toLinear
-                        (B.mirrorMap (weightedPartialSum α ξ k ω))
-                        (ξ k ω)
-                + (B.D / 2) * (α k) ^ 2 * ‖ξ k ω‖ ^ 2 ∂μ := hMono
-        _ = ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
-              + ∫ ω,
-                  α k
-                    * P.toLinear
-                        (B.mirrorMap (weightedPartialSum α ξ k ω))
-                        (ξ k ω) ∂μ
-              + ∫ ω, ((B.D / 2) * (α k) ^ 2) * ‖ξ k ω‖ ^ 2 ∂μ := hSplitIntegral
-        _ = ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
-              + 0
-              + (B.D / 2) * (α k) ^ 2 * ∫ ω, ‖ξ k ω‖ ^ 2 ∂μ := by
-                rw [hCrossZero, hVarIntegral]
-        _ ≤ ∫ ω, B.potential (weightedPartialSum α ξ k ω) ∂μ
-              + 0
-              + (B.D / 2) * (α k) ^ 2 * sigma ^ 2 := by
-                gcongr
-        _ ≤ (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range k) (fun i => (α i) ^ 2)
-              + 0
-              + (B.D / 2) * (α k) ^ 2 * sigma ^ 2 := by
-                gcongr
-        _ = (B.D / 2) * sigma ^ 2 * Finset.sum (Finset.range (k + 1)) (fun i => (α i) ^ 2) := by
-              rw [Finset.sum_range_succ]
-              ring
-    exact ⟨hNextPotInt, hNextSqInt, hNextBound⟩
+    exact
+      weighted_partial_potential_step
+        (B := B)
+        (pastSigma := pastSigma)
+        (pastSigma_le := pastSigma_le)
+        (coeff_nonneg := coeff_nonneg)
+        (coeff_sum_le_one := coeff_sum_le_one)
+        (sample_stronglyMeasurable := sample_stronglyMeasurable)
+        (coeff_measurable := coeff_measurable)
+        (cond_zero := cond_zero)
+        (sample_norm_le_noiseRadius_ae := sample_norm_le_noiseRadius_ae)
+        (hk := hk')
+        (hPrevPotInt := hPrevPotInt)
+        (hPrevBound := hPrevBound)
+        (hVarInt := hVarInt)
+        (hVarBound := hVarBound)
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 /-- Square-integrability of a weighted centered-noise sum on the noise ball. -/
 theorem weighted_noise_sq_integrable
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
-    [CompleteSpace VDual]
+    (B : Assumption4_LocalSmoothProxyPotential V)
     {μ : Measure Ω} [IsProbabilityMeasure μ]
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
     (pastSigma_le : ∀ i, pastSigma i ≤ inferInstanceAs (MeasurableSpace Ω))
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
@@ -900,7 +842,7 @@ theorem weighted_noise_sq_integrable
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
-          (fun ω => P.toLinear (B.mirrorMap (weightedPartialSum α ξ i ω))) μ)
+          (fun ω => B.mirrorLinear (weightedPartialSum α ξ i ω)) μ)
     (cond_zero :
       ∀ i, i < n → μ[ξ i | pastSigma i] =ᵐ[μ] 0)
     (sample_norm_le_noiseRadius_ae :
@@ -912,22 +854,16 @@ theorem weighted_noise_sq_integrable
     Integrable (fun ω => ‖weightedPartialSum α ξ n ω‖ ^ 2) μ := by
   exact
     (weighted_partial_potential_sq_integrable_and_bound
-      P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
+      B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
       coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
       second_moment_bound n le_rfl).2.1
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 /-- First-moment integrability of a weighted centered-noise sum. -/
 theorem weighted_noise_norm_integrable
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
-    [CompleteSpace VDual]
+    (B : Assumption4_LocalSmoothProxyPotential V)
     {μ : Measure Ω} [IsProbabilityMeasure μ]
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
     (pastSigma_le : ∀ i, pastSigma i ≤ inferInstanceAs (MeasurableSpace Ω))
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
@@ -936,7 +872,7 @@ theorem weighted_noise_norm_integrable
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
-          (fun ω => P.toLinear (B.mirrorMap (weightedPartialSum α ξ i ω))) μ)
+          (fun ω => B.mirrorLinear (weightedPartialSum α ξ i ω)) μ)
     (cond_zero :
       ∀ i, i < n → μ[ξ i | pastSigma i] =ᵐ[μ] 0)
     (sample_norm_le_noiseRadius_ae :
@@ -950,22 +886,16 @@ theorem weighted_noise_norm_integrable
     integrable_norm_of_sq_integrable_local
       (weighted_partialSum_stronglyMeasurable_any sample_stronglyMeasurable n)
       (weighted_noise_sq_integrable
-        P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
+        B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
         coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
         second_moment_bound)
 
-omit [MeasurableSpace VDual] [BorelSpace VDual]
-  [SecondCountableTopology VDual] [CompleteSpace VDual] in
 omit [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V] in
 /-- First-moment bound for a weighted sum of centered noises on the noise ball. -/
 theorem weighted_noise_first_moment_bound
-    (P : ContinuousDualPairingContext VDual V)
-    (B : Assumption4_LocalSmoothProxyPotential V VDual P)
-    [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-    [MeasurableSpace VDual] [BorelSpace VDual] [SecondCountableTopology VDual]
-    [CompleteSpace VDual]
+    (B : Assumption4_LocalSmoothProxyPotential V)
     {μ : Measure Ω} [IsProbabilityMeasure μ]
-    {ξ : ℕ → Ω → VDual} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
+    {ξ : ℕ → Ω → StrongDual ℝ V} {α : ℕ → ℝ} {n : ℕ} {sigma : ℝ}
     (pastSigma : ℕ → MeasurableSpace Ω)
     (pastSigma_le : ∀ i, pastSigma i ≤ inferInstanceAs (MeasurableSpace Ω))
     (coeff_nonneg : ∀ i < n, 0 ≤ α i)
@@ -974,7 +904,7 @@ theorem weighted_noise_first_moment_bound
     (coeff_measurable :
       ∀ i, i < n →
         AEStronglyMeasurable[pastSigma i]
-          (fun ω => P.toLinear (B.mirrorMap (weightedPartialSum α ξ i ω))) μ)
+          (fun ω => B.mirrorLinear (weightedPartialSum α ξ i ω)) μ)
     (cond_zero :
       ∀ i, i < n → μ[ξ i | pastSigma i] =ᵐ[μ] 0)
     (sample_norm_le_noiseRadius_ae :
@@ -987,7 +917,7 @@ theorem weighted_noise_first_moment_bound
       Real.sqrt (B.D * sigma ^ 2 * Finset.sum (Finset.range n) (fun i => (α i) ^ 2)) := by
   let hAll :=
     weighted_partial_potential_sq_integrable_and_bound
-      P B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
+      B pastSigma pastSigma_le coeff_nonneg coeff_sum_le_one sample_stronglyMeasurable
       coeff_measurable cond_zero sample_norm_le_noiseRadius_ae
       second_moment_bound
   have hSqInt :
@@ -1004,7 +934,7 @@ theorem weighted_noise_first_moment_bound
     have hFinalBound := hFinal.2.2
     have hFinalBall :=
       weightedPartialSum_norm_le_noiseRadius_ae
-        P B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae n le_rfl
+        B coeff_nonneg coeff_sum_le_one sample_norm_le_noiseRadius_ae n le_rfl
     have hScaled :
         Integrable (fun ω => 2 * B.potential (weightedPartialSum α ξ n ω)) μ := by
       simpa using hFinalPotInt.const_mul 2
@@ -1038,8 +968,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The realized minibatch-average noise `∇f(W_t(ω)) - g_{S_t}(ω)`. -/
 def minibatchNoise
@@ -1065,8 +994,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 private def fixedTimeNoise
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
@@ -1090,8 +1018,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 private theorem fixedTimeNoise_stronglyMeasurable
     (S : StochasticSteepestDescentGeometryContext Ω V) (t i : ℕ) :
@@ -1210,11 +1137,10 @@ private theorem fixedTimeCoeff_measurable
     ∀ k, k < S.batchSize →
       AEStronglyMeasurable[S.fixedTimePastSigma t k]
         (fun ω =>
-          S.pairing.toLinear
-            (S.mirrorMap
-              (weightedPartialSum
-                (fun _ => uniformBatchWeight S.batchSize)
-                (S.fixedTimeNoise t) k ω))) S.μ
+          S.assumption4_localProxyPotential.mirrorLinear
+            (weightedPartialSum
+              (fun _ => uniformBatchWeight S.batchSize)
+              (S.fixedTimeNoise t) k ω)) S.μ
   | k, hk => by
     have hPartial :
         StronglyMeasurable[S.fixedTimePastSigma t k]
@@ -1231,7 +1157,7 @@ private theorem fixedTimeCoeff_measurable
               (S.fixedTimeNoise t)
               k ω‖ ≤ S.noiseRadius :=
       weightedPartialSum_norm_le_noiseRadius_ae
-        S.pairing S.assumption4_localProxyPotential
+        S.assumption4_localProxyPotential
         (μ := S.μ)
         (ξ := S.fixedTimeNoise t)
         (α := fun _ => uniformBatchWeight S.batchSize)
@@ -1250,11 +1176,10 @@ private theorem fixedTimeCoeff_measurable
                 (fun _ => uniformBatchWeight S.batchSize)
                 (S.fixedTimeNoise t) k ω)) S.μ :=
       Assumption4_LocalSmoothProxyPotential.mirrorMap_comp_aestronglyMeasurable_of_mem_noiseBall_ae
-        (V := V) (VDual := StrongDual ℝ V) (pairing := S.pairing) (Ω := Ω)
-        S.assumption4_localProxyPotential
+        (V := V) (Ω := Ω) S.assumption4_localProxyPotential
         (m := S.fixedTimePastSigma t k) (μ := S.μ)
         hPartial.aestronglyMeasurable hPartialBound
-    exact S.pairing.toLinear.continuous.comp_aestronglyMeasurable hMirror
+    exact (strongDualBidual V).continuous.comp_aestronglyMeasurable hMirror
 
 private theorem minibatchNoise_eq_weightedPartialSum
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) :
@@ -1322,7 +1247,7 @@ private theorem fixedTimeWeightedNoise_analysis
   refine ⟨?_, ?_⟩
   · exact
       weighted_noise_norm_integrable
-        S.pairing S.assumption4_localProxyPotential
+        S.assumption4_localProxyPotential
         (μ := S.μ)
         (sigma := S.sigma)
         (ξ := S.fixedTimeNoise t)
@@ -1339,7 +1264,7 @@ private theorem fixedTimeWeightedNoise_analysis
         (second_moment_bound := by intro i hi; exact S.fixedTimeNoise_second_moment_bound t i hi)
   · exact
       weighted_noise_first_moment_bound
-        S.pairing S.assumption4_localProxyPotential
+        S.assumption4_localProxyPotential
         (μ := S.μ)
         (sigma := S.sigma)
         (ξ := S.fixedTimeNoise t)
@@ -1363,8 +1288,7 @@ variable {Ω V : Type*}
 variable [MeasurableSpace Ω]
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 variable [MeasurableSpace V] [BorelSpace V] [SecondCountableTopology V]
-variable [MeasurableSpace (StrongDual ℝ V)] [BorelSpace (StrongDual ℝ V)]
-variable [SecondCountableTopology (StrongDual ℝ V)] [CompleteSpace (StrongDual ℝ V)]
+variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The realized minibatch gradient is integrable at each time. -/
 lemma minibatchGradient_integrable
