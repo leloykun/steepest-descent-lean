@@ -67,21 +67,27 @@ private theorem frankWolfeGap_ge_muFW_mul_suboptimality_private
       S.muFW * S.suboptimality t ω ≤
         S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
   intro t ω
-  simpa [StochasticSteepestDescentGeometryContext.suboptimality,
+  simpa [StochasticFrankWolfeGeometryContext.suboptimality,
     StochasticFrankWolfeGeometryContext.frankWolfeGap,
     StochasticFrankWolfeGeometryContext.frankWolfeGapAt,
-    StochasticSteepestDescentGeometryContext.constraintBall] using
+    StochasticSteepestDescentGeometryContext.constraintBall,
+    StochasticSteepestDescentGeometryContext.constraintRadius] using
     S.assumptionFrankWolfeKL t ω
 
 private theorem suboptimality_integrable
     (S : StochasticFrankWolfeKLGeometryContext Ω V) :
     ∀ t, Integrable (fun ω => S.suboptimality t ω) S.μ
   | 0 => by
-      letI := S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.prob
-      refine (integrable_const S.initialSuboptimality).congr ?_
-      filter_upwards with ω
-      simp [StochasticSteepestDescentGeometryContext.suboptimality,
-        StochasticSteepestDescentGeometryContext.initialSuboptimality, S.W_zero]
+      have hConst :
+          Integrable (fun _ : Ω => S.f S.WStar) S.μ := by
+        letI := S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.prob
+        simpa [StochasticSteepestDescentGeometryContext.μ] using
+          (integrable_const
+            (μ := S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.μ)
+            (S.f S.WStar))
+      simpa [StochasticFrankWolfeGeometryContext.suboptimality] using
+        (S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext.objective_integrable 0).sub
+          hConst
   | t + 1 => by
       have hPrev : Integrable (fun ω => S.suboptimality t ω) S.μ :=
         suboptimality_integrable S t
@@ -99,12 +105,12 @@ private theorem suboptimality_integrable
       refine Integrable.mono' hUpper (suboptimality_aestronglyMeasurable S (t + 1)) ?_
       filter_upwards with ω
       have hNonneg : 0 ≤ S.suboptimality (t + 1) ω := by
-        dsimp [StochasticSteepestDescentGeometryContext.suboptimality]
+        dsimp [StochasticFrankWolfeGeometryContext.suboptimality]
         linarith [S.WStar_optimality (S.W (t + 1) ω)]
       have hOne :=
         S.toStochasticFrankWolfeGeometryContext.one_step_descent_fwGap t ω
       have hSuboptNonneg : 0 ≤ S.suboptimality t ω := by
-        dsimp [StochasticSteepestDescentGeometryContext.suboptimality]
+        dsimp [StochasticFrankWolfeGeometryContext.suboptimality]
         linarith [S.WStar_optimality (S.W t ω)]
       have hGapLower :
           S.muFW * S.suboptimality t ω ≤ S.toStochasticFrankWolfeGeometryContext.frankWolfeGap t ω := by
@@ -196,7 +202,7 @@ private theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound_bas
                   (S.f (S.W t ω) - S.f S.WStar)
               simpa [sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using hAdd
       _ = a * S.suboptimality t ω + 2 * S.eta * err t ω + 2 * S.L * S.eta ^ 2 := by
-            dsimp [a, StochasticSteepestDescentGeometryContext.suboptimality]
+            dsimp [a, StochasticFrankWolfeGeometryContext.suboptimality]
             ring
   have hLower :
       MeasureTheory.Integrable (fun ω => S.suboptimality (t + 1) ω) S.μ :=
@@ -234,7 +240,8 @@ private theorem frankWolfeExpectedSuboptimality_recurrence_of_tracking_bound_bas
     rw [MeasureTheory.integral_add hScaledSubopt hErrScaled]
     have hSuboptInt :
         ∫ ω, a * S.suboptimality t ω ∂S.μ = a * S.expectedSuboptimality t := by
-      simpa [expectedSuboptimality, mul_assoc, mul_left_comm, mul_comm] using
+      simpa [StochasticFrankWolfeGeometryContext.expectedSuboptimality,
+        mul_assoc, mul_left_comm, mul_comm] using
         (MeasureTheory.integral_const_mul a (fun ω => S.suboptimality t ω))
     have hErrInt' :
         ∫ ω, 2 * S.eta * err t ω ∂S.μ = (2 * S.eta) * (∫ ω, err t ω ∂S.μ) := by
@@ -260,7 +267,7 @@ private theorem frankWolfeExpectedSuboptimality_bound_base
     (hContraction : S.muFW * S.lambda * S.eta ≤ 1) :
     ∀ T,
       S.expectedSuboptimality T ≤
-        (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialSuboptimality
+        (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialExpectedSuboptimality
           + S.frankWolfeExpectedSuboptimalityMinibatchCoefficient / Real.sqrt S.batchSizeℝ
           + S.frankWolfeExpectedSuboptimalityResidualFloor := by
   intro T
@@ -370,15 +377,9 @@ private theorem frankWolfeExpectedSuboptimality_bound_base
   calc
     S.expectedSuboptimality T
       ≤ a ^ T * S.expectedSuboptimality 0 + k * (1 / (1 - a)) + d * (S.beta / (1 - S.beta)) := hMain
-    _ = a ^ T * S.initialSuboptimality + k * (1 / (1 - a)) + d * (S.beta / (1 - S.beta)) := by
-          have hInit :
-              S.expectedSuboptimality 0 = S.initialSuboptimality := by
-            simpa [expectedSuboptimality,
-              StochasticSteepestDescentGeometryContext.initialExpectedSuboptimality] using
-              (StochasticSteepestDescentGeometryContext.initialExpectedSuboptimality_eq_initialSuboptimality
-                S.toStochasticFrankWolfeGeometryContext.toStochasticSteepestDescentGeometryContext)
-          rw [hInit]
-    _ = (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialSuboptimality
+    _ = a ^ T * S.initialExpectedSuboptimality + k * (1 / (1 - a)) + d * (S.beta / (1 - S.beta)) := by
+          rfl
+    _ = (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialExpectedSuboptimality
           + S.frankWolfeExpectedSuboptimalityMinibatchCoefficient / Real.sqrt S.batchSizeℝ
           + S.frankWolfeExpectedSuboptimalityResidualFloor := by
             dsimp [a, k, d, frankWolfeExpectedSuboptimalityMinibatchCoefficient,
@@ -441,7 +442,7 @@ theorem frankWolfeExpectedSuboptimality_bound
     (hContraction : S.muFW * S.lambda * S.eta ≤ 1) :
     ∀ T,
       S.expectedSuboptimality T ≤
-        (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialSuboptimality
+        (1 - S.muFW * S.lambda * S.eta) ^ T * S.initialExpectedSuboptimality
           + S.frankWolfeExpectedSuboptimalityMinibatchCoefficient / Real.sqrt S.batchSizeℝ
           + S.frankWolfeExpectedSuboptimalityResidualFloor := by
   exact frankWolfeExpectedSuboptimality_bound_base S hContraction
@@ -451,13 +452,13 @@ theorem frankWolfeExpectedSuboptimality_existsConstants
     (S : StochasticFrankWolfeKLGeometryContext Ω V)
     (hContraction : S.muFW * S.lambda * S.eta ≤ 1) :
     ∃ X Y Z : ℝ,
-      X = S.initialSuboptimality ∧
+      X = S.initialExpectedSuboptimality ∧
       Y = S.frankWolfeExpectedSuboptimalityMinibatchCoefficient ∧
       Z = S.frankWolfeExpectedSuboptimalityResidualFloor ∧
       ∀ T,
         S.expectedSuboptimality T ≤
           (1 - S.muFW * S.lambda * S.eta) ^ T * X + Y / Real.sqrt S.batchSizeℝ + Z := by
-  refine ⟨S.initialSuboptimality, S.frankWolfeExpectedSuboptimalityMinibatchCoefficient,
+  refine ⟨S.initialExpectedSuboptimality, S.frankWolfeExpectedSuboptimalityMinibatchCoefficient,
     S.frankWolfeExpectedSuboptimalityResidualFloor, rfl, rfl, rfl, ?_⟩
   intro T
   simpa using S.frankWolfeExpectedSuboptimality_bound hContraction T

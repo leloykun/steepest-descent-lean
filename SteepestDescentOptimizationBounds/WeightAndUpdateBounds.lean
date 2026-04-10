@@ -125,10 +125,10 @@ lemma step_optimal
     _ = (S.C t) X := by
           exact hPairX.symm
 
-/-- Bootstraps the bound `‖W_t‖ ≤ 1 / λ` for every iterate. -/
+/-- Bootstraps the bound `‖W_t‖ ≤ constraintRadius` for every iterate. -/
 lemma weight_bound_from_feasible_step
     (S : SteepestDescentPathGeometryContext V) :
-    ∀ t, ‖S.W t‖ ≤ 1 / S.lambda
+    ∀ t, ‖S.W t‖ ≤ S.constraintRadius
   | 0 => S.W0_bound
   | t + 1 => by
       have hScaleNonneg : 0 ≤ 1 - S.lambda * S.eta := S.one_sub_lambda_eta_nonneg
@@ -144,19 +144,34 @@ lemma weight_bound_from_feasible_step
         _ = S.eta + (1 - S.lambda * S.eta) * ‖S.W t‖ := by
           simp [SteepestDescentPathGeometryContext.stepCenter, norm_smul,
             Real.norm_of_nonneg hScaleNonneg]
-        _ ≤ S.eta + (1 - S.lambda * S.eta) * (1 / S.lambda) := by
+        _ ≤ S.eta + (1 - S.lambda * S.eta) * S.constraintRadius := by
           gcongr
-        _ = 1 / S.lambda := by
-          field_simp [S.lambda_pos.ne']
-          ring
+        _ = S.constraintRadius := by
+          have hEq : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+          have hEq' : (S.lambda * S.eta) * S.constraintRadius = S.eta := by
+            calc
+              (S.lambda * S.eta) * S.constraintRadius = S.eta * (S.lambda * S.constraintRadius) := by ring
+              _ = S.eta := by rw [hEq]; ring
+          calc
+            S.eta + (1 - S.lambda * S.eta) * S.constraintRadius
+                = S.eta + S.constraintRadius - (S.lambda * S.eta) * S.constraintRadius := by ring
+            _ = S.eta + S.constraintRadius - S.eta := by rw [hEq']
+            _ = S.constraintRadius := by ring
+
+/-- The decoupled weight-decay specialization implies `η ≤ λη * constraintRadius`. -/
+private lemma eta_le_lambda_eta_mul_constraintRadius
+    (S : SteepestDescentPathGeometryContext V) :
+    S.eta ≤ (S.lambda * S.eta) * S.constraintRadius := by
+  have hEq : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+  nlinarith [S.eta_pos]
 
 /--
-Every iterate remains inside the `1 / λ` ball, and every update has size at
+Every iterate remains inside the `constraintRadius` ball, and every update has size at
 most `2η`.
 -/
 theorem proposition9_weight_and_update_bounds
     (S : SteepestDescentPathGeometryContext V) :
-    ∀ t, ‖S.W t‖ ≤ 1 / S.lambda ∧ ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta := by
+    ∀ t, ‖S.W t‖ ≤ S.constraintRadius ∧ ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta := by
   intro t
   have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
   have hWeight := S.weight_bound_from_feasible_step t
@@ -176,11 +191,19 @@ theorem proposition9_weight_and_update_bounds
     _ = S.eta + (S.lambda * S.eta) * ‖S.W t‖ := by
           rw [weight_sub_stepCenter]
           simp [norm_smul, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ S.eta + (S.lambda * S.eta) * (1 / S.lambda) := by
+    _ ≤ S.eta + (S.lambda * S.eta) * S.constraintRadius := by
           gcongr
+    _ ≤ (S.lambda * S.eta) * S.constraintRadius + (S.lambda * S.eta) * S.constraintRadius := by
+          have hEta : S.eta ≤ (S.lambda * S.eta) * S.constraintRadius :=
+            S.eta_le_lambda_eta_mul_constraintRadius
+          linarith
     _ = 2 * S.eta := by
-          field_simp [S.lambda_pos.ne']
-          ring
+          have hEq : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+          calc
+            (S.lambda * S.eta) * S.constraintRadius + (S.lambda * S.eta) * S.constraintRadius
+                = (S.lambda * S.constraintRadius) * (S.eta + S.eta) := by ring
+            _ = 1 * (S.eta + S.eta) := by rw [hEq]
+            _ = 2 * S.eta := by ring
 
 end SteepestDescentPathGeometryContext
 
@@ -248,10 +271,10 @@ lemma step_optimal
     StochasticSteepestDescentGeometryContext.path] using
     (S.path ω).step_optimal t X hX
 
-/-- The iterate norm stays inside the `1 / λ` ball pathwise. -/
+/-- The iterate norm stays inside the generic constraint ball pathwise. -/
 lemma weight_bound_from_feasible_step
     (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ t ω, ‖S.W t ω‖ ≤ 1 / S.lambda := by
+    ∀ t ω, ‖S.W t ω‖ ≤ S.constraintRadius := by
   intro t ω
   simpa [StochasticSteepestDescentGeometryContext.path] using
     (S.path ω).weight_bound_from_feasible_step t
@@ -259,7 +282,7 @@ lemma weight_bound_from_feasible_step
 /-- Pathwise iterate/update ball bound for the decoupled weight-decay step. -/
 theorem proposition9_weight_and_update_bounds
     (S : StochasticSteepestDescentGeometryContext Ω V) :
-    ∀ t ω, ‖S.W t ω‖ ≤ 1 / S.lambda ∧ ‖S.W (t + 1) ω - S.W t ω‖ ≤ 2 * S.eta := by
+    ∀ t ω, ‖S.W t ω‖ ≤ S.constraintRadius ∧ ‖S.W (t + 1) ω - S.W t ω‖ ≤ 2 * S.eta := by
   intro t ω
   simpa [StochasticSteepestDescentGeometryContext.path] using
     (S.path ω).proposition9_weight_and_update_bounds t

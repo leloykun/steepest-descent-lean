@@ -57,7 +57,7 @@ decay `λ` while freezing all other theorem coefficients.
 def starConvexIndependentWeightDecayProxy
     (S : StochasticStarConvexGeometryContext Ω V)
     (T : ℕ) (lambdaValue η : ℝ) : ℝ :=
-  S.initialSuboptimality * (1 - lambdaValue * η) ^ T
+  S.initialExpectedSuboptimality * (1 - lambdaValue * η) ^ T
     + S.starConvexIndependentWeightDecayProxyNoiseConst / lambdaValue
     + (S.starConvexIndependentWeightDecayProxyDriftConst / lambdaValue
         + S.starConvexIndependentWeightDecayProxyResidualConst) * η
@@ -75,7 +75,7 @@ def starConvexIndependentWeightDecayInteriorStationaryPoint
     * (1 - Real.rpow
         ((S.starConvexIndependentWeightDecayProxyDriftConst
               + S.starConvexIndependentWeightDecayProxyResidualConst * lambdaValue)
-          / (S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2))
+          / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2))
         (1 / ((T - 1 : ℕ) : ℝ)))
 
 /-- The interior stationary-point predicate for the weight-decay-only proxy. -/
@@ -94,7 +94,7 @@ private def starConvexIndependentWeightDecayStationaryRatio
     (T : ℕ) (lambdaValue : ℝ) : ℝ :=
   (S.starConvexIndependentWeightDecayProxyDriftConst
       + S.starConvexIndependentWeightDecayProxyResidualConst * lambdaValue)
-    / (S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2)
+    / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2)
 
 private def independentWeightDecayLowerScaleThreshold
     (S : StochasticStarConvexGeometryContext Ω V)
@@ -103,9 +103,9 @@ private def independentWeightDecayLowerScaleThreshold
   max 1
     (max
       (2 * S.starConvexIndependentWeightDecayProxyDriftConst
-        / (S.initialSuboptimality * (T : ℝ) * alpha))
+        / (S.initialExpectedSuboptimality * (T : ℝ) * alpha))
       (2 * S.starConvexIndependentWeightDecayProxyResidualConst
-        / (S.initialSuboptimality * (T : ℝ) * alpha)))
+        / (S.initialExpectedSuboptimality * (T : ℝ) * alpha)))
 
 /-! ------------------------------------------------------------------------
 Private Lemmas and Theorems
@@ -133,7 +133,7 @@ private theorem hasDerivAt_starConvexIndependentWeightDecayProxy
     (T : ℕ) {lambdaValue η : ℝ} :
     HasDerivAt
       (fun η' => S.starConvexIndependentWeightDecayProxy T lambdaValue η')
-      (-(S.initialSuboptimality * (T : ℝ) * lambdaValue * (1 - lambdaValue * η) ^ (T - 1))
+      (-(S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue * (1 - lambdaValue * η) ^ (T - 1))
         + (S.starConvexIndependentWeightDecayProxyDriftConst / lambdaValue
             + S.starConvexIndependentWeightDecayProxyResidualConst))
       η := by
@@ -150,9 +150,9 @@ private theorem hasDerivAt_starConvexIndependentWeightDecayProxy
     simpa [mul_comm, mul_left_comm, mul_assoc] using hInner.pow T
   have hMain :
       HasDerivAt
-        (fun η' : ℝ => S.initialSuboptimality * (1 - lambdaValue * η') ^ T)
-        (S.initialSuboptimality * ((T : ℝ) * (1 - lambdaValue * η) ^ (T - 1) * (-lambdaValue))) η := by
-    simpa [mul_comm, mul_left_comm, mul_assoc] using hPow.const_mul S.initialSuboptimality
+        (fun η' : ℝ => S.initialExpectedSuboptimality * (1 - lambdaValue * η') ^ T)
+        (S.initialExpectedSuboptimality * ((T : ℝ) * (1 - lambdaValue * η) ^ (T - 1) * (-lambdaValue))) η := by
+    simpa [mul_comm, mul_left_comm, mul_assoc] using hPow.const_mul S.initialExpectedSuboptimality
   have hLinear :
       HasDerivAt
         (fun η' : ℝ =>
@@ -171,7 +171,7 @@ private theorem hasDerivAt_starConvexIndependentWeightDecayProxy
     simpa using hasDerivAt_const η (S.starConvexIndependentWeightDecayProxyNoiseConst / lambdaValue)
   convert hMain.add (hConst.add hLinear) using 1
   · funext η'
-    simp [starConvexIndependentWeightDecayProxy, add_assoc, add_left_comm, add_comm]
+    simp [starConvexIndependentWeightDecayProxy, add_assoc, add_comm]
   · ring
 
 private theorem one_sub_lambda_mul_stationaryPoint
@@ -191,7 +191,7 @@ private theorem one_sub_lambda_mul_stationaryPoint
 private theorem stationaryRatio_nonneg
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 0 < T) {lambdaValue : ℝ} (hLambda : 0 < lambdaValue)
-    (hGap : 0 < S.initialSuboptimality) :
+    (hGap : 0 < S.initialExpectedSuboptimality) :
     0 ≤ S.starConvexIndependentWeightDecayStationaryRatio T lambdaValue := by
   dsimp [starConvexIndependentWeightDecayStationaryRatio]
   have hNum :
@@ -205,14 +205,14 @@ private theorem stationaryRatio_nonneg
       exact mul_nonneg S.starConvexIndependentWeightDecayProxyResidualConst_nonneg hLambda.le
     linarith
   have hDen :
-      0 ≤ S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2 := by
+      0 ≤ S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2 := by
     exact mul_nonneg (mul_nonneg hGap.le (by exact_mod_cast hT.le)) (sq_nonneg _)
   exact div_nonneg hNum hDen
 
 private theorem stationaryRatio_pos
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 0 < T) {lambdaValue : ℝ} (hLambda : 0 < lambdaValue)
-    (hGap : 0 < S.initialSuboptimality) :
+    (hGap : 0 < S.initialExpectedSuboptimality) :
     0 < S.starConvexIndependentWeightDecayStationaryRatio T lambdaValue := by
   dsimp [starConvexIndependentWeightDecayStationaryRatio]
   have hNum :
@@ -226,7 +226,7 @@ private theorem stationaryRatio_pos
       exact mul_nonneg S.starConvexIndependentWeightDecayProxyResidualConst_nonneg hLambda.le
     exact add_pos_of_pos_of_nonneg hDrift hResidual
   have hDen :
-      0 < S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2 := by
+      0 < S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2 := by
     have hTS : 0 < (T : ℝ) := by exact_mod_cast hT
     exact mul_pos (mul_pos hGap hTS) (sq_pos_iff.mpr hLambda.ne')
   exact div_pos hNum hDen
@@ -234,7 +234,7 @@ private theorem stationaryRatio_pos
 private theorem stationaryPoint_pow_eq_ratio
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 2 ≤ T) {lambdaValue : ℝ} (hLambda : 0 < lambdaValue)
-    (hGap : 0 < S.initialSuboptimality) :
+    (hGap : 0 < S.initialExpectedSuboptimality) :
     (1 - lambdaValue * S.starConvexIndependentWeightDecayInteriorStationaryPoint T lambdaValue) ^ (T - 1)
       = S.starConvexIndependentWeightDecayStationaryRatio T lambdaValue := by
   have hTm1PosNat : 0 < T - 1 := by omega
@@ -271,7 +271,7 @@ private theorem stationaryPoint_lt_one_div_lambda
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 2 ≤ T) {lambdaValue : ℝ}
     (hLambda : 0 < lambdaValue)
-    (hGap : 0 < S.initialSuboptimality)
+    (hGap : 0 < S.initialExpectedSuboptimality)
     (hInterior :
       S.starConvexIndependentWeightDecayStationaryRatio T lambdaValue < 1) :
     S.starConvexIndependentWeightDecayInteriorStationaryPoint T lambdaValue < 1 / lambdaValue := by
@@ -309,7 +309,7 @@ private theorem stationaryPoint_pos
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 2 ≤ T) {lambdaValue : ℝ}
     (hLambda : 0 < lambdaValue)
-    (hGap : 0 < S.initialSuboptimality)
+    (hGap : 0 < S.initialExpectedSuboptimality)
     (hInterior :
       S.starConvexIndependentWeightDecayStationaryRatio T lambdaValue < 1) :
     0 < S.starConvexIndependentWeightDecayInteriorStationaryPoint T lambdaValue := by
@@ -330,7 +330,7 @@ private theorem stationaryPoint_deriv_zero
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 2 ≤ T) {lambdaValue : ℝ}
     (hLambda : 0 < lambdaValue)
-    (hGap : 0 < S.initialSuboptimality) :
+    (hGap : 0 < S.initialExpectedSuboptimality) :
     HasDerivAt
       (fun η' => S.starConvexIndependentWeightDecayProxy T lambdaValue η')
       0
@@ -345,7 +345,7 @@ private theorem stationaryPoint_deriv_zero
         = S.starConvexIndependentWeightDecayStationaryRatio T lambdaValue :=
     S.stationaryPoint_pow_eq_ratio (T := T) hT hLambda hGap
   have hZero :
-      -(S.initialSuboptimality * (T : ℝ) * lambdaValue
+      -(S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue
           * (1 - lambdaValue * S.starConvexIndependentWeightDecayInteriorStationaryPoint T lambdaValue) ^ (T - 1))
         + (S.starConvexIndependentWeightDecayProxyDriftConst / lambdaValue
             + S.starConvexIndependentWeightDecayProxyResidualConst)
@@ -368,12 +368,12 @@ star-convex expected-suboptimality proxy.
 theorem starConvexScalingLawsIndependentWeightDecay_exactInteriorStationaryPoint
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 2 ≤ T)
-    (hGap : 0 < S.initialSuboptimality)
+    (hGap : 0 < S.initialExpectedSuboptimality)
     {lambdaValue : ℝ} (hLambda : 0 < lambdaValue)
     (hInterior :
       (S.starConvexIndependentWeightDecayProxyDriftConst
           + S.starConvexIndependentWeightDecayProxyResidualConst * lambdaValue)
-        / (S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2) < 1) :
+        / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2) < 1) :
     S.IsStarConvexIndependentWeightDecayInteriorStationaryPoint
       T lambdaValue (S.starConvexIndependentWeightDecayInteriorStationaryPoint T lambdaValue) := by
   refine ⟨S.stationaryPoint_pos (T := T) hT hLambda hGap hInterior,
@@ -390,7 +390,7 @@ trivial `O(1 / λ)` upper bound.
 theorem starConvexScalingLawsIndependentWeightDecay_inverseScaling
     (S : StochasticStarConvexGeometryContext Ω V)
     {T : ℕ} (hT : 2 ≤ T)
-    (hGap : 0 < S.initialSuboptimality) :
+    (hGap : 0 < S.initialExpectedSuboptimality) :
     ∀ {q : ℝ}, 0 < q → q < 1 →
       ∃ lambdaThreshold, 0 < lambdaThreshold ∧
         ∀ {lambdaValue : ℝ}, lambdaThreshold ≤ lambdaValue →
@@ -419,48 +419,48 @@ theorem starConvexScalingLawsIndependentWeightDecay_inverseScaling
     exact le_trans this hLambdaThreshold
   have hDriftBound :
       2 * S.starConvexIndependentWeightDecayProxyDriftConst
-        / (S.initialSuboptimality * (T : ℝ) * alpha)
+        / (S.initialExpectedSuboptimality * (T : ℝ) * alpha)
         ≤ lambdaValue := by
     have :
         2 * S.starConvexIndependentWeightDecayProxyDriftConst
-          / (S.initialSuboptimality * (T : ℝ) * alpha)
+          / (S.initialExpectedSuboptimality * (T : ℝ) * alpha)
           ≤ lambdaThreshold := by
       dsimp [lambdaThreshold, independentWeightDecayLowerScaleThreshold]
       exact le_trans (le_max_left _ _) (le_max_right _ _)
     exact le_trans this hLambdaThreshold
   have hResidualBound :
       2 * S.starConvexIndependentWeightDecayProxyResidualConst
-        / (S.initialSuboptimality * (T : ℝ) * alpha)
+        / (S.initialExpectedSuboptimality * (T : ℝ) * alpha)
         ≤ lambdaValue := by
     have :
         2 * S.starConvexIndependentWeightDecayProxyResidualConst
-          / (S.initialSuboptimality * (T : ℝ) * alpha)
+          / (S.initialExpectedSuboptimality * (T : ℝ) * alpha)
           ≤ lambdaThreshold := by
       dsimp [lambdaThreshold, independentWeightDecayLowerScaleThreshold]
       exact le_trans (le_max_right _ _) (le_max_right _ _)
     exact le_trans this hLambdaThreshold
   have hTRealPos : 0 < (T : ℝ) := by positivity
   have hCoeffDenPos :
-      0 < S.initialSuboptimality * (T : ℝ) := by
+      0 < S.initialExpectedSuboptimality * (T : ℝ) := by
     exact mul_pos hGap hTRealPos
   have hDriftRatioHalf :
       S.starConvexIndependentWeightDecayProxyDriftConst
-        / (S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2)
+        / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2)
         ≤ alpha / 2 := by
     have hDenPos :
-        0 < S.initialSuboptimality * (T : ℝ) * alpha := by
+        0 < S.initialExpectedSuboptimality * (T : ℝ) * alpha := by
       exact mul_pos hCoeffDenPos hAlphaPos
     have hAOverLambda :
         S.starConvexIndependentWeightDecayProxyDriftConst
-          / (S.initialSuboptimality * (T : ℝ) * lambdaValue)
+          / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue)
           ≤ alpha / 2 := by
       have hMul :
           2 * S.starConvexIndependentWeightDecayProxyDriftConst
-            ≤ lambdaValue * (S.initialSuboptimality * (T : ℝ) * alpha) := by
+            ≤ lambdaValue * (S.initialExpectedSuboptimality * (T : ℝ) * alpha) := by
         exact (div_le_iff₀ hDenPos).mp hDriftBound
       have hGoal :
           S.starConvexIndependentWeightDecayProxyDriftConst
-            ≤ (alpha / 2) * (S.initialSuboptimality * (T : ℝ) * lambdaValue) := by
+            ≤ (alpha / 2) * (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue) := by
         nlinarith
       exact (div_le_iff₀ (mul_pos hCoeffDenPos hLambda)).2 hGoal
     have hInvSqLeInv : 1 / lambdaValue ^ 2 ≤ 1 / lambdaValue := by
@@ -468,35 +468,35 @@ theorem starConvexScalingLawsIndependentWeightDecay_inverseScaling
       nlinarith [hLambda, hOne]
     have hCoeffNonneg :
         0 ≤ S.starConvexIndependentWeightDecayProxyDriftConst
-            / (S.initialSuboptimality * (T : ℝ)) := by
+            / (S.initialExpectedSuboptimality * (T : ℝ)) := by
       exact div_nonneg S.starConvexIndependentWeightDecayProxyDriftConst_pos.le hCoeffDenPos.le
     calc
       S.starConvexIndependentWeightDecayProxyDriftConst
-        / (S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2)
+        / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2)
         = (S.starConvexIndependentWeightDecayProxyDriftConst
-            / (S.initialSuboptimality * (T : ℝ))) * (1 / lambdaValue ^ 2) := by
+            / (S.initialExpectedSuboptimality * (T : ℝ))) * (1 / lambdaValue ^ 2) := by
             field_simp [hGap.ne', hTRealPos.ne', hLambda.ne']
       _ ≤ (S.starConvexIndependentWeightDecayProxyDriftConst
-            / (S.initialSuboptimality * (T : ℝ))) * (1 / lambdaValue) := by
+            / (S.initialExpectedSuboptimality * (T : ℝ))) * (1 / lambdaValue) := by
             exact mul_le_mul_of_nonneg_left hInvSqLeInv hCoeffNonneg
       _ = S.starConvexIndependentWeightDecayProxyDriftConst
-            / (S.initialSuboptimality * (T : ℝ) * lambdaValue) := by
+            / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue) := by
             field_simp [hGap.ne', hTRealPos.ne', hLambda.ne']
       _ ≤ alpha / 2 := hAOverLambda
   have hResidualRatioHalf :
       S.starConvexIndependentWeightDecayProxyResidualConst
-        / (S.initialSuboptimality * (T : ℝ) * lambdaValue)
+        / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue)
         ≤ alpha / 2 := by
     have hDenPos :
-        0 < S.initialSuboptimality * (T : ℝ) * alpha := by
+        0 < S.initialExpectedSuboptimality * (T : ℝ) * alpha := by
       exact mul_pos hCoeffDenPos hAlphaPos
     have hMul :
         2 * S.starConvexIndependentWeightDecayProxyResidualConst
-          ≤ lambdaValue * (S.initialSuboptimality * (T : ℝ) * alpha) := by
+          ≤ lambdaValue * (S.initialExpectedSuboptimality * (T : ℝ) * alpha) := by
       exact (div_le_iff₀ hDenPos).mp hResidualBound
     have hGoal :
         S.starConvexIndependentWeightDecayProxyResidualConst
-          ≤ (alpha / 2) * (S.initialSuboptimality * (T : ℝ) * lambdaValue) := by
+          ≤ (alpha / 2) * (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue) := by
       nlinarith
     exact (div_le_iff₀ (mul_pos hCoeffDenPos hLambda)).2 hGoal
   have hRatioLeAlpha :
@@ -505,12 +505,12 @@ theorem starConvexScalingLawsIndependentWeightDecay_inverseScaling
     have hSplit :
         (S.starConvexIndependentWeightDecayProxyDriftConst
             + S.starConvexIndependentWeightDecayProxyResidualConst * lambdaValue)
-          / (S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2)
+          / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2)
           =
             S.starConvexIndependentWeightDecayProxyDriftConst
-              / (S.initialSuboptimality * (T : ℝ) * lambdaValue ^ 2)
+              / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue ^ 2)
             + S.starConvexIndependentWeightDecayProxyResidualConst
-                / (S.initialSuboptimality * (T : ℝ) * lambdaValue) := by
+                / (S.initialExpectedSuboptimality * (T : ℝ) * lambdaValue) := by
       field_simp [hGap.ne', hTRealPos.ne', hLambda.ne']
     rw [hSplit]
     linarith

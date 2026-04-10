@@ -53,31 +53,30 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
     (S : StochasticFrankWolfeGeometryContext Ω V) :
     ∀ T, 0 < T →
       (Finset.sum (Finset.range T) fun t => S.expectedFrankWolfeGap t) / (T : ℝ) ≤
-        (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
+        (S.initialExpectedSuboptimality) / (S.lambda * S.eta * T)
           + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
           + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
               (S.lambda * Real.sqrt S.batchSizeℝ)
           + (2 * S.L * S.eta / S.lambda) * (1 + 2 * S.beta ^ 2 / (1 - S.beta)) := by
   intro T hT
   letI := S.toStochasticSteepestDescentGeometryContext.prob
+  letI : IsFiniteMeasure S.μ := by infer_instance
   let lhs : Ω → ℝ :=
     fun ω => (Finset.sum (Finset.range T) fun t => S.frankWolfeGap t ω) / (T : ℝ)
+  let initialSuboptimalityPath : Ω → ℝ := fun ω => S.suboptimality 0 ω
   let rhs : Ω → ℝ :=
     fun ω =>
-      S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
+      initialSuboptimalityPath ω / (S.lambda * S.eta * T)
         + (2 / (S.lambda * T)) * (Finset.sum (Finset.range T) fun t => S.nesterovErrorNorm t ω)
         + 2 * S.L * S.eta / S.lambda
   have hPointwise : ∀ ω, lhs ω ≤ rhs ω := by
     intro ω
     have hPath :=
       S.frankWolfeGap_bound_of_tracking_bound
-        (fInf := S.f S.WStar)
         (err := fun t ω => S.nesterovErrorNorm t ω)
-        (hInf := fun t ω => by
-          linarith [S.WStar_optimality (S.W t ω)])
         (hErr := fun _ _ => le_rfl)
         T ω hT
-    simpa [lhs, rhs, S.W_zero ω] using hPath
+    simpa [lhs, rhs, initialSuboptimalityPath, StochasticFrankWolfeGeometryContext.suboptimality] using hPath
   have hLhsIntegrable : MeasureTheory.Integrable lhs S.μ := by
     have hSum :
         MeasureTheory.Integrable (fun ω => Finset.sum (Finset.range T) fun t => S.frankWolfeGap t ω) S.μ := by
@@ -98,9 +97,20 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
       simpa [mul_assoc, mul_left_comm, mul_comm] using hSum.const_mul (2 / (S.lambda * T))
     have hConst1 :
         MeasureTheory.Integrable
-          (fun _ : Ω => S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T))
-          S.μ :=
-      MeasureTheory.integrable_const _
+          (fun ω => initialSuboptimalityPath ω / (S.lambda * S.eta * T))
+          S.μ := by
+      have hConstWStar :
+          Integrable (fun _ : Ω => S.f S.WStar) S.μ := by
+        letI := S.toStochasticSteepestDescentGeometryContext.prob
+        simpa [StochasticSteepestDescentGeometryContext.μ] using
+          (integrable_const (μ := S.toStochasticSteepestDescentGeometryContext.μ) (S.f S.WStar))
+      have hInit :
+          MeasureTheory.Integrable initialSuboptimalityPath S.μ := by
+        simpa [initialSuboptimalityPath, StochasticFrankWolfeGeometryContext.suboptimality] using
+          (S.toStochasticSteepestDescentGeometryContext.objective_integrable 0).sub
+            hConstWStar
+      simpa [div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+        hInit.const_mul ((S.lambda * S.eta * T)⁻¹)
     have hConst2 :
         MeasureTheory.Integrable (fun _ : Ω => 2 * S.L * S.eta / S.lambda) S.μ :=
       MeasureTheory.integrable_const _
@@ -137,12 +147,12 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
             ring
   have hRhsEval :
       ∫ ω, rhs ω ∂S.μ =
-        S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
+        S.initialExpectedSuboptimality / (S.lambda * S.eta * T)
           + (2 / (S.lambda * T))
               * (Finset.sum (Finset.range T) fun t =>
                   S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t)
           + 2 * S.L * S.eta / S.lambda := by
-    let c0 : ℝ := S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
+    let c0 : Ω → ℝ := fun ω => initialSuboptimalityPath ω / (S.lambda * S.eta * T)
     let c2 : ℝ := 2 * S.L * S.eta / S.lambda
     let g : Ω → ℝ := fun ω => (2 / (S.lambda * T)) * (Finset.sum (Finset.range T) fun t => S.nesterovErrorNorm t ω)
     have hSum :
@@ -163,8 +173,19 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
       dsimp [g]
       rw [MeasureTheory.integral_const_mul, hSum]
     have hConst0 :
-        MeasureTheory.Integrable (fun _ : Ω => c0) S.μ := by
-      exact MeasureTheory.integrable_const _
+        MeasureTheory.Integrable c0 S.μ := by
+      have hConstWStar :
+          Integrable (fun _ : Ω => S.f S.WStar) S.μ := by
+        letI := S.toStochasticSteepestDescentGeometryContext.prob
+        simpa [StochasticSteepestDescentGeometryContext.μ] using
+          (integrable_const (μ := S.toStochasticSteepestDescentGeometryContext.μ) (S.f S.WStar))
+      have hInit :
+          MeasureTheory.Integrable initialSuboptimalityPath S.μ := by
+        simpa [initialSuboptimalityPath, StochasticFrankWolfeGeometryContext.suboptimality] using
+          (S.toStochasticSteepestDescentGeometryContext.objective_integrable 0).sub
+            hConstWStar
+      simpa [c0, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+        hInit.const_mul ((S.lambda * S.eta * T)⁻¹)
     have hConst2 :
         MeasureTheory.Integrable (fun _ : Ω => c2) S.μ := by
       exact MeasureTheory.integrable_const _
@@ -181,37 +202,67 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
       simpa [g, mul_assoc, mul_comm] using hSumInt.const_mul (2 / (S.lambda * T))
     calc
       ∫ ω, rhs ω ∂S.μ
-        = ∫ ω, ((fun _ : Ω => c0) ω + g ω) + (fun _ : Ω => c2) ω ∂S.μ := by
+        = ∫ ω, (c0 ω + g ω) + (fun _ : Ω => c2) ω ∂S.μ := by
               refine integral_congr_ae (Filter.Eventually.of_forall ?_)
               intro ω
               simp [rhs, c0, c2, g, mul_assoc, mul_comm]
       _ =
-          ∫ ω, ((fun _ : Ω => c0) ω + g ω) ∂S.μ + ∫ ω, (fun _ : Ω => c2) ω ∂S.μ := by
+          ∫ ω, (c0 ω + g ω) ∂S.μ + ∫ ω, (fun _ : Ω => c2) ω ∂S.μ := by
             simpa [add_assoc] using
               (MeasureTheory.integral_add (hConst0.add hG) hConst2 :
-                ∫ ω, (((fun _ : Ω => c0) ω + g ω) + (fun _ : Ω => c2) ω) ∂S.μ
+                ∫ ω, ((c0 ω + g ω) + (fun _ : Ω => c2) ω) ∂S.μ
                   =
-                    ∫ ω, ((fun _ : Ω => c0) ω + g ω) ∂S.μ
+                    ∫ ω, (c0 ω + g ω) ∂S.μ
                       + ∫ ω, (fun _ : Ω => c2) ω ∂S.μ)
       _ =
-          c0 + ∫ ω, g ω ∂S.μ + c2 := by
+          ∫ ω, c0 ω ∂S.μ + ∫ ω, g ω ∂S.μ + c2 := by
             rw [MeasureTheory.integral_add hConst0 hG]
             letI := S.toStochasticSteepestDescentGeometryContext.prob
-            simp [c0, c2]
+            simp [c2]
       _ =
-          c0
+          S.initialExpectedSuboptimality / (S.lambda * S.eta * T)
+            + ∫ ω, g ω ∂S.μ + c2 := by
+              have hInit :
+                  ∫ ω, c0 ω ∂S.μ = S.initialExpectedSuboptimality / (S.lambda * S.eta * T) := by
+                have hConstWStar :
+                    Integrable (fun _ : Ω => S.f S.WStar) S.μ := by
+                  letI := S.toStochasticSteepestDescentGeometryContext.prob
+                  simpa [StochasticSteepestDescentGeometryContext.μ] using
+                    (integrable_const (μ := S.toStochasticSteepestDescentGeometryContext.μ) (S.f S.WStar))
+                have hGapInt : Integrable initialSuboptimalityPath S.μ := by
+                  simpa [initialSuboptimalityPath, StochasticFrankWolfeGeometryContext.suboptimality] using
+                    (S.toStochasticSteepestDescentGeometryContext.objective_integrable 0).sub
+                      hConstWStar
+                calc
+                  ∫ ω, c0 ω ∂S.μ
+                    = ∫ ω, (((S.lambda * S.eta * T)⁻¹) * initialSuboptimalityPath ω) ∂S.μ := by
+                        refine integral_congr_ae (Filter.Eventually.of_forall ?_)
+                        intro ω
+                        simp [c0, div_eq_mul_inv, mul_assoc, mul_comm]
+                  _ = ((S.lambda * S.eta * T)⁻¹) * ∫ ω, initialSuboptimalityPath ω ∂S.μ := by
+                        rw [MeasureTheory.integral_const_mul]
+                  _ = ((S.lambda * S.eta * T)⁻¹) * S.initialExpectedSuboptimality := by
+                        unfold StochasticFrankWolfeGeometryContext.initialExpectedSuboptimality
+                        unfold StochasticFrankWolfeGeometryContext.expectedSuboptimality
+                        simp [initialSuboptimalityPath,
+                          StochasticFrankWolfeGeometryContext.suboptimality]
+                  _ = S.initialExpectedSuboptimality / (S.lambda * S.eta * T) := by
+                        rw [div_eq_mul_inv, mul_comm]
+              rw [hInit]
+      _ =
+          S.initialExpectedSuboptimality / (S.lambda * S.eta * T)
             + (2 / (S.lambda * T))
                 * (Finset.sum (Finset.range T)
                     (fun t => ∫ ω, S.nesterovErrorNorm t ω ∂S.μ))
             + c2 := by
               rw [hIntG]
       _ =
-          S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
+          S.initialExpectedSuboptimality / (S.lambda * S.eta * T)
             + (2 / (S.lambda * T))
                 * (Finset.sum (Finset.range T) fun t =>
                     S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t)
             + 2 * S.L * S.eta / S.lambda := by
-              simp [c0, c2, StochasticSteepestDescentGeometryContext.expectedNesterovError]
+              simp [c2, StochasticSteepestDescentGeometryContext.expectedNesterovError]
   have hAvgNesterov :
       (Finset.sum (Finset.range T)
           (fun t => S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t)) / (T : ℝ) ≤
@@ -235,7 +286,7 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
     exact mul_le_mul_of_nonneg_left hAvgNesterov hScaleNonneg
   have hMain :
       (Finset.sum (Finset.range T) fun t => S.expectedFrankWolfeGap t) / (T : ℝ) ≤
-        S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
+        S.initialExpectedSuboptimality / (S.lambda * S.eta * T)
           + (2 / S.lambda) *
               ((Finset.sum (Finset.range T)
                   (fun t => S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t)) / (T : ℝ))
@@ -254,19 +305,19 @@ theorem avg_frankWolfeExpectedGap_nesterov_wd
     exact hIntegrated
   calc
     (Finset.sum (Finset.range T) fun t => S.expectedFrankWolfeGap t) / (T : ℝ)
-      ≤ S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
+      ≤ S.initialExpectedSuboptimality / (S.lambda * S.eta * T)
           + (2 / S.lambda) *
               ((Finset.sum (Finset.range T)
                   (fun t => S.toStochasticSteepestDescentGeometryContext.expectedNesterovError t)) / (T : ℝ))
           + 2 * S.L * S.eta / S.lambda := hMain
-    _ ≤ S.toStochasticSteepestDescentGeometryContext.initialSuboptimality / (S.lambda * S.eta * T)
+    _ ≤ S.initialExpectedSuboptimality / (S.lambda * S.eta * T)
           + (2 / S.lambda)
               * ((S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (T : ℝ)
                   + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
                   + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ)
           + 2 * S.L * S.eta / S.lambda := by
             gcongr
-    _ = (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
+    _ = (S.initialExpectedSuboptimality) / (S.lambda * S.eta * T)
           + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
           + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
               (S.lambda * Real.sqrt S.batchSizeℝ)
@@ -281,14 +332,14 @@ theorem best_iterate_frankWolfeExpectedGap_nesterov_wd
     ∀ T, 0 < T →
       ∃ t < T,
         S.expectedFrankWolfeGap t ≤
-          (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
+          (S.initialExpectedSuboptimality) / (S.lambda * S.eta * T)
             + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
             + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
                 (S.lambda * Real.sqrt S.batchSizeℝ)
             + (2 * S.L * S.eta / S.lambda) * (1 + 2 * S.beta ^ 2 / (1 - S.beta)) := by
   intro T hT
   let rhs : ℝ :=
-    (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality) / (S.lambda * S.eta * T)
+    (S.initialExpectedSuboptimality) / (S.lambda * S.eta * T)
       + (2 * S.initialExpectedMomentumError * shiftedGeometricPrefix S.beta T) / (S.lambda * T)
       + (2 * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) /
           (S.lambda * Real.sqrt S.batchSizeℝ)

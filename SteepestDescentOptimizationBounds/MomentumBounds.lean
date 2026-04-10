@@ -266,9 +266,9 @@ variable [SecondCountableTopology (StrongDual ℝ V)]
 private theorem grad_increment_bound
     (S : StochasticSteepestDescentGeometryContext Ω V) (t : ℕ) (ω : Ω) :
     ‖S.grad (t + 1) ω - S.grad t ω‖ ≤ 2 * S.L * S.eta := by
-  have hWeight : ‖S.W t ω‖ ≤ 1 / S.lambda :=
+  have hWeight : ‖S.W t ω‖ ≤ S.constraintRadius :=
     (S.proposition9_weight_and_update_bounds t ω).1
-  have hWeightNext : ‖S.W (t + 1) ω‖ ≤ 1 / S.lambda :=
+  have hWeightNext : ‖S.W (t + 1) ω‖ ≤ S.constraintRadius :=
     (S.proposition9_weight_and_update_bounds (t + 1) ω).1
   have hLocal :
       ‖S.grad (t + 1) ω - S.grad t ω‖ ≤

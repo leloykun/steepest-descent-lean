@@ -35,9 +35,9 @@ section PublicDefinitions
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 
-/-- The LMO point rescaled to the radius-`1 / λ` primal ball. -/
+/-- The LMO point rescaled to the generic primal constraint ball. -/
 def scaledLMOPoint (S : FrankWolfePathGeometryContext V) (t : ℕ) : V :=
-  (1 / S.lambda) • S.aStar t
+  S.constraintRadius • S.aStar t
 
 end PublicDefinitions
 
@@ -64,45 +64,45 @@ private lemma grad_split_apply
 private lemma scaledLMOPoint_mem_constraintBall
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
     S.scaledLMOPoint t ∈ S.constraintBall := by
-  have hInvNonneg : 0 ≤ 1 / S.lambda := one_div_nonneg.mpr S.lambda_pos.le
+  have hRadiusNonneg : 0 ≤ S.constraintRadius := S.constraintRadius_nonneg
   have hNorm :
-      ‖S.scaledLMOPoint t‖ ≤ 1 / S.lambda := by
+      ‖S.scaledLMOPoint t‖ ≤ S.constraintRadius := by
     calc
-      ‖S.scaledLMOPoint t‖ = (1 / S.lambda) * ‖S.aStar t‖ := by
-        rw [scaledLMOPoint, norm_smul, Real.norm_of_nonneg hInvNonneg]
-      _ ≤ (1 / S.lambda) * 1 := by
-            exact mul_le_mul_of_nonneg_left (S.aStar_norm_le t) hInvNonneg
-      _ = 1 / S.lambda := by ring
+      ‖S.scaledLMOPoint t‖ = S.constraintRadius * ‖S.aStar t‖ := by
+        rw [scaledLMOPoint, norm_smul, Real.norm_of_nonneg hRadiusNonneg]
+      _ ≤ S.constraintRadius * 1 := by
+            exact mul_le_mul_of_nonneg_left (S.aStar_norm_le t) hRadiusNonneg
+      _ = S.constraintRadius := by ring
   simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hNorm
 
 private lemma scaledLMOPoint_optimal_on_constraintBall
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
     ∀ x ∈ S.constraintBall, (S.C t) (S.scaledLMOPoint t) ≤ (S.C t) x := by
   intro x hx
-  have hxNorm : ‖x‖ ≤ 1 / S.lambda := by
+  have hxNorm : ‖x‖ ≤ S.constraintRadius := by
     simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hx
-  let A : V := S.lambda • x
+  let A : V := (1 / S.constraintRadius) • x
   have hANorm : ‖A‖ ≤ 1 := by
     calc
-      ‖A‖ = S.lambda * ‖x‖ := by
+      ‖A‖ = (1 / S.constraintRadius) * ‖x‖ := by
         dsimp [A]
-        rw [norm_smul, Real.norm_of_nonneg S.lambda_pos.le]
-      _ ≤ S.lambda * (1 / S.lambda) := by
-        exact mul_le_mul_of_nonneg_left hxNorm S.lambda_pos.le
+        rw [norm_smul, Real.norm_of_nonneg (one_div_nonneg.mpr S.constraintRadius_nonneg)]
+      _ ≤ (1 / S.constraintRadius) * S.constraintRadius := by
+        exact mul_le_mul_of_nonneg_left hxNorm (one_div_nonneg.mpr S.constraintRadius_nonneg)
       _ = 1 := by
-        field_simp [S.lambda_pos.ne']
+        field_simp [S.constraintRadius_pos.ne']
   have hOpt := S.aStar_optimal t A hANorm
   calc
     (S.C t) (S.scaledLMOPoint t)
-        = (1 / S.lambda) * (S.C t) (S.aStar t) := by
+        = S.constraintRadius * (S.C t) (S.aStar t) := by
             simp [scaledLMOPoint, smul_eq_mul]
-    _ ≤ (1 / S.lambda) * (S.C t) A := by
-          exact mul_le_mul_of_nonneg_left hOpt (one_div_nonneg.mpr S.lambda_pos.le)
+    _ ≤ S.constraintRadius * (S.C t) A := by
+          exact mul_le_mul_of_nonneg_left hOpt S.constraintRadius_nonneg
     _ = (S.C t) x := by
           dsimp [A]
           rw [ContinuousLinearMap.map_smul]
           simp [smul_eq_mul]
-          field_simp [S.lambda_pos.ne']
+          field_simp [S.constraintRadius_pos.ne']
 
 private lemma scaledLMOPoint_sub_weight_eq
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
@@ -110,7 +110,12 @@ private lemma scaledLMOPoint_sub_weight_eq
   have hScale :
       S.eta • S.aStar t = (S.lambda * S.eta) • S.scaledLMOPoint t := by
     rw [scaledLMOPoint, smul_smul]
-    field_simp [S.lambda_pos.ne']
+    have hEq : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+    have hEq' : (S.lambda * S.eta) * S.constraintRadius = S.eta := by
+      calc
+        (S.lambda * S.eta) * S.constraintRadius = S.eta * (S.lambda * S.constraintRadius) := by ring
+        _ = S.eta := by rw [hEq]; ring
+    simpa [smul_smul] using congrArg (fun r : ℝ => r • S.aStar t) hEq'.symm
   calc
     S.W (t + 1) - S.W t
         = S.eta • S.aStar t - (S.lambda * S.eta) • S.W t := by
@@ -124,17 +129,17 @@ private lemma scaledLMOPoint_sub_weight_eq
 private lemma scaledLMOPoint_sub_feasible_bound
     (S : FrankWolfePathGeometryContext V) (t : ℕ)
     {V' : V} (hV : V' ∈ S.constraintBall) :
-    ‖S.scaledLMOPoint t - V'‖ ≤ 2 / S.lambda := by
+    ‖S.scaledLMOPoint t - V'‖ ≤ 2 * S.constraintRadius := by
   have hScaled :
-      ‖S.scaledLMOPoint t‖ ≤ 1 / S.lambda := by
+      ‖S.scaledLMOPoint t‖ ≤ S.constraintRadius := by
     simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using S.scaledLMOPoint_mem_constraintBall t
-  have hVNorm : ‖V'‖ ≤ 1 / S.lambda := by
+  have hVNorm : ‖V'‖ ≤ S.constraintRadius := by
     simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hV
   calc
     ‖S.scaledLMOPoint t - V'‖ ≤ ‖S.scaledLMOPoint t‖ + ‖V'‖ := norm_sub_le _ _
-    _ ≤ 1 / S.lambda + 1 / S.lambda := by
+    _ ≤ S.constraintRadius + S.constraintRadius := by
           gcongr
-    _ = 2 / S.lambda := by ring
+    _ = 2 * S.constraintRadius := by ring
 
 private lemma exists_lt_neg_apply_closedBall_of_lt
     (f : StrongDual ℝ V) {r w : ℝ} (hr : 0 < r) (hw : w < r * ‖f‖) :
@@ -190,42 +195,42 @@ section PublicTheorems
 variable {V : Type*}
 variable [NormedAddCommGroup V] [NormedSpace ℝ V]
 
-/-- The scaled LMO point lies in the radius-`1 / λ` ball and minimizes `C_t` there. -/
+/-- The scaled LMO point lies in the radius-`constraintRadius` ball and minimizes `C_t` there. -/
 private theorem path_lmo_scaled_properties
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
-    ‖S.scaledLMOPoint t‖ ≤ 1 / S.lambda ∧
+    ‖S.scaledLMOPoint t‖ ≤ S.constraintRadius ∧
       ∀ V ∈ S.constraintBall, (S.C t) (S.scaledLMOPoint t) ≤ (S.C t) V := by
   refine ⟨?_, S.scaledLMOPoint_optimal_on_constraintBall t⟩
   simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using S.scaledLMOPoint_mem_constraintBall t
 
-/-- Closed-form formula for the Frank-Wolfe gap on the radius-`1 / λ` ball. -/
+/-- Closed-form formula for the Frank-Wolfe gap on the radius-`constraintRadius` ball. -/
 theorem fwGap_ball_formula
     (S : FrankWolfePathGeometryContext V) (X : V) :
-    S.frankWolfeGapAt X = (S.fGrad X) X + (1 / S.lambda) * ‖S.fGrad X‖ := by
+    S.frankWolfeGapAt X = (S.fGrad X) X + S.constraintRadius * ‖S.fGrad X‖ := by
   refine csSup_eq_of_forall_le_of_forall_lt_exists_gt ?_ ?_ ?_
   · refine ⟨(S.fGrad X) (X - 0), ?_⟩
     refine ⟨0, ?_, rfl⟩
     simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
-      using (show ‖(0 : V)‖ ≤ 1 / S.lambda by simp [S.lambda_pos.le])
+      using (show ‖(0 : V)‖ ≤ S.constraintRadius by simp [S.constraintRadius_nonneg])
   · intro y hy
     rcases hy with ⟨V', hV, rfl⟩
-    have hUpper : -(S.fGrad X) V' ≤ (1 / S.lambda) * ‖S.fGrad X‖ := by
-      have hVNorm : ‖V'‖ ≤ 1 / S.lambda := by
+    have hUpper : -(S.fGrad X) V' ≤ S.constraintRadius * ‖S.fGrad X‖ := by
+      have hVNorm : ‖V'‖ ≤ S.constraintRadius := by
         simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hV
-      have hOp : ‖(S.fGrad X) V'‖ ≤ ‖S.fGrad X‖ * (1 / S.lambda) := by
+      have hOp : ‖(S.fGrad X) V'‖ ≤ ‖S.fGrad X‖ * S.constraintRadius := by
         simpa using (S.fGrad X).le_opNorm_of_le hVNorm
       exact (le_abs_self _).trans (by simpa [mul_comm] using hOp)
     calc
       (S.fGrad X) (X - V') = (S.fGrad X) X + (-(S.fGrad X) V') := by
         rw [map_sub]
         ring
-      _ ≤ (S.fGrad X) X + (1 / S.lambda) * ‖S.fGrad X‖ := by
+      _ ≤ (S.fGrad X) X + S.constraintRadius * ‖S.fGrad X‖ := by
         linarith
   · intro w hw
     obtain ⟨V', hV, hLt⟩ :=
       exists_lt_neg_apply_closedBall_of_lt
         (f := S.fGrad X)
-        (hr := one_div_pos.mpr S.lambda_pos)
+        (hr := S.constraintRadius_pos)
         (w := w - (S.fGrad X) X)
         (by simpa [sub_lt_iff_lt_add, add_comm, add_left_comm, add_assoc, mul_comm] using hw)
     refine ⟨(S.fGrad X) (X - V'), ?_, ?_⟩
@@ -241,8 +246,8 @@ theorem fwGap_ball_formula
 private theorem path_approx_lmo_fwGap_inner_bound
     (S : FrankWolfePathGeometryContext V) (t : ℕ) :
     (S.grad t) (S.scaledLMOPoint t - S.W t) ≤
-      -S.frankWolfeGap t + (2 / S.lambda) * S.nesterovErrorNorm t := by
-  let c : ℝ := (2 / S.lambda) * S.nesterovErrorNorm t
+      -S.frankWolfeGap t + (2 * S.constraintRadius) * S.nesterovErrorNorm t := by
+  let c : ℝ := (2 * S.constraintRadius) * S.nesterovErrorNorm t
   have hScaledOpt := (S.path_lmo_scaled_properties t).2
   have hLower :
       ∀ a ∈ ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall),
@@ -257,13 +262,13 @@ private theorem path_approx_lmo_fwGap_inner_bound
     have hErr :
         S.nesterovError t (S.scaledLMOPoint t - V') ≤ c := by
       have hApply := S.nesterovError_apply_le t (S.scaledLMOPoint t - V')
-      have hNorm : ‖S.scaledLMOPoint t - V'‖ ≤ 2 / S.lambda :=
+      have hNorm : ‖S.scaledLMOPoint t - V'‖ ≤ 2 * S.constraintRadius :=
         S.scaledLMOPoint_sub_feasible_bound t hV
       have hSigned :
           S.nesterovError t (S.scaledLMOPoint t - V') ≤
             S.nesterovErrorNorm t * ‖S.scaledLMOPoint t - V'‖ :=
         le_trans (le_abs_self _) hApply
-      nlinarith [hSigned, hNorm, S.nesterovErrorNorm_nonneg t, S.lambda_pos]
+      nlinarith [hSigned, hNorm, S.nesterovErrorNorm_nonneg t, S.constraintRadius_nonneg]
     have hDecomp :
         (S.grad t) (S.scaledLMOPoint t - S.W t) ≤
           (S.grad t) (V' - S.W t) + S.nesterovError t (S.scaledLMOPoint t - V') := by
@@ -292,7 +297,7 @@ private theorem path_approx_lmo_fwGap_inner_bound
     refine ⟨(S.grad t) (0 - S.W t), ?_⟩
     refine ⟨0, ?_, rfl⟩
     simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
-      using (show ‖(0 : V)‖ ≤ 1 / S.lambda by simp [S.lambda_pos.le])
+      using (show ‖(0 : V)‖ ≤ S.constraintRadius by simp [S.constraintRadius_nonneg])
   have hInf :
       (S.grad t) (S.scaledLMOPoint t - S.W t) - c ≤
         sInf ((fun V => (S.grad t) (V - S.W t)) '' S.constraintBall) :=
@@ -328,9 +333,9 @@ theorem path_one_step_descent_fwGap
         - S.lambda * S.eta * S.frankWolfeGap t
         + 2 * S.eta * S.nesterovErrorNorm t
         + 2 * S.L * S.eta ^ 2 := by
-  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda :=
+  have hWeight : ‖S.W t‖ ≤ S.constraintRadius :=
     S.weight_bound_from_feasible_step t
-  have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda :=
+  have hNextWeight : ‖S.W (t + 1)‖ ≤ S.constraintRadius :=
     S.weight_bound_from_feasible_step (t + 1)
   have hStepVec := S.scaledLMOPoint_sub_weight_eq t
   have hUpdateEq :
@@ -338,7 +343,7 @@ theorem path_one_step_descent_fwGap
     rw [← hStepVec]
     abel_nf
   have hNextStep :
-      ‖S.W t + (S.lambda * S.eta) • (S.scaledLMOPoint t - S.W t)‖ ≤ 1 / S.lambda := by
+      ‖S.W t + (S.lambda * S.eta) • (S.scaledLMOPoint t - S.W t)‖ ≤ S.constraintRadius := by
     simpa [hUpdateEq] using hNextWeight
   have hSmoothStep :
       S.f (S.W (t + 1)) ≤
@@ -355,7 +360,7 @@ theorem path_one_step_descent_fwGap
           (f := S.f)
           (grad := S.fGrad)
           (L := S.L)
-          (R := 1 / S.lambda)
+          (R := S.constraintRadius)
           (α := S.lambda * S.eta)
           S.fderiv_eq
           S.assumption3_fLocalSmoothness.local_lipschitz
@@ -369,22 +374,25 @@ theorem path_one_step_descent_fwGap
           2 * S.L * S.eta ^ 2 := by
       have hLnonneg : 0 ≤ S.L / 2 := by
         exact div_nonneg S.assumption3_fLocalSmoothness.nonneg (by positivity)
-      have hStepNorm : ‖S.scaledLMOPoint t - S.W t‖ ≤ 2 / S.lambda := by
+      have hStepNorm : ‖S.scaledLMOPoint t - S.W t‖ ≤ 2 * S.constraintRadius := by
         exact
           S.scaledLMOPoint_sub_feasible_bound t
             (by
               simpa [SteepestDescentPathGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm]
                 using hWeight)
       have hSquare :
-          ‖S.scaledLMOPoint t - S.W t‖ ^ 2 ≤ (2 / S.lambda) ^ 2 := by
+          ‖S.scaledLMOPoint t - S.W t‖ ^ 2 ≤ (2 * S.constraintRadius) ^ 2 := by
         nlinarith [norm_nonneg (S.scaledLMOPoint t - S.W t), hStepNorm]
-      have hLambdaNonneg : 0 ≤ S.lambda := S.lambda_pos.le
       have hStepBound :
           (S.lambda * S.eta) ^ 2 * ‖S.scaledLMOPoint t - S.W t‖ ^ 2 ≤ (2 * S.eta) ^ 2 := by
         have hMul :=
           mul_le_mul_of_nonneg_left hSquare (sq_nonneg (S.lambda * S.eta))
-        have hEq : (S.lambda * S.eta) ^ 2 * (2 / S.lambda) ^ 2 = (2 * S.eta) ^ 2 := by
-          field_simp [S.lambda_pos.ne']
+        have hEq : (S.lambda * S.eta) ^ 2 * (2 * S.constraintRadius) ^ 2 = (2 * S.eta) ^ 2 := by
+          have hRadius : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+          calc
+            (S.lambda * S.eta) ^ 2 * (2 * S.constraintRadius) ^ 2
+                = ((S.lambda * S.constraintRadius) ^ 2) * (2 * S.eta) ^ 2 := by ring
+            _ = (2 * S.eta) ^ 2 := by rw [hRadius]; ring
         rw [hEq] at hMul
         exact hMul
       nlinarith [hLnonneg, hStepBound]
@@ -402,7 +410,7 @@ theorem path_one_step_descent_fwGap
           + (S.lambda * S.eta) * (S.grad t) (S.scaledLMOPoint t - S.W t)
           + 2 * S.L * S.eta ^ 2 := hSmoothStep
     _ ≤ S.f (S.W t)
-          + (S.lambda * S.eta) * (-S.frankWolfeGap t + (2 / S.lambda) * S.nesterovErrorNorm t)
+          + (S.lambda * S.eta) * (-S.frankWolfeGap t + (2 * S.constraintRadius) * S.nesterovErrorNorm t)
           + 2 * S.L * S.eta ^ 2 := by
             gcongr
             exact S.lambda_eta_nonneg
@@ -410,19 +418,25 @@ theorem path_one_step_descent_fwGap
           - S.lambda * S.eta * S.frankWolfeGap t
           + 2 * S.eta * S.nesterovErrorNorm t
           + 2 * S.L * S.eta ^ 2 := by
-            field_simp [S.lambda_pos.ne']
-            ring
+            have hRadius : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+            calc
+              S.f (S.W t) + (S.lambda * S.eta) * (-S.frankWolfeGap t + (2 * S.constraintRadius) * S.nesterovErrorNorm t) +
+                  2 * S.L * S.eta ^ 2
+                  = S.f (S.W t) - S.lambda * S.eta * S.frankWolfeGap t
+                      + (2 * ((S.lambda * S.constraintRadius) * S.eta)) * S.nesterovErrorNorm t
+                      + 2 * S.L * S.eta ^ 2 := by ring
+              _ = S.f (S.W t) - S.lambda * S.eta * S.frankWolfeGap t
+                      + 2 * S.eta * S.nesterovErrorNorm t
+                      + 2 * S.L * S.eta ^ 2 := by rw [hRadius]; ring
 
 /-- Pathwise averaged Frank-Wolfe-gap bound under a pointwise tracking envelope. -/
 theorem path_avg_frankWolfeGap_bound_of_tracking_bound
     (S : FrankWolfePathGeometryContext V)
-    (fInf : ℝ)
     (err : ℕ → ℝ)
-    (hInf : ∀ t, fInf ≤ S.f (S.W t))
     (hErr : ∀ t, S.nesterovErrorNorm t ≤ err t) :
     ∀ T, 0 < T →
       (Finset.sum (Finset.range T) fun t => S.frankWolfeGap t) / (T : ℝ) ≤
-        (S.f (S.W 0) - fInf) / (S.lambda * S.eta * T)
+        S.initialSuboptimality / (S.lambda * S.eta * T)
           + (2 / (S.lambda * T)) * (Finset.sum (Finset.range T) err)
           + 2 * S.L * S.eta / S.lambda := by
   intro T hT
@@ -451,47 +465,49 @@ theorem path_avg_frankWolfeGap_bound_of_tracking_bound
             + (T : ℝ) * (2 * S.L * S.eta ^ 2) := by
               simp [sumErr, Finset.sum_add_distrib, Finset.mul_sum, add_comm]
   have hTel := S.sum_range_fwGap_telescope T
-  have hLower : S.f (S.W 0) - S.f (S.W T) ≤ S.f (S.W 0) - fInf := by
-    linarith [hInf T]
+  have hLower : S.f (S.W 0) - S.f (S.W T) ≤ S.initialSuboptimality := by
+    dsimp [FrankWolfePathGeometryContext.initialSuboptimality,
+      FrankWolfePathGeometryContext.suboptimality]
+    linarith [S.WStar_optimality (S.W T)]
   have hSum' :
       (S.lambda * S.eta) * sumGap ≤
-        S.f (S.W 0) - fInf + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2) := by
+        S.initialSuboptimality + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2) := by
     linarith [hSum, hTel, hLower]
   have hDiv :
       sumGap ≤
-        (S.f (S.W 0) - fInf) / (S.lambda * S.eta)
+        S.initialSuboptimality / (S.lambda * S.eta)
           + (2 / S.lambda) * sumErr
           + (T : ℝ) * (2 * S.L * S.eta / S.lambda) := by
     have hRaw :
         sumGap ≤
-          (S.f (S.W 0) - fInf + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2)) /
+          (S.initialSuboptimality + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2)) /
             (S.lambda * S.eta) := by
       have hMul :
           sumGap * (S.lambda * S.eta) ≤
-            S.f (S.W 0) - fInf + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2) := by
+            S.initialSuboptimality + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2) := by
         simpa [mul_comm, mul_left_comm, mul_assoc] using hSum'
       exact (le_div_iff₀ S.lambda_eta_pos).2 hMul
     calc
       sumGap ≤
-          (S.f (S.W 0) - fInf + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2)) /
+          (S.initialSuboptimality + 2 * S.eta * sumErr + (T : ℝ) * (2 * S.L * S.eta ^ 2)) /
             (S.lambda * S.eta) := hRaw
       _ =
-          (S.f (S.W 0) - fInf) / (S.lambda * S.eta)
+          S.initialSuboptimality / (S.lambda * S.eta)
             + (2 / S.lambda) * sumErr
             + (T : ℝ) * (2 * S.L * S.eta / S.lambda) := by
               field_simp [S.lambda_eta_ne_zero, S.lambda_pos.ne', S.eta_pos.ne']
   have hAvgRaw :
       sumGap / (T : ℝ) ≤
-        ((S.f (S.W 0) - fInf) / (S.lambda * S.eta)
+        (S.initialSuboptimality / (S.lambda * S.eta)
           + (2 / S.lambda) * sumErr
           + (T : ℝ) * (2 * S.L * S.eta / S.lambda)) / (T : ℝ) := by
     exact div_le_div_of_nonneg_right hDiv hT'.le
   calc
     sumGap / (T : ℝ)
-      ≤ ((S.f (S.W 0) - fInf) / (S.lambda * S.eta)
+      ≤ (S.initialSuboptimality / (S.lambda * S.eta)
           + (2 / S.lambda) * sumErr
           + (T : ℝ) * (2 * S.L * S.eta / S.lambda)) / (T : ℝ) := hAvgRaw
-    _ = (S.f (S.W 0) - fInf) / (S.lambda * S.eta * T)
+    _ = S.initialSuboptimality / (S.lambda * S.eta * T)
           + (2 / (S.lambda * T)) * sumErr
           + 2 * S.L * S.eta / S.lambda := by
             field_simp [S.lambda_eta_ne_zero, S.lambda_pos.ne', S.eta_pos.ne', hT'.ne']
@@ -512,7 +528,7 @@ variable [SecondCountableTopology (StrongDual ℝ V)]
 
 /-- The realized scaled LMO point. -/
 def scaledLMOPoint (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) (ω : Ω) : V :=
-  (1 / S.lambda) • S.aStar t ω
+  S.constraintRadius • S.aStar t ω
 
 end PublicDefinitions
 
@@ -552,14 +568,18 @@ variable [SecondCountableTopology (StrongDual ℝ V)]
 theorem fwGap_ball_formula
     (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) (ω : Ω) :
     S.frankWolfeGap t ω = (S.grad t ω) (S.W t ω) + (1 / S.lambda) * ‖S.grad t ω‖ := by
-  simpa [StochasticFrankWolfeGeometryContext.frankWolfeGap,
-    StochasticFrankWolfeGeometryContext.frankWolfeGapAt,
-    StochasticSteepestDescentGeometryContext.constraintBall,
-    StochasticSteepestDescentGeometryContext.grad,
-    FrankWolfePathGeometryContext.frankWolfeGapAt,
-    SteepestDescentPathGeometryContext.constraintBall,
-    SteepestDescentPathGeometryContext.grad] using
-    (S.path ω).fwGap_ball_formula (S.W t ω)
+  calc
+    S.frankWolfeGap t ω = (S.grad t ω) (S.W t ω) + S.constraintRadius * ‖S.grad t ω‖ := by
+      simpa [StochasticFrankWolfeGeometryContext.frankWolfeGap,
+        StochasticFrankWolfeGeometryContext.frankWolfeGapAt,
+        StochasticSteepestDescentGeometryContext.constraintBall,
+        StochasticSteepestDescentGeometryContext.grad,
+        FrankWolfePathGeometryContext.frankWolfeGapAt,
+        SteepestDescentPathGeometryContext.constraintBall,
+        SteepestDescentPathGeometryContext.grad] using
+        (S.path ω).fwGap_ball_formula (S.W t ω)
+    _ = (S.grad t ω) (S.W t ω) + (1 / S.lambda) * ‖S.grad t ω‖ := by
+      simp [StochasticSteepestDescentGeometryContext.constraintRadius]
 
 /-- The realized Frank-Wolfe gap is measurable at each time. -/
 private lemma frankWolfeGap_measurable
@@ -586,23 +606,26 @@ private lemma frankWolfeGap_measurable
 private lemma norm_frankWolfeGap_le_two_div_lambda_mul_gradNorm
     (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) (ω : Ω) :
     ‖S.frankWolfeGap t ω‖ ≤ (2 / S.lambda) * ‖S.grad t ω‖ := by
-  have hWeight : ‖S.W t ω‖ ≤ 1 / S.lambda :=
+  have hWeight : ‖S.W t ω‖ ≤ S.constraintRadius :=
     (S.proposition9_weight_and_update_bounds t ω).1
   have hApply :
-      ‖(S.grad t ω) (S.W t ω)‖ ≤ ‖S.grad t ω‖ * (1 / S.lambda) := by
+      ‖(S.grad t ω) (S.W t ω)‖ ≤ ‖S.grad t ω‖ * S.constraintRadius := by
     simpa [mul_comm] using (S.grad t ω).le_opNorm_of_le hWeight
-  have hTermNonneg : 0 ≤ (1 / S.lambda) * ‖S.grad t ω‖ := by
-    exact mul_nonneg (one_div_nonneg.mpr S.lambda_pos.le) (norm_nonneg _)
+  have hTermNonneg : 0 ≤ S.constraintRadius * ‖S.grad t ω‖ := by
+    exact mul_nonneg S.constraintRadius_nonneg (norm_nonneg _)
   calc
     ‖S.frankWolfeGap t ω‖
-      = ‖(S.grad t ω) (S.W t ω) + (1 / S.lambda) * ‖S.grad t ω‖‖ := by
+      = ‖(S.grad t ω) (S.W t ω) + S.constraintRadius * ‖S.grad t ω‖‖ := by
           rw [S.fwGap_ball_formula t ω]
-    _ ≤ ‖(S.grad t ω) (S.W t ω)‖ + ‖(1 / S.lambda) * ‖S.grad t ω‖‖ := norm_add_le _ _
-    _ = ‖(S.grad t ω) (S.W t ω)‖ + (1 / S.lambda) * ‖S.grad t ω‖ := by
+          simp [StochasticSteepestDescentGeometryContext.constraintRadius]
+    _ ≤ ‖(S.grad t ω) (S.W t ω)‖ + ‖S.constraintRadius * ‖S.grad t ω‖‖ := norm_add_le _ _
+    _ = ‖(S.grad t ω) (S.W t ω)‖ + S.constraintRadius * ‖S.grad t ω‖ := by
           rw [Real.norm_of_nonneg hTermNonneg]
-    _ ≤ ‖S.grad t ω‖ * (1 / S.lambda) + (1 / S.lambda) * ‖S.grad t ω‖ := by
+    _ ≤ ‖S.grad t ω‖ * S.constraintRadius + S.constraintRadius * ‖S.grad t ω‖ := by
           gcongr
-    _ = (2 / S.lambda) * ‖S.grad t ω‖ := by ring
+    _ = (2 / S.lambda) * ‖S.grad t ω‖ := by
+          simp [StochasticSteepestDescentGeometryContext.constraintRadius]
+          ring
 
 /-- The realized Frank-Wolfe gap is integrable at each time. -/
 theorem frankWolfeGap_integrable
@@ -622,7 +645,7 @@ theorem frankWolfeGap_integrable
 /-- Pathwise properties of the realized scaled LMO point. -/
 private theorem lmo_scaled_properties
     (S : StochasticFrankWolfeGeometryContext Ω V) (t : ℕ) (ω : Ω) :
-    ‖S.scaledLMOPoint t ω‖ ≤ 1 / S.lambda ∧
+    ‖S.scaledLMOPoint t ω‖ ≤ S.constraintRadius ∧
       ∀ V ∈ S.constraintBall, (S.C t ω) (S.scaledLMOPoint t ω) ≤ (S.C t ω) V := by
   rcases (S.path ω).path_lmo_scaled_properties t with ⟨hNorm, hOpt⟩
   refine ⟨?_, ?_⟩
@@ -642,10 +665,19 @@ private theorem approx_lmo_fwGap_inner_bound
       (S.grad t ω) (S.scaledLMOPoint t ω - S.W t ω) ≤
         -S.frankWolfeGap t ω + (2 / S.lambda) * S.nesterovErrorNorm t ω := by
   intro t ω
+  have hPath := (S.path ω).path_approx_lmo_fwGap_inner_bound t
   change
     ((S.path ω).grad t) ((S.path ω).scaledLMOPoint t - (S.path ω).W t) ≤
       -(S.path ω).frankWolfeGap t + (2 / (S.path ω).lambda) * (S.path ω).nesterovErrorNorm t
-  exact (S.path ω).path_approx_lmo_fwGap_inner_bound t
+  have hRadius : 2 * (S.path ω).constraintRadius * (S.path ω).nesterovErrorNorm t =
+      (2 / (S.path ω).lambda) * (S.path ω).nesterovErrorNorm t := by
+    calc
+      2 * (S.path ω).constraintRadius * (S.path ω).nesterovErrorNorm t
+          = (2 * (1 / (S.path ω).lambda)) * (S.path ω).nesterovErrorNorm t := by
+              simp [SteepestDescentPathGeometryContext.constraintRadius]
+      _ = (2 / (S.path ω).lambda) * (S.path ω).nesterovErrorNorm t := by
+            ring
+  simpa [hRadius] using hPath
 
 /-- Pathwise one-step Frank-Wolfe-gap descent for the realized iterate process. -/
 theorem one_step_descent_fwGap
@@ -668,26 +700,22 @@ theorem one_step_descent_fwGap
 /-- Pathwise averaged Frank-Wolfe-gap bound under a realized tracking envelope. -/
 theorem frankWolfeGap_bound_of_tracking_bound
     (S : StochasticFrankWolfeGeometryContext Ω V)
-    (fInf : ℝ)
     (err : ℕ → Ω → ℝ)
-    (hInf : ∀ t ω, fInf ≤ S.f (S.W t ω))
     (hErr : ∀ t ω, S.nesterovErrorNorm t ω ≤ err t ω) :
     ∀ T ω, 0 < T →
       (Finset.sum (Finset.range T) fun t => S.frankWolfeGap t ω) / (T : ℝ) ≤
-        (S.f (S.W 0 ω) - fInf) / (S.lambda * S.eta * T)
+        (S.suboptimality 0 ω) / (S.lambda * S.eta * T)
           + (2 / (S.lambda * T)) * (Finset.sum (Finset.range T) fun t => err t ω)
           + 2 * S.L * S.eta / S.lambda := by
   intro T ω hT
   change
     (Finset.sum (Finset.range T) fun t => (S.path ω).frankWolfeGap t) / (T : ℝ) ≤
-      ((S.path ω).f ((S.path ω).W 0) - fInf) / ((S.path ω).lambda * (S.path ω).eta * T)
+      ((S.path ω).initialSuboptimality) / ((S.path ω).lambda * (S.path ω).eta * T)
         + (2 / ((S.path ω).lambda * T)) * (Finset.sum (Finset.range T) fun t => err t ω)
         + 2 * (S.path ω).L * (S.path ω).eta / (S.path ω).lambda
   exact
     (S.path ω).path_avg_frankWolfeGap_bound_of_tracking_bound
-      (fInf := fInf)
       (err := fun t => err t ω)
-      (hInf := fun t => hInf t ω)
       (hErr := fun t => hErr t ω)
       T hT
 

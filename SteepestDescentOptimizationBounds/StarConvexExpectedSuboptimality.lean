@@ -51,11 +51,13 @@ private theorem suboptimality_integrable
     (S : StochasticStarConvexGeometryContext Ω V) :
     ∀ t, Integrable (fun ω => S.suboptimality t ω) S.μ
   | 0 => by
-      letI := S.prob
-      refine (integrable_const S.initialSuboptimality).congr ?_
-      filter_upwards with ω
-      simp [StochasticSteepestDescentGeometryContext.suboptimality,
-        StochasticSteepestDescentGeometryContext.initialSuboptimality, S.W_zero]
+      have hConst :
+          Integrable (fun _ : Ω => S.f S.WStar) S.μ := by
+        letI := S.toStochasticSteepestDescentGeometryContext.prob
+        simpa [StochasticSteepestDescentGeometryContext.μ] using
+          (integrable_const (μ := S.toStochasticSteepestDescentGeometryContext.μ) (S.f S.WStar))
+      simpa [StochasticStarConvexGeometryContext.suboptimality] using
+        (S.toStochasticSteepestDescentGeometryContext.objective_integrable 0).sub hConst
   | t + 1 => by
       let a : ℝ := 1 - S.lambda * S.eta
       have hPrev : Integrable (fun ω => S.suboptimality t ω) S.μ :=
@@ -77,7 +79,7 @@ private theorem suboptimality_integrable
       refine Integrable.mono' hUpper (suboptimality_aestronglyMeasurable S (t + 1)) ?_
       filter_upwards with ω
       have hNonneg : 0 ≤ S.suboptimality (t + 1) ω := by
-        dsimp [StochasticSteepestDescentGeometryContext.suboptimality]
+        dsimp [StochasticStarConvexGeometryContext.suboptimality]
         linarith [S.WStar_optimality (S.W (t + 1) ω)]
       have hRec :
           S.suboptimality (t + 1) ω ≤
@@ -100,7 +102,7 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
             + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ) :
     ∀ T,
       S.expectedSuboptimality T ≤
-        (1 - S.lambda * S.eta) ^ T * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
+        (1 - S.lambda * S.eta) ^ T * S.initialExpectedSuboptimality
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
@@ -239,14 +241,10 @@ private theorem starConvexExpectedSuboptimality_bound_of_corollary11
   calc
     S.expectedSuboptimality T
       ≤ a ^ T * S.expectedSuboptimality 0 + k * (1 / (1 - a)) + d * (S.beta / (1 - S.beta)) := hMain
-    _ = a ^ T * S.initialSuboptimality
+    _ = a ^ T * S.initialExpectedSuboptimality
           + k * (1 / (1 - a)) + d * (S.beta / (1 - S.beta)) := by
-          rw [show S.expectedSuboptimality 0 = S.initialSuboptimality by
-            simpa [expectedSuboptimality,
-              StochasticSteepestDescentGeometryContext.initialExpectedSuboptimality] using
-              (StochasticSteepestDescentGeometryContext.initialExpectedSuboptimality_eq_initialSuboptimality
-                S.toStochasticSteepestDescentGeometryContext)]
-    _ = (1 - S.lambda * S.eta) ^ T * S.initialSuboptimality
+          rfl
+    _ = (1 - S.lambda * S.eta) ^ T * S.initialExpectedSuboptimality
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
@@ -268,13 +266,13 @@ private theorem starConvexExpectedSuboptimality_existsConstants_of_corollary11
             + (2 * S.beta ^ 2 / (1 - S.beta)) * S.L * S.eta
             + (S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma) / Real.sqrt S.batchSizeℝ) :
     ∃ X Y Z : ℝ,
-      X = S.initialSuboptimality ∧
+      X = S.initialExpectedSuboptimality ∧
       Y = (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma ∧
       Z = ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
             + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta ∧
       ∀ T,
         S.expectedSuboptimality T ≤ (1 - S.lambda * S.eta) ^ T * X + Y / Real.sqrt S.batchSizeℝ + Z := by
-  refine ⟨S.initialSuboptimality,
+  refine ⟨S.initialExpectedSuboptimality,
     (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma,
     ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
       + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta, rfl, rfl, rfl, ?_⟩
@@ -296,7 +294,7 @@ theorem starConvexExpectedSuboptimality_bound
     (S : StochasticStarConvexGeometryContext Ω V) :
     ∀ T,
       S.expectedSuboptimality T ≤
-        (1 - S.lambda * S.eta) ^ T * (S.toStochasticSteepestDescentGeometryContext.initialSuboptimality)
+        (1 - S.lambda * S.eta) ^ T * S.initialExpectedSuboptimality
           + ((2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma)
               / Real.sqrt S.batchSizeℝ
           + (((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
@@ -324,7 +322,7 @@ theorem starConvexExpectedSuboptimality_bound
 theorem starConvexExpectedSuboptimality_existsConstants
     (S : StochasticStarConvexGeometryContext Ω V) :
     ∃ X Y Z : ℝ,
-      X = S.toStochasticSteepestDescentGeometryContext.initialSuboptimality ∧
+      X = S.initialExpectedSuboptimality ∧
       Y = (2 / S.lambda) * S.momentumNoisePrefactor * Real.sqrt S.D * S.sigma ∧
       Z = ((4 * S.L / S.lambda) * (1 + S.beta ^ 2 / (1 - S.beta))
             + (2 * S.beta / (1 - S.beta)) * S.initialExpectedMomentumError) * S.eta ∧

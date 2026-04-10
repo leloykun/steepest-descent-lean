@@ -1,5 +1,6 @@
 import Mathlib
 import SteepestDescentOptimizationBounds.Assumptions
+import SteepestDescentOptimizationBounds.DescentLemma
 import SteepestDescentOptimizationBounds.WeightAndUpdateBounds
 
 namespace SteepestDescentOptimizationBounds
@@ -93,6 +94,7 @@ private lemma samplePrefixSigma_le_of_measurable
     (W : ℕ → Ω → V)
     (sample : ℕ → Fin batchSize → Ω → β)
     (hSample : ∀ t i, @Measurable Ω β inferInstance inferInstance (sample t i))
+    (hW0 : @Measurable Ω V inferInstance inferInstance (W 0))
     (t : ℕ)
     (hW : @Measurable Ω V inferInstance inferInstance (W t))
     (i : Fin batchSize) :
@@ -101,7 +103,7 @@ private lemma samplePrefixSigma_le_of_measurable
   have hTupleMeasurable : Measurable tuple := by
     exact measurable_pi_lambda tuple <| fun j =>
       flatSample_measurable hb sample hSample j
-  exact sup_le hW.comap_le hTupleMeasurable.comap_le
+  exact sup_le (sup_le hW0.comap_le hW.comap_le) hTupleMeasurable.comap_le
 
 /--
 Every previously revealed flattened sample is measurable with respect to the
@@ -123,12 +125,7 @@ lemma flatSample_measurable_of_lt
   have hTuple :
       Measurable[samplePrefixSigma hb W sample t i] tuple := by
     refine Measurable.of_comap_le ?_
-    change
-      MeasurableSpace.comap tuple
-          (inferInstance : MeasurableSpace (Fin (flatSampleIndex t i) → β)) ≤
-        MeasurableSpace.comap (W t) (inferInstance : MeasurableSpace V) ⊔
-          MeasurableSpace.comap tuple
-            (inferInstance : MeasurableSpace (Fin (flatSampleIndex t i) → β))
+    unfold samplePrefixSigma
     exact le_sup_right
   let proj : (Fin (flatSampleIndex t i) → β) → β := fun z => z ⟨j, hj⟩
   have hProj : Measurable proj := measurable_pi_apply _
@@ -330,9 +327,9 @@ private lemma fGrad_lipschitzOn_constraintBall
     LipschitzOnWith (Real.toNNReal S.L) S.fGrad S.constraintBall := by
   refine LipschitzOnWith.of_dist_le_mul ?_
   intro x hx y hy
-  have hx' : ‖x‖ ≤ 1 / S.lambda := by
+  have hx' : ‖x‖ ≤ S.constraintRadius := by
     simpa [StochasticSteepestDescentGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hx
-  have hy' : ‖y‖ ≤ 1 / S.lambda := by
+  have hy' : ‖y‖ ≤ S.constraintRadius := by
     simpa [StochasticSteepestDescentGeometryContext.constraintBall, Metric.mem_closedBall, dist_eq_norm] using hy
   have hBound := S.assumption3_fLocalSmoothness.bound hx' hy'
   simpa [dist_eq_norm, norm_sub_rev, Real.toNNReal_of_nonneg S.L_pos.le] using hBound
@@ -537,11 +534,9 @@ private theorem W_prefixMeasurable_before
   induction s with
   | zero =>
       intro hs
-      have hEq : S.W 0 = fun _ : Ω => S.W0 := by
-        funext ω
-        simpa using S.W_zero ω
-      rw [hEq]
-      exact measurable_const
+      refine Measurable.of_comap_le ?_
+      unfold samplePrefixSigma
+      exact le_trans le_sup_left le_sup_left
   | succ s ih =>
       intro hs
       have hs' : s < t := Nat.lt_trans (Nat.lt_succ_self s) hs
@@ -589,11 +584,7 @@ lemma W_measurable
   intro t
   induction t with
   | zero =>
-      have hEq : S.W 0 = fun _ : Ω => S.W0 := by
-        funext ω
-        simpa using S.W_zero ω
-      rw [hEq]
-      exact measurable_const
+      exact S.W_zero_measurable
   | succ t ih =>
       have hEq :
           S.W (t + 1) =
@@ -629,6 +620,87 @@ lemma objective_stronglyMeasurable
     ∀ t, StronglyMeasurable (fun ω => S.f (S.W t ω)) := by
   intro t
   exact (S.objective_measurable t).stronglyMeasurable
+
+/-- The objective along the iterate process is integrable at each time. -/
+lemma objective_integrable
+    (S : StochasticSteepestDescentGeometryContext Ω V) :
+    ∀ t, Integrable (fun ω => S.f (S.W t ω)) S.μ := by
+  intro t
+  letI := S.prob
+  let R : ℝ := S.constraintRadius
+  let C : ℝ :=
+    ‖S.f 0‖ + ‖S.fGrad 0‖ * R + (S.L / 2) * R ^ 2
+  have hCInt : Integrable (fun _ : Ω => C) S.μ := integrable_const C
+  refine Integrable.mono' hCInt (S.objective_stronglyMeasurable t).aestronglyMeasurable ?_
+  filter_upwards with ω
+  have hBall : ‖S.W t ω‖ ≤ R := by
+    simpa [R] using (S.proposition9_weight_and_update_bounds t ω).1
+  have hZero : ‖(0 : V)‖ ≤ R := by
+    simpa [R] using S.constraintRadius_nonneg
+  have hTaylor :=
+    taylor_bound_of_LSmoothOnClosedBallUnderStrongDual_of_localFDeriv
+      (f := S.f)
+      (grad := S.fGrad)
+      (L := S.L)
+      (R := R)
+      S.fderiv_eq
+      S.assumption3_fLocalSmoothness.local_lipschitz
+      hZero
+      hBall
+      (x := (0 : V))
+      (y := S.W t ω)
+  have hNormBound :
+      ‖S.f (S.W t ω)‖ ≤ ‖S.f 0‖ + ‖S.fGrad 0‖ * R + (S.L / 2) * R ^ 2 := by
+    have hBase :
+        ‖S.f (S.W t ω) - (S.f 0 + S.fGrad 0 (S.W t ω - 0))‖ ≤
+          (S.L / 2) * ‖S.W t ω - 0‖ ^ 2 := by
+      simpa [R] using hTaylor
+    have h1 :
+        ‖S.f (S.W t ω)‖ ≤
+          ‖S.f 0 + S.fGrad 0 (S.W t ω - 0)‖ +
+            (S.L / 2) * ‖S.W t ω - 0‖ ^ 2 := by
+      calc
+        ‖S.f (S.W t ω)‖
+          = ‖(S.f (S.W t ω) - (S.f 0 + S.fGrad 0 (S.W t ω - 0))) +
+              (S.f 0 + S.fGrad 0 (S.W t ω - 0))‖ := by ring_nf
+        _ ≤ ‖S.f (S.W t ω) - (S.f 0 + S.fGrad 0 (S.W t ω - 0))‖ +
+              ‖S.f 0 + S.fGrad 0 (S.W t ω - 0)‖ := norm_add_le _ _
+        _ ≤ ‖S.f 0 + S.fGrad 0 (S.W t ω - 0)‖ + (S.L / 2) * ‖S.W t ω - 0‖ ^ 2 := by
+              linarith
+    have hLinear :
+        ‖S.f 0 + S.fGrad 0 (S.W t ω - 0)‖ ≤
+          ‖S.f 0‖ + ‖S.fGrad 0‖ * ‖S.W t ω - 0‖ := by
+      calc
+        ‖S.f 0 + S.fGrad 0 (S.W t ω - 0)‖
+          ≤ ‖S.f 0‖ + ‖S.fGrad 0 (S.W t ω - 0)‖ := norm_add_le _ _
+        _ ≤ ‖S.f 0‖ + ‖S.fGrad 0‖ * ‖S.W t ω - 0‖ := by
+          gcongr
+          exact ContinuousLinearMap.le_opNorm (S.fGrad 0) (S.W t ω - 0)
+    have hNorm :
+        ‖S.W t ω - 0‖ ≤ R := by
+      simpa using hBall
+    have hRNonneg : 0 ≤ R := by
+      simpa [R] using S.constraintRadius_nonneg
+    have hQuad :
+        (S.L / 2) * ‖S.W t ω - 0‖ ^ 2 ≤ (S.L / 2) * R ^ 2 := by
+      have hSq : ‖S.W t ω - 0‖ ^ 2 ≤ R ^ 2 := by
+        nlinarith [hNorm, hRNonneg, norm_nonneg (S.W t ω - 0)]
+      nlinarith [S.L_pos.le, hSq]
+    have hLinear' :
+        ‖S.f 0‖ + ‖S.fGrad 0‖ * ‖S.W t ω - 0‖ ≤
+          ‖S.f 0‖ + ‖S.fGrad 0‖ * R := by
+      nlinarith [hNorm, hRNonneg, norm_nonneg (S.f 0), norm_nonneg (S.fGrad 0)]
+    linarith
+  have hCnonneg : 0 ≤ C := by
+    dsimp [C, R]
+    have hRNonneg : 0 ≤ S.constraintRadius := S.constraintRadius_nonneg
+    have hLNonneg : 0 ≤ S.L := S.L_pos.le
+    have hMulNonneg : 0 ≤ ‖S.fGrad 0‖ * S.constraintRadius :=
+      mul_nonneg (norm_nonneg (S.fGrad 0)) hRNonneg
+    have hQuadNonneg : 0 ≤ S.L / 2 * S.constraintRadius ^ 2 := by
+      nlinarith [hLNonneg, sq_nonneg S.constraintRadius]
+    exact add_nonneg (add_nonneg (norm_nonneg (S.f 0)) hMulNonneg) hQuadNonneg
+  simpa [C, Real.norm_of_nonneg hCnonneg] using hNormBound
 
 /-- The true gradient process is strongly measurable at each time. -/
 lemma grad_stronglyMeasurable
@@ -681,7 +753,7 @@ lemma current_iterate_prefixMeasurable
     Measurable[samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i] (S.W t) := by
   refine Measurable.of_comap_le ?_
   unfold samplePrefixSigma
-  exact le_sup_left
+  exact le_trans le_sup_right le_sup_left
 
 /-- Every prefix filtration is a sub-sigma-algebra of the ambient measurable space. -/
 lemma samplePrefixSigma_le
@@ -691,7 +763,7 @@ lemma samplePrefixSigma_le
       inferInstanceAs (MeasurableSpace Ω) := by
   exact samplePrefixSigma_le_of_measurable
     S.batchSize_pos S.W S.stochasticGradientSample
-    S.assumption1_sampling.sample_measurable t (S.W_measurable t) i
+    S.assumption1_sampling.sample_measurable S.W_zero_measurable t (S.W_measurable t) i
 
 /-- Earlier iterates are measurable with respect to any later prefix filtration. -/
 lemma W_prefixMeasurable
@@ -742,7 +814,7 @@ lemma sample_condexp_eq_grad
       S.iterateSigma t ≤
         samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i := by
     unfold StochasticSteepestDescentGeometryContext.iterateSigma samplePrefixSigma
-    exact le_sup_left
+    exact le_trans le_sup_right le_sup_left
   have hPrefixLe :
       samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i ≤
         inferInstanceAs (MeasurableSpace Ω) :=

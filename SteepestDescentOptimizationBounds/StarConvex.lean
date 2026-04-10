@@ -62,19 +62,24 @@ private lemma star_convex_prop
       S.f ((1 - α) • W + α • S.WStar) ≤ (1 - α) * S.f W + α * S.f S.WStar :=
   Assumption12_StarConvexityAtReferencePoint.star_convex S.assumption12_starConvexity
 
-/-- Shared scaling estimate for vectors already in the radius-`1 / λ` ball. -/
+/-- Shared scaling estimate for vectors already in the generic constraint ball. -/
 private lemma scaled_norm_le_eta
     (S : StarConvexPathGeometryContext V) {x : V}
-    (hx : ‖x‖ ≤ 1 / S.lambda) :
+    (hx : ‖x‖ ≤ S.constraintRadius) :
     ‖(S.lambda * S.eta) • x‖ ≤ S.eta := by
   have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
   calc
     ‖(S.lambda * S.eta) • x‖ = (S.lambda * S.eta) * ‖x‖ := by
       rw [norm_smul, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ (S.lambda * S.eta) * (1 / S.lambda) := by
+    _ ≤ (S.lambda * S.eta) * S.constraintRadius := by
       exact mul_le_mul_of_nonneg_left hx hScaleNonneg
     _ = S.eta := by
-      field_simp [S.lambda_pos.ne']
+      have hEq : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+      have hEq' : (S.lambda * S.eta) * S.constraintRadius = S.eta := by
+        calc
+          (S.lambda * S.eta) * S.constraintRadius = S.eta * (S.lambda * S.constraintRadius) := by ring
+          _ = S.eta := by rw [hEq]; ring
+      simpa using hEq'
 
 end PrivateLemmas
 
@@ -98,10 +103,10 @@ private lemma interpolatedPoint_feasible
       rw [interpolatedPoint_sub_stepCenter]
     _ ≤ S.eta := S.scaled_norm_le_eta S.WStar_bound
 
-/-- The interpolation point also stays in the primal radius-`1 / λ` ball. -/
+/-- The interpolation point also stays in the generic primal constraint ball. -/
 private lemma interpolatedPoint_bound
     (S : StarConvexPathGeometryContext V) (t : ℕ) :
-    ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda := by
+    ‖S.interpolatedPoint t‖ ≤ S.constraintRadius := by
   have hWeight := S.weight_bound_from_feasible_step t
   have hScaleNonneg : 0 ≤ S.lambda * S.eta := S.lambda_eta_nonneg
   have hDecayNonneg : 0 ≤ 1 - S.lambda * S.eta := S.one_sub_lambda_eta_nonneg
@@ -112,30 +117,30 @@ private lemma interpolatedPoint_bound
     _ ≤ ‖(1 - S.lambda * S.eta) • S.W t‖ + ‖(S.lambda * S.eta) • S.WStar‖ := norm_add_le _ _
     _ = (1 - S.lambda * S.eta) * ‖S.W t‖ + (S.lambda * S.eta) * ‖S.WStar‖ := by
           rw [norm_smul, norm_smul, Real.norm_of_nonneg hDecayNonneg, Real.norm_of_nonneg hScaleNonneg]
-    _ ≤ (1 - S.lambda * S.eta) * (1 / S.lambda) + (S.lambda * S.eta) * (1 / S.lambda) := by
+    _ ≤ (1 - S.lambda * S.eta) * S.constraintRadius + (S.lambda * S.eta) * S.constraintRadius := by
           have hFirst :
               (1 - S.lambda * S.eta) * ‖S.W t‖ ≤
-                (1 - S.lambda * S.eta) * (1 / S.lambda) := by
+                (1 - S.lambda * S.eta) * S.constraintRadius := by
             exact mul_le_mul_of_nonneg_left hWeight hDecayNonneg
           have hSecond :
               (S.lambda * S.eta) * ‖S.WStar‖ ≤
-                (S.lambda * S.eta) * (1 / S.lambda) := by
+                (S.lambda * S.eta) * S.constraintRadius := by
             exact mul_le_mul_of_nonneg_left S.WStar_bound hScaleNonneg
           linarith
-    _ = 1 / S.lambda := by
-          field_simp [S.lambda_pos.ne']
-          ring
+    _ = S.constraintRadius := by
+          have hEq : S.lambda * S.constraintRadius = 1 := S.lambda_mul_constraintRadius_eq_one
+          nlinarith
 
 /-- Geometry package for the interpolation point used in the one-step proof. -/
 private theorem lemma13_interpolatedPoint_geometry
     (S : StarConvexPathGeometryContext V) (t : ℕ) :
-    ‖S.interpolatedPoint t‖ ≤ 1 / S.lambda ∧
+    ‖S.interpolatedPoint t‖ ≤ S.constraintRadius ∧
       (S.C t) (S.W (t + 1) - S.interpolatedPoint t) ≤ 0 ∧
       ‖S.interpolatedPoint t - S.W t‖ ≤ 2 * S.eta ∧
       ‖S.W (t + 1) - S.interpolatedPoint t‖ ≤ 2 * S.eta := by
   have hInterp := interpolatedPoint_bound S t
   have hXFeasible := interpolatedPoint_feasible S t
-  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step t
+  have hWeight : ‖S.W t‖ ≤ S.constraintRadius := S.weight_bound_from_feasible_step t
   have hWeightCenter : ‖S.W t - S.stepCenter t‖ ≤ S.eta := by
     rw [S.weight_sub_stepCenter t]
     exact S.scaled_norm_le_eta hWeight
@@ -172,8 +177,8 @@ theorem one_step_descent_bound
   intro t
   have hLemma13 := lemma13_interpolatedPoint_geometry S t
   rcases hLemma13 with ⟨hInterpWeight, hOptimalDir, hXWeightBound, hNextXBound⟩
-  have hWeight : ‖S.W t‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step t
-  have hNextWeight : ‖S.W (t + 1)‖ ≤ 1 / S.lambda := S.weight_bound_from_feasible_step (t + 1)
+  have hWeight : ‖S.W t‖ ≤ S.constraintRadius := S.weight_bound_from_feasible_step t
+  have hNextWeight : ‖S.W (t + 1)‖ ≤ S.constraintRadius := S.weight_bound_from_feasible_step (t + 1)
   have hUpdateBound : ‖S.W (t + 1) - S.W t‖ ≤ 2 * S.eta :=
     (S.proposition9_weight_and_update_bounds t).2
   have hGradDecomp :
@@ -213,7 +218,7 @@ theorem one_step_descent_bound
           (f := S.f)
           (grad := S.fGrad)
           (L := S.L)
-          (R := 1 / S.lambda)
+          (R := S.constraintRadius)
           S.fderiv_eq
           S.assumption3_fLocalSmoothness.local_lipschitz
           hWeight
@@ -244,7 +249,7 @@ theorem one_step_descent_bound
           (f := S.f)
           (grad := S.fGrad)
           (L := S.L)
-          (R := 1 / S.lambda)
+          (R := S.constraintRadius)
           (α := 1)
           S.fderiv_eq
           S.assumption3_fLocalSmoothness.local_lipschitz
@@ -307,7 +312,7 @@ theorem suboptimality_recurrence_step
         (1 - S.lambda * S.eta) * S.f (S.W t) + (S.lambda * S.eta) * S.f S.WStar := by
     simpa [interpolatedPoint, SteepestDescentPathGeometryContext.stepCenter] using hStar
   have hLocal := S.one_step_descent_bound t
-  dsimp [SteepestDescentPathGeometryContext.suboptimality]
+  dsimp [StarConvexPathGeometryContext.suboptimality]
   linarith
 
 end PublicTheorems
@@ -335,8 +340,8 @@ theorem suboptimality_recurrence_step
           + 2 * S.eta * S.nesterovErrorNorm t ω := by
   intro t ω
   have h := (S.path ω).suboptimality_recurrence_step t
-  simpa [SteepestDescentPathGeometryContext.suboptimality,
-    StochasticSteepestDescentGeometryContext.suboptimality] using h
+  simpa [StarConvexPathGeometryContext.suboptimality,
+    StochasticStarConvexGeometryContext.suboptimality] using h
 
 end PublicTheorems
 

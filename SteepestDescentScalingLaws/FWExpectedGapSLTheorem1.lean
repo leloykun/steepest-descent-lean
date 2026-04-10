@@ -50,16 +50,16 @@ def fwGapProxyNoiseCoeff
     * Real.sqrt S.D
     * S.sigma
 
-/-- The deterministic initial gap carried by the fixed initial iterate `W0`. -/
-def fwGapInitialGap
+/-- The initial expected suboptimality carried by the FW-gap context. -/
+def fwGapInitialSuboptimality
     (S : StochasticFrankWolfeGeometryContext Ω V) : ℝ :=
-  S.toStochasticSteepestDescentGeometryContext.initialSuboptimality
+  S.initialExpectedSuboptimality
 
 /-- Fixed-step Frank-Wolfe-gap proxy at fixed momentum. -/
 def fwGapProxySL1
     (S : StochasticFrankWolfeGeometryContext Ω V)
     (η batchSize T β : ℝ) : ℝ :=
-  S.fwGapInitialGap / (S.lambda * η * T)
+  S.fwGapInitialSuboptimality / (S.lambda * η * T)
     + S.fwGapProxyInitCoeff β / T
     + S.fwGapProxyNoiseCoeff β / Real.sqrt batchSize
     + S.fwGapProxyDriftCoeff β * η
@@ -68,7 +68,7 @@ def fwGapProxySL1
 def fwGapProxySL1Token
     (S : StochasticFrankWolfeGeometryContext Ω V)
     (η batchSize N β : ℝ) : ℝ :=
-  S.fwGapInitialGap * batchSize / (S.lambda * η * N)
+  S.fwGapInitialSuboptimality * batchSize / (S.lambda * η * N)
     + S.fwGapProxyInitCoeff β * batchSize / N
     + S.fwGapProxyNoiseCoeff β / Real.sqrt batchSize
     + S.fwGapProxyDriftCoeff β * η
@@ -107,7 +107,7 @@ def IsFixedTokenBudgetFrankWolfeGapProxyMinimizerFamily
 def fixedMomentumFrankWolfeGapReducedProxy
     (S : StochasticFrankWolfeGeometryContext Ω V)
     (N β batchSize : ℝ) : ℝ :=
-  2 * Real.sqrt ((S.fwGapInitialGap / S.lambda) * S.fwGapProxyDriftCoeff β * batchSize / N)
+  2 * Real.sqrt ((S.fwGapInitialSuboptimality / S.lambda) * S.fwGapProxyDriftCoeff β * batchSize / N)
     + S.fwGapProxyInitCoeff β * batchSize / N
     + S.fwGapProxyNoiseCoeff β / Real.sqrt batchSize
 
@@ -135,7 +135,7 @@ Private Definitions
 
 private def fwGapBiasCoeff
     (S : StochasticFrankWolfeGeometryContext Ω V) : ℝ :=
-  S.fwGapInitialGap / S.lambda
+  S.fwGapInitialSuboptimality / S.lambda
 
 private def etaStarFixedStepsClosedForm
     (S : StochasticFrankWolfeGeometryContext Ω V)
@@ -213,7 +213,7 @@ private theorem fwGapProxySL1Token_eq_const_add
 
 private theorem fwGapBiasCoeff_pos
     (S : StochasticFrankWolfeGeometryContext Ω V)
-    (hGap : 0 < S.fwGapInitialGap) :
+    (hGap : 0 < S.fwGapInitialSuboptimality) :
     0 < S.fwGapBiasCoeff := by
   unfold fwGapBiasCoeff
   exact div_pos hGap S.lambda_pos
@@ -258,7 +258,7 @@ private theorem fwGapProxyNoiseCoeff_nonneg
 private theorem etaStarFixedStepsClosedForm_sq
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β T : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap) (hT : 0 < T) :
+    (hGap : 0 < S.fwGapInitialSuboptimality) (hT : 0 < T) :
     (S.etaStarFixedStepsClosedForm T β) ^ 2
       = S.fwGapBiasCoeff / (S.fwGapProxyDriftCoeff β * T) := by
   unfold etaStarFixedStepsClosedForm
@@ -271,7 +271,7 @@ private theorem etaStarFixedStepsClosedForm_sq
 private theorem etaStarFixedMomentumClosedForm_sq
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β N batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize) :
     (S.etaStarFixedMomentumClosedForm N β batchSize) ^ 2
       = S.fwGapBiasCoeff * batchSize / (S.fwGapProxyDriftCoeff β * N) := by
@@ -286,7 +286,7 @@ private theorem closedForm_fixedStep_isMinimizer
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize T : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hT : 0 < T) :
     S.IsFixedStepFrankWolfeGapProxyMinimizer
       (S.etaStarFixedStepsClosedForm T β) batchSize T β := by
@@ -331,7 +331,7 @@ private theorem closedForm_fixedStep_lt_of_ne
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize T η : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hT : 0 < T) (hη : 0 < η)
     (hNe : η ≠ S.etaStarFixedStepsClosedForm T β) :
     S.fwGapProxySL1 (S.etaStarFixedStepsClosedForm T β) batchSize T β
@@ -373,7 +373,7 @@ private theorem etaStarFixedSteps_eq
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize T ηStar : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hT : 0 < T)
     (hMin : S.IsFixedStepFrankWolfeGapProxyMinimizer ηStar batchSize T β) :
     ηStar = S.etaStarFixedStepsClosedForm T β := by
@@ -387,7 +387,7 @@ private theorem etaStarFixedSteps_eq
 private theorem fixedStepClosedFormFamily_eq
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     {etaStepStar : ℝ → ℝ}
     (hMin : S.IsFixedStepFrankWolfeGapProxyMinimizerFamily β batchSize etaStepStar) :
     ∀ {T : ℝ}, 0 < T →
@@ -398,7 +398,7 @@ private theorem fixedStepClosedFormFamily_eq
 private theorem fixedStepIterationScalingBounds
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     {etaStepStar : ℝ → ℝ}
     (hMin : S.IsFixedStepFrankWolfeGapProxyMinimizerFamily β batchSize etaStepStar) :
     ∃ cLower cUpper T0,
@@ -417,8 +417,8 @@ private theorem fixedStepIterationScalingBounds
   have hRewrite :
       S.etaStarFixedStepsClosedForm T β = c / Real.rpow T (1 / 2 : ℝ) := by
     unfold etaStarFixedStepsClosedForm c fwGapBiasCoeff
-    rw [show S.fwGapInitialGap / S.lambda / (S.fwGapProxyDriftCoeff β * T)
-        = (S.fwGapInitialGap / S.lambda / S.fwGapProxyDriftCoeff β) / T by
+    rw [show S.fwGapInitialSuboptimality / S.lambda / (S.fwGapProxyDriftCoeff β * T)
+        = (S.fwGapInitialSuboptimality / S.lambda / S.fwGapProxyDriftCoeff β) / T by
           field_simp [(S.fwGapProxyDriftCoeff_pos hβ0 hβ1).ne', S.lambda_pos.ne', hTpos.ne']]
     rw [Real.sqrt_div]
     · simp [Real.sqrt_eq_rpow, div_eq_mul_inv, mul_comm]
@@ -439,7 +439,7 @@ private theorem closedForm_fixedToken_isMinimizer
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β N batchSize : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize) :
     S.IsFixedTokenBudgetFrankWolfeGapProxyMinimizer
       (S.etaStarFixedMomentumClosedForm N β batchSize) batchSize N β := by
@@ -484,7 +484,7 @@ private theorem closedForm_fixedToken_lt_of_ne
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β N batchSize η : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hη : 0 < η)
     (hNe : η ≠ S.etaStarFixedMomentumClosedForm N β batchSize) :
@@ -527,7 +527,7 @@ private theorem etaStarFixedMomentum_eq
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize N ηStar : ℝ}
     (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hN : 0 < N) (hBatch : 0 < batchSize)
     (hMin : S.IsFixedTokenBudgetFrankWolfeGapProxyMinimizer ηStar batchSize N β) :
     ηStar = S.etaStarFixedMomentumClosedForm N β batchSize := by
@@ -541,7 +541,7 @@ private theorem etaStarFixedMomentum_eq
 private theorem fixedTokenClosedFormFamily_eq
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     {etaTokenStar : ℝ → ℝ → ℝ}
     (hMin : S.IsFixedTokenBudgetFrankWolfeGapProxyMinimizerFamily β etaTokenStar) :
     ∀ {N batchSize : ℝ}, 0 < N → 0 < batchSize →
@@ -562,7 +562,7 @@ private theorem quarterScale_sq {N : ℝ} :
 private theorem fixedMomentumFrankWolfeGapTokenBudgetScalingBounds
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hNoise : 0 < S.fwGapProxyNoiseCoeff β)
     {batchSizeStar : ℝ → ℝ}
     (hBatchMin :
@@ -841,7 +841,7 @@ Public Theorems
 theorem fWExpectedGapSLTheorem1_1_iterationScaling
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap) :
+    (hGap : 0 < S.fwGapInitialSuboptimality) :
     ∀ {etaStepStar : ℝ → ℝ},
       S.IsFixedStepFrankWolfeGapProxyMinimizerFamily β batchSize etaStepStar →
       (∀ {T : ℝ}, 0 < T →
@@ -858,7 +858,7 @@ theorem fWExpectedGapSLTheorem1_1_iterationScaling
 theorem fWExpectedGapSLTheorem1_2_tokenBudgetScaling
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hNoise : 0 < S.fwGapProxyNoiseCoeff β)
     {batchSizeStar : ℝ → ℝ}
     (hBatchMin :
@@ -881,7 +881,7 @@ theorem fWExpectedGapSLTheorem1_2_tokenBudgetScaling
 theorem fWExpectedGapSLTheorem1_FixedMomentumLargeHorizonProxy
     (S : StochasticFrankWolfeGeometryContext Ω V)
     {β batchSize : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
-    (hGap : 0 < S.fwGapInitialGap)
+    (hGap : 0 < S.fwGapInitialSuboptimality)
     (hNoise : 0 < S.fwGapProxyNoiseCoeff β)
     {etaStepStar : ℝ → ℝ}
     (hStepMin : S.IsFixedStepFrankWolfeGapProxyMinimizerFamily β batchSize etaStepStar)
