@@ -94,7 +94,6 @@ private lemma samplePrefixSigma_le_of_measurable
     (W : ℕ → Ω → V)
     (sample : ℕ → Fin batchSize → Ω → β)
     (hSample : ∀ t i, @Measurable Ω β inferInstance inferInstance (sample t i))
-    (hW0 : @Measurable Ω V inferInstance inferInstance (W 0))
     (t : ℕ)
     (hW : @Measurable Ω V inferInstance inferInstance (W t))
     (i : Fin batchSize) :
@@ -103,7 +102,7 @@ private lemma samplePrefixSigma_le_of_measurable
   have hTupleMeasurable : Measurable tuple := by
     exact measurable_pi_lambda tuple <| fun j =>
       flatSample_measurable hb sample hSample j
-  exact sup_le (sup_le hW0.comap_le hW.comap_le) hTupleMeasurable.comap_le
+  exact sup_le hW.comap_le hTupleMeasurable.comap_le
 
 /--
 Every previously revealed flattened sample is measurable with respect to the
@@ -534,9 +533,11 @@ private theorem W_prefixMeasurable_before
   induction s with
   | zero =>
       intro hs
-      refine Measurable.of_comap_le ?_
-      unfold samplePrefixSigma
-      exact le_trans le_sup_left le_sup_left
+      have hEq : S.W 0 = fun _ => S.W0 := by
+        funext ω
+        exact S.W_zero ω
+      rw [hEq]
+      exact measurable_const
   | succ s ih =>
       intro hs
       have hs' : s < t := Nat.lt_trans (Nat.lt_succ_self s) hs
@@ -584,7 +585,11 @@ lemma W_measurable
   intro t
   induction t with
   | zero =>
-      exact S.W_zero_measurable
+      have hEq : S.W 0 = fun _ => S.W0 := by
+        funext ω
+        exact S.W_zero ω
+      rw [hEq]
+      exact measurable_const
   | succ t ih =>
       have hEq :
           S.W (t + 1) =
@@ -753,7 +758,7 @@ lemma current_iterate_prefixMeasurable
     Measurable[samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i] (S.W t) := by
   refine Measurable.of_comap_le ?_
   unfold samplePrefixSigma
-  exact le_trans le_sup_right le_sup_left
+  exact le_sup_left
 
 /-- Every prefix filtration is a sub-sigma-algebra of the ambient measurable space. -/
 lemma samplePrefixSigma_le
@@ -763,7 +768,7 @@ lemma samplePrefixSigma_le
       inferInstanceAs (MeasurableSpace Ω) := by
   exact samplePrefixSigma_le_of_measurable
     S.batchSize_pos S.W S.stochasticGradientSample
-    S.assumption1_sampling.sample_measurable S.W_zero_measurable t (S.W_measurable t) i
+    S.assumption1_sampling.sample_measurable t (S.W_measurable t) i
 
 /-- Earlier iterates are measurable with respect to any later prefix filtration. -/
 lemma W_prefixMeasurable
@@ -814,7 +819,7 @@ lemma sample_condexp_eq_grad
       S.iterateSigma t ≤
         samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i := by
     unfold StochasticSteepestDescentGeometryContext.iterateSigma samplePrefixSigma
-    exact le_trans le_sup_right le_sup_left
+    exact le_sup_left
   have hPrefixLe :
       samplePrefixSigma S.batchSize_pos S.W S.stochasticGradientSample t i ≤
         inferInstanceAs (MeasurableSpace Ω) :=
